@@ -1,14 +1,20 @@
 name: Release
 
-# Tag a release (e.g. `git tag v1.0.0 && git push --tags`) to build the wheel
-# (frontend bundled) and attach it to the GitHub Release. PyPI publishing is
-# opt-in below once trusted publishing is configured for the project.
+# Trusted publishing (OIDC) — no API tokens. Branch → GitHub environment → index,
+# matching the PyPI/TestPyPI trusted publishers configured for this repo:
+#   main          → environment: production  → PyPI
+#   develop       → environment: development  → TestPyPI   (version: <base>.dev<run>)
+#   release/**    → environment: staging      → TestPyPI   (version: <base>rc<run>)
+#   hotfix/**     → environment: staging      → TestPyPI   (version: <base>rc<run>)
+#
+# IMPORTANT: each PyPI/TestPyPI trusted publisher must reference workflow `release.yml`
+# and the matching environment name. Dev/staging get unique pre-release versions so
+# repeated pushes don't collide on TestPyPI; main publishes the release version in
+# jobjob/__about__.py (bump it per release).
+
 on:
   push:
-    tags: ["v*"]
-
-permissions:
-  contents: write
+    branches: [main, develop, "release/**", "hotfix/**"]
 
 jobs:
   build:
@@ -17,24 +23,79 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - name: Build frontend
+      - name: Build frontend (bundled into the wheel)
         working-directory: webapp/frontend
         run: npm ci && npm run build
+      - name: Install and test (gate the publish)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest pytest-cov coverage httpx
+          pytest -q
+      - name: Set version from branch
+        run: |
+          BASE=$(sed -n 's/.*"\(.*\)".*/\1/p' jobjob/__about__.py)
+          case "$GITHUB_REF" in
+            refs/heads/main)    VER="$BASE" ;;
+            refs/heads/develop) VER="${BASE}.dev${GITHUB_RUN_NUMBER}" ;;
+            *)                  VER="${BASE}rc${GITHUB_RUN_NUMBER}" ;;
+          esac
+          echo "__version__ = \"$VER\"" > jobjob/__about__.py
+          echo "Building $VER from $GITHUB_REF"
       - name: Build wheel
         run: |
           python -m pip install --upgrade pip build
           python -m build --wheel
-      - name: Attach wheel to the GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/upload-artifact@v4
         with:
-          files: dist/*.whl
+          name: dist
+          path: dist/
 
-      # Enable once PyPI trusted publishing is set up for this project:
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   permissions:
-      #     id-token: write
+  pypi:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  testpypi-dev:
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  testpypi-staging:
+    needs: build
+    if: startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/hotfix/')
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
