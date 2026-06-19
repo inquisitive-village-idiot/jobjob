@@ -1,0 +1,19 @@
+Analyze this job description and extract structured information.
+Return a JSON object with exactly these fields:
+
+- company_name: The company name
+- role_title: The exact job title
+- department: Department or team if mentioned
+- location: Job location(s)
+- key_requirements: List of 5-10 most important requirements/qualifications
+- responsibilities: List of main job responsibilities  
+- technical_skills: List of technical skills mentioned
+- soft_skills: List of soft skills mentioned
+- keywords: List of important keywords for resume optimization
+- seniority_level: junior/mid/senior/lead/director/vp/c-level
+- summary: 2-3 sentence summary of the role
+
+Job Description:
+{text_content}
+
+Return ONLY valid JSON, no other text.

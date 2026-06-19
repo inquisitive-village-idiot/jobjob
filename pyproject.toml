@@ -1,0 +1,145 @@
+[project]
+name = "jobjob"
+dynamic = ["version"]
+description = "Generate tailored resumes and cover letters at scale."
+authors = [
+    {name = "Tila Mer"},
+]
+dependencies = [
+    "anthropic>=0.40.0",
+    "pdfplumber>=0.11.9",
+    "python-docx>=1.0.0",
+    "dotenv>=0.9.9",
+    "pypdf>=6.6.0",
+    "reportlab>=4.0.0",
+    "python-dateutil>=2.8.0",
+    "google-api-python-client>=2.100.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth-httplib2>=0.1.1",
+    # Local webapp (served by the `jobjob-app` launcher).
+    "fastapi>=0.136.3",
+    "uvicorn>=0.30.0",
+    "python-multipart>=0.0.9",
+    "platformdirs>=4.0.0",
+    "tomlkit>=0.12.0",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=3.0.4",
+    "ruff>=0.0.287",
+]
+jupyter = [
+    "ipykernel>=6.16.2",
+    "jupyterlab>=3.6.1",
+    "matplotlib>=3.10.7",
+    "seaborn>=0.13.2",
+]
+test = [
+    "pytest>=7.2.1",
+    "pytest-cov>=4.0.0",
+    "coverage>=7.2.0",
+    "fastapi>=0.136.3",
+    "httpx>=0.28.1",
+]
+
+
+[project.scripts]
+jobjob = "jobjob.__main__:console_main"
+jobjob-app = "jobjob.launcher:main"
+
+[project.urls]
+"Homepage" = "https://github.com/inquisitive-village-idiot/jobjob"
+"Bug Tracker" = "https://github.com/inquisitive-village-idiot/jobjob/issues"
+"Documentation" = "https://inquisitive-village-idiot.github.io/jobjob/"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = ["tests", "notebooks"]
+include = ["jobjob"]
+
+# Bundle the local webapp (backend + prebuilt frontend) and the default static
+# content into the wheel. force-include is required because static/ and dist/ are
+# gitignored (hatchling respects VCS ignores by default). Paths land beside the
+# jobjob package so the webapp's __file__-relative path resolution works installed.
+[tool.hatch.build.targets.wheel.force-include]
+"webapp/backend" = "webapp/backend"
+"webapp/frontend/dist" = "webapp/frontend/dist"
+"static" = "static"
+
+[tool.hatch.version]
+path = "jobjob/__about__.py"
+
+
+[tool.pdm]
+[tool.pdm.scripts]
+init-hooks = "pre-commit install"
+rm-hooks = "pre-commit uninstall"
+lint = "ruff check ."
+clean = "find . -type f -name '*.py[co]' -delete -o -type d -name __pycache__ -delete -o -type d -name .pytest_cache -delete"
+test = "python -m unittest -vvv {args:-discover -t ./ -s tests/jobjob}"
+
+ptest = "pytest"
+ipy-kernel = "python -m ipykernel install --user --name=my_new_environment --display-name='jobjob'"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "-ra -vvv",
+    "--cov=jobjob",
+    "--import-mode=importlib",
+]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = [
+    "**/__init__.py",
+    "**/_version.py",
+    "**/__about__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.black]
+line-length = 88
+target-version = ["py38", "py39", "py310"]
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+atomic = true
+line_length = 88
+float_to_top = true
+skip_glob = "**/__init__.py"
+
+[tool.ruff]
+ignore = []
+line-length = 88
+select = ["E","F","W"]
+exclude = ['__init__.py']

@@ -1,0 +1,40 @@
+name: Release
+
+# Tag a release (e.g. `git tag v1.0.0 && git push --tags`) to build the wheel
+# (frontend bundled) and attach it to the GitHub Release. PyPI publishing is
+# opt-in below once trusted publishing is configured for the project.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build frontend
+        working-directory: webapp/frontend
+        run: npm ci && npm run build
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+      - name: Attach wheel to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.whl
+
+      # Enable once PyPI trusted publishing is set up for this project:
+      # - name: Publish to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   permissions:
+      #     id-token: write

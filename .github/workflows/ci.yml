@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+jobs:
+  # Unit tests (Python) on Linux.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build frontend (so the webapp imports resolve)
+        working-directory: webapp/frontend
+        run: npm ci && npm run build
+      - name: Install package + test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-cov coverage httpx
+      - name: Run tests
+        run: pytest -q
+
+  # Build the wheel and smoke-test the installed app on every OS.
+  package:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.12", "3.13", "3.14"]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build frontend
+        working-directory: webapp/frontend
+        run: npm ci && npm run build
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+      - name: Install the wheel (isolated)
+        run: pip install dist/*.whl
+      - name: Smoke — scaffold a working dir
+        run: jobjob-app --dir "$RUNNER_TEMP/jjhome" --setup-only
+      - name: Smoke — launch and probe
+        run: |
+          jobjob-app --dir "$RUNNER_TEMP/jjhome" --no-browser --port 8099 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8099/api/health && break || sleep 1
+          done
+          curl -sf http://127.0.0.1:8099/api/health
+          curl -sf http://127.0.0.1:8099/ | grep -q "<title>jobjob</title>"

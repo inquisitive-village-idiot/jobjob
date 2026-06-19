@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""Test."""
+
+import logging
+from pathlib import Path
+from unittest import TestCase, mock
+
+import jobjob.config as MOD
+
+LOGGER = logging.getLogger(__name__)
+
+
+class ThisTestCase(TestCase):
+    """Base test case for the module."""
+
+    def load_with_env(self, env: dict) -> MOD.Settings:
+        # NOTE: patch load_dotenv so a real config/.env is never sourced in tests.
+        with mock.patch.object(MOD, "load_dotenv"):
+            with mock.patch.dict("os.environ", env, clear=True):
+                return MOD.load_settings()
+
+
+class TestLoadSettings(ThisTestCase):
+    """Test function."""
+
+    def test_reads_applicant_from_env(self) -> None:
+        settings = self.load_with_env(
+            {
+                MOD.ENV_APPLICANT_NAME: "Ada Lovelace",
+                MOD.ENV_APPLICANT_EMAIL: "ada@example.com",
+            }
+        )
+        self.assertEqual("Ada Lovelace", settings.applicant.name)
+        self.assertEqual("ada@example.com", settings.applicant.email)
+
+    def test_defaults_model_when_unset(self) -> None:
+        settings = self.load_with_env({})
+        self.assertEqual(MOD.DEFAULT_MODEL, settings.model)
+
+    def test_honors_model_env(self) -> None:
+        settings = self.load_with_env({MOD.ENV_MODEL: "claude-opus-4-8"})
+        self.assertEqual("claude-opus-4-8", settings.model)
+
+    def test_cache_enabled_parsing(self) -> None:
+        with self.subTest("default true"):
+            self.assertTrue(self.load_with_env({}).cache_enabled)
+        with self.subTest("explicit false"):
+            settings = self.load_with_env({MOD.ENV_CACHE_ENABLED: "false"})
+            self.assertFalse(settings.cache_enabled)
+
+    def test_google_settings_from_env(self) -> None:
+        settings = self.load_with_env(
+            {
+                MOD.ENV_RESUME_TEMPLATE_ID: "TPL",
+                MOD.ENV_APPLICATIONS_FOLDER_ID: "FOLDER",
+                MOD.ENV_GOOGLE_CREDENTIALS_FILE: "~/creds.json",
+            }
+        )
+        self.assertEqual("TPL", settings.google.template_id)
+        self.assertEqual("FOLDER", settings.google.applications_folder_id)
+        self.assertEqual(
+            Path("~/creds.json").expanduser(), settings.google.credentials_file
+        )
+
+    def test_no_api_key_is_none(self) -> None:
+        self.assertIsNone(self.load_with_env({}).anthropic_api_key)
+
+
+class TestTwoTierLoad(TestCase):
+    """Two-tier app + profile config load, validated as disjoint."""
+
+    def _build(self, tmp: Path, app_lines: list[str], profile_lines: list[str]):
+        """Write an app config + a 'demo' profile repo; return the app path."""
+        repo = tmp / "jobjob-resources-demo"
+        (repo / "config").mkdir(parents=True)
+        (repo / "config" / ".profile").write_text("\n".join(profile_lines) + "\n")
+        app = tmp / "config" / ".env"
+        app.parent.mkdir(parents=True)
+        registry = [
+            f'JOBJOB_PROFILE_DEMO="{repo}"',
+            'JOBJOB_ACTIVE_PROFILE="demo"',
+        ]
+        app.write_text("\n".join(app_lines + registry) + "\n")
+        return app, repo
+
+    def test_loads_app_and_profile(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, repo = self._build(
+                tmp,
+                ['CLAUDE_MODEL="claude-opus-4-8"', 'APPLICATIONS_FOLDER_ID="FOLDER"'],
+                ['APPLICANT_NAME="Ada Lovelace"', 'RESUME_TEMPLATE_ID="TPL"'],
+            )
+            with mock.patch.dict("os.environ", {}, clear=True):
+                settings = MOD.load_settings(app_config=app)
+            self.assertEqual("demo", settings.profile_name)
+            self.assertEqual(repo, settings.profile_dir)
+            self.assertEqual("Ada Lovelace", settings.applicant.name)  # from profile
+            self.assertEqual("TPL", settings.google.template_id)        # from profile
+            self.assertEqual("claude-opus-4-8", settings.model)         # from app
+            self.assertEqual("FOLDER", settings.google.applications_folder_id)
+
+    def test_rejects_profile_key_in_app_config(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, _ = self._build(
+                tmp, ['APPLICANT_NAME="leak"'], ['RESUME_TEMPLATE_ID="TPL"']
+            )
+            with mock.patch.dict("os.environ", {}, clear=True):
+                with self.assertRaises(ValueError):
+                    MOD.load_settings(app_config=app)
+
+    def test_rejects_app_key_in_profile_config(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, _ = self._build(
+                tmp, ['CLAUDE_MODEL="m"'], ['DATA_DIR="/leak"', 'APPLICANT_NAME="A"']
+            )
+            with mock.patch.dict("os.environ", {}, clear=True):
+                with self.assertRaises(ValueError):
+                    MOD.load_settings(app_config=app)
+
+    def test_app_profile_key_sets_are_disjoint(self) -> None:
+        self.assertEqual(frozenset(), MOD.APP_KEYS & MOD.PROFILE_KEYS)
+
+
+# __END__
