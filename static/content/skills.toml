@@ -1,0 +1,66 @@
+# Example skills for the bundled demo persona (Tila Mer, print science correspondent).
+# Replace with your own via the Static Content page. `keywords` drive matching against
+# a job description; the skills analysis reports which are supported vs. gaps.
+
+[tool.skills]
+default_number = 12
+
+[[tool.skills.skill]]
+label = "science_communication"
+text = "Science communication"
+keywords = ["communication", "explainer", "public", "outreach", "translation"]
+
+[[tool.skills.skill]]
+label = "feature_writing"
+text = "Long-form feature writing"
+keywords = ["writing", "feature", "narrative", "long-form", "storytelling"]
+
+[[tool.skills.skill]]
+label = "investigative_reporting"
+text = "Investigative reporting"
+keywords = ["investigation", "reporting", "research", "accountability"]
+
+[[tool.skills.skill]]
+label = "interviewing"
+text = "Interviewing"
+keywords = ["interview", "sources", "quotes", "people"]
+
+[[tool.skills.skill]]
+label = "fact_checking"
+text = "Fact-checking"
+keywords = ["fact-checking", "accuracy", "verification", "quality"]
+
+[[tool.skills.skill]]
+label = "copyediting"
+text = "Copyediting"
+keywords = ["editing", "copyedit", "proofreading", "grammar"]
+
+[[tool.skills.skill]]
+label = "plain_language"
+text = "Plain-language translation"
+keywords = ["plain language", "clarity", "translation", "accessibility"]
+
+[[tool.skills.skill]]
+label = "embargo_management"
+text = "Embargo management"
+keywords = ["embargo", "deadlines", "press", "timing"]
+
+[[tool.skills.skill]]
+label = "data_journalism"
+text = "Data journalism (Python)"
+keywords = ["python", "data", "analysis", "spreadsheets", "data journalism"]
+
+[[tool.skills.skill]]
+label = "statistical_literacy"
+text = "Statistical literacy"
+keywords = ["statistics", "rates", "numbers", "quantitative", "interpretation"]
+
+[[tool.skills.skill]]
+label = "ap_style"
+text = "AP style"
+keywords = ["ap style", "style guide", "house style", "standards"]
+
+[[tool.skills.skill]]
+label = "source_development"
+text = "Source development"
+keywords = ["sources", "relationships", "network", "trust"]

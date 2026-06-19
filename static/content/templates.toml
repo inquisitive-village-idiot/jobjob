@@ -1,0 +1,48 @@
+# Resume template archetypes for the bundled demo persona (Tila Mer). Each points at a
+# Google Doc resume template by `doc_id` — left blank here, since the template is your
+# own document. Set RESUME_TEMPLATE_ID (or a per-archetype doc_id) to your Google Doc;
+# the workflow auto-detects the archetype from the job description, or use --template.
+
+[tool.templates]
+default = "print_correspondent"
+
+# Editable sections, located by their heading (matched case-insensitively). `section`
+# selects how the region is filled: "objective" (rewritten for the role) or "highlights"
+# (bullets replaced with the selected highlights, verbatim).
+[[tool.templates.section]]
+heading = "Objective"
+section = "objective"
+
+[[tool.templates.section]]
+heading = "Key Career Highlights"
+section = "highlights"
+
+[[tool.templates.template]]
+name = "print_correspondent"
+archetype = "Print science correspondent"
+doc_id = ""
+description = "Print/news science desk roles: correspondent, beat reporter, staff writer — emphasis on durable reporting, sourcing, and plain-language translation."
+keywords = [
+    "print",
+    "newspaper",
+    "correspondent",
+    "reporter",
+    "science desk",
+    "journalism",
+    "beat",
+]
+
+[[tool.templates.template]]
+name = "features_writer"
+archetype = "Long-form features / explainer writer"
+doc_id = ""
+description = "Long-form and explanatory roles: features writer, explainer, science communicator — emphasis on narrative, audience engagement, and editorial voice."
+keywords = [
+    "features",
+    "long-form",
+    "explainer",
+    "narrative",
+    "magazine",
+    "communication",
+    "digital",
+]

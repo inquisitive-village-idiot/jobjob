@@ -8,8 +8,9 @@ _version.py
 .pdm-python
 .vs_code
 data/
-static/
-!static/**/*template*
+# static/ holds the bundled demo content (Tila Mer persona): content/*.toml +
+# reference/. It is committed and force-included into the wheel, so it must NOT be
+# ignored. Real per-user content lives in separate profile repos, not here.
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

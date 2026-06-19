@@ -1,0 +1,108 @@
+# Example credential highlights for the bundled demo persona (Tila Mer, a print
+# science correspondent). Replace these with your own via the Static Content page.
+# Each highlight is a reusable block the model selects from per job description;
+# `topic` groups them (Collaboration/Communication/Creativity/Leadership/Teamwork/
+# Technical) and `keywords` drive relevance matching.
+
+[tool.highlights]
+default_number = 6
+max_characters = 900
+min_characters = 600
+
+[[tool.highlights.highlight]]
+context = "half_life_column"
+topic = "Creativity"
+enabled = true
+text = '''
+Grew the weekly “Half-Life” column on cellular aging from a back-page curiosity to the second-most-clipped feature in the paper — proof that readers will finish 1,200 words on telomeres if you promise it bears on whether they go gray.
+'''
+keywords = [
+    "writing",
+    "feature",
+    "longevity",
+    "audience",
+    "engagement",
+    "readership",
+    "science communication",
+]
+
+[[tool.highlights.highlight]]
+context = "saved_print_section"
+topic = "Leadership"
+enabled = true
+text = '''
+Won the recurring argument to keep the science section in print against budget pressure — organized the newsroom behind the case, brought eleven months of hand-addressed reader mail to the meeting, and grew the page count where every forecast predicted shrinkage.
+'''
+keywords = [
+    "leadership",
+    "influence",
+    "stakeholders",
+    "advocacy",
+    "print",
+    "strategy",
+]
+
+[[tool.highlights.highlight]]
+context = "ask_the_lab"
+topic = "Collaboration"
+enabled = true
+text = '''
+Built “Ask the Lab,” a reader-questions feature answered by working scientists — a genuine partnership (quotes in context, trust earned issue by issue) paired with the graphics desk and two junior reporters I trained, so it outlived my own involvement.
+'''
+keywords = [
+    "collaboration",
+    "partnership",
+    "mentoring",
+    "cross-functional",
+    "product",
+    "audience",
+]
+
+[[tool.highlights.highlight]]
+context = "contaminated_dataset"
+topic = "Technical"
+enabled = true
+text = '''
+Cleaned four years of messy county cancer-incidence data by hand in Python — reconciled county codes, collapsed spelling variants, age-adjusted the rates, and set a population floor — dissolving a false “cluster” down to the one county that survived every adjustment.
+'''
+keywords = [
+    "data",
+    "python",
+    "data journalism",
+    "statistics",
+    "analysis",
+    "rigor",
+    "investigation",
+]
+
+[[tool.highlights.highlight]]
+context = "fact_check_gap"
+topic = "Communication"
+enabled = true
+text = '''
+Ran the section’s fact-checking desk single-handed through a staffing gap — the last line between the page and a correction box — catching one error that would have been very expensive and several that would merely have been embarrassing.
+'''
+keywords = [
+    "fact-checking",
+    "accuracy",
+    "editing",
+    "quality",
+    "rigor",
+    "ownership",
+]
+
+[[tool.highlights.highlight]]
+context = "plain_language_house_style"
+topic = "Communication"
+enabled = true
+text = '''
+Developed a plain-language house style for technical copy that junior writers still borrow — mostly without crediting me, which is how you know it works — on the conviction that accurate and readable are not enemies.
+'''
+keywords = [
+    "writing",
+    "style",
+    "editing",
+    "mentoring",
+    "standards",
+    "communication",
+]
