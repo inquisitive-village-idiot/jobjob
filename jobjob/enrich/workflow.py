@@ -126,7 +126,7 @@ def write_profile_sidecar(
     """
     record = {**profile, "date_created": created.isoformat(), "date_processed": processed.isoformat()}
     sidecar = dest.with_suffix(".json")
-    sidecar.write_text(json.dumps(record, indent=2))
+    sidecar.write_text(json.dumps(record, indent=2), encoding="utf-8")
     return sidecar
 
 

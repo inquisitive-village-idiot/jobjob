@@ -77,7 +77,9 @@ def scaffold(home: Path) -> Path:
 
     env_path = home / "config" / ".env"
     if not env_path.exists():
-        env_path.write_text(_env_text(home))
+        # Always UTF-8: the file is read back by python-dotenv as UTF-8, and the
+        # default Windows codepage (cp1252) would mangle non-ASCII (e.g. the em dash).
+        env_path.write_text(_env_text(home), encoding="utf-8")
 
     profile = home / "profile"
     if not profile.exists():
@@ -88,7 +90,9 @@ def scaffold(home: Path) -> Path:
             if src.is_dir():
                 shutil.copytree(src, profile / sub)
         (profile / "config").mkdir(exist_ok=True)
-        (profile / "config" / ".profile").write_text(_PROFILE_TEMPLATE)
+        (profile / "config" / ".profile").write_text(
+            _PROFILE_TEMPLATE, encoding="utf-8"
+        )
     return home
 
 

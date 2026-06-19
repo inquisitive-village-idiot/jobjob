@@ -76,7 +76,7 @@ def get_toml(name: str, request: Request) -> dict:
     path = _toml_path(request, name)
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"{name}.toml not found")
-    raw = path.read_text()
+    raw = path.read_text(encoding="utf-8")
     try:
         parsed = tomllib.loads(raw)
     except tomllib.TOMLDecodeError as exc:
@@ -97,7 +97,7 @@ def update_toml(name: str, body: TomlUpdate, request: Request) -> dict:
     except tomllib.TOMLDecodeError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid TOML: {exc}")
     path = _toml_path(request, name)
-    path.write_text(body.content)
+    path.write_text(body.content, encoding="utf-8")
     return {"name": name, "content": body.content}
 
 
@@ -121,7 +121,7 @@ def update_toml_item(
     path = _toml_path(request, name)
 
     try:
-        doc = tomlkit.loads(path.read_text())
+        doc = tomlkit.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Could not parse TOML: {exc}")
 
@@ -145,10 +145,10 @@ def update_toml_item(
             )
         item[field] = value
 
-    path.write_text(tomlkit.dumps(doc))
+    path.write_text(tomlkit.dumps(doc), encoding="utf-8")
 
     # Return the full refreshed file so the frontend can re-render.
-    raw = path.read_text()
+    raw = path.read_text(encoding="utf-8")
     parsed = tomllib.loads(raw)
     return {"name": name, "content": raw, "parsed": parsed, "parse_error": None}
 
@@ -166,7 +166,7 @@ def update_toml_config(name: str, body: ConfigUpdate, request: Request) -> dict:
     path = _toml_path(request, name)
 
     try:
-        doc = tomlkit.loads(path.read_text())
+        doc = tomlkit.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Could not parse TOML: {exc}")
 
@@ -181,8 +181,8 @@ def update_toml_config(name: str, body: ConfigUpdate, request: Request) -> dict:
             )
         node[field] = value
 
-    path.write_text(tomlkit.dumps(doc))
-    raw = path.read_text()
+    path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+    raw = path.read_text(encoding="utf-8")
     parsed = tomllib.loads(raw)
     return {"name": name, "content": raw, "parsed": parsed, "parse_error": None}
 
@@ -218,7 +218,7 @@ def get_reference_file(file_path: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="File not found")
     if path.suffix.lower() == ".pdf":
         raise HTTPException(status_code=415, detail="PDF preview not supported here")
-    return {"path": file_path, "content": path.read_text()}
+    return {"path": file_path, "content": path.read_text(encoding="utf-8")}
 
 
 @router.put("/reference/{file_path:path}")
@@ -229,5 +229,5 @@ def update_reference_file(
     path = safe_path(_reference_base(request) / file_path)
     if not path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    path.write_text(body.content)
+    path.write_text(body.content, encoding="utf-8")
     return {"path": file_path, "content": body.content}

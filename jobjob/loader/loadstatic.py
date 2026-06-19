@@ -55,7 +55,7 @@ def load_docx_text(path: Path) -> str:
 
 def load_text(path: Path) -> str:
     """Read a plain-text (.txt/.md) file."""
-    return path.read_text()
+    return path.read_text(encoding="utf-8")
 
 
 def read_document(path: Path) -> str:

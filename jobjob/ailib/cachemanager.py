@@ -189,7 +189,7 @@ class CacheManager:
         if not path.is_file():
             shorter = textwrap.shorten(prompt, width=80)
             raise CacheMissError(f"No cache found: {shorter}")
-        content = path.read_text()
+        content = path.read_text(encoding="utf-8")
         try:
             data = json.loads(content)
             return data["response"]
@@ -219,7 +219,7 @@ class CacheManager:
         path = self._cache_path_for(key)
         data = {"prompt": prompt, "response": response}
         content = json.dumps(data, separators=(",", ":"))
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
 
     # "private" methods
     # ----------------------------------

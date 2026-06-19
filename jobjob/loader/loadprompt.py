@@ -49,7 +49,7 @@ def format_dataclass_prompt(
         The formatted prompt string.
     """
     prompt_path = prompt_path or get_prompt_path(prompt_stem)
-    return prompt_path.read_text().format(
+    return prompt_path.read_text(encoding="utf-8").format(
         text_content=text_content, field_def=build_field_def(klass)
     )
 

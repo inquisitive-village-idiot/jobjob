@@ -31,7 +31,7 @@ _auth_state: dict = {"running": False, "error": None}
 
 def _set_env_key(path: Path, key: str, value: str) -> None:
     """Upsert ``key=value`` in a dotenv file, preserving other lines."""
-    lines = path.read_text().splitlines() if path.is_file() else []
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
     out: list[str] = []
     found = False
     for line in lines:
@@ -44,7 +44,7 @@ def _set_env_key(path: Path, key: str, value: str) -> None:
     if not found:
         out.append(f'{key}="{value}"')
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(out) + "\n")
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
 def _key_is_set(env_path: Path, key: str, keys) -> bool:
@@ -164,7 +164,7 @@ def dismiss(body: DismissUpdate, request: Request) -> dict:
     marker = Path(request.app.state.app_config_path).parent / _DISMISS_MARKER
     if body.dismissed:
         marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text("")
+        marker.write_text("", encoding="utf-8")
     elif marker.is_file():
         marker.unlink()
     return {"dismissed": body.dismissed}

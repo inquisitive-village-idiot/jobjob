@@ -63,7 +63,7 @@ def read_metadata(folder: Path) -> dict:
     path = folder / METADATA_FILENAME
     if not path.is_file():
         return {}
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"{path} does not contain a JSON object")
     return data
@@ -112,7 +112,7 @@ def write_status(folder: Path, status: ApplicationStatus) -> dict:
 
     fd, tmp_name = tempfile.mkstemp(dir=folder, suffix=".tmp")
     try:
-        with os.fdopen(fd, "w") as fh:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
             fh.write("\n")
         os.replace(tmp_name, folder / METADATA_FILENAME)

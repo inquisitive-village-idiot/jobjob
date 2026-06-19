@@ -72,7 +72,7 @@ def read_env_keys(path: Path) -> set[str]:
     keys: set[str] = set()
     if not path.is_file():
         return keys
-    for line in path.read_text().splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue

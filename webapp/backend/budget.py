@@ -54,14 +54,14 @@ def _load() -> dict:
     if not _BUDGET_FILE.is_file():
         return {}
     try:
-        return json.loads(_BUDGET_FILE.read_text())
+        return json.loads(_BUDGET_FILE.read_text(encoding="utf-8"))
     except (ValueError, OSError):
         return {}
 
 
 def _save(data: dict) -> None:
     _BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _BUDGET_FILE.write_text(json.dumps(data, indent=2))
+    _BUDGET_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def get_daily_spent() -> float:

@@ -295,7 +295,7 @@ def _profile_completed_item(f: Path, sheet_url: Optional[str] = None) -> dict:
     sidecar = f.with_suffix(".json")
     if sidecar.is_file():
         try:
-            record = json.loads(sidecar.read_text())
+            record = json.loads(sidecar.read_text(encoding="utf-8"))
             company = record.get("company") or company
             person = record.get("name") or person
             date_created = record.get("date_created") or date_created

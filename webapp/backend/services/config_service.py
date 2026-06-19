@@ -158,7 +158,7 @@ def read_config(
     """
     file_values: dict[str, str] = {}
     if env_path.is_file():
-        for line in env_path.read_text().splitlines():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
             parsed = _parse_env_line(line)
             if parsed:
                 file_values[parsed[0]] = parsed[1]
@@ -221,7 +221,11 @@ def write_config(
         if allowed_keys is not None and key not in allowed_keys:
             raise ValueError(f"Key not allowed in this config scope: {key}")
 
-    lines = env_path.read_text().splitlines() if env_path.is_file() else []
+    lines = (
+        env_path.read_text(encoding="utf-8").splitlines()
+        if env_path.is_file()
+        else []
+    )
     updated_keys: set[str] = set()
     new_lines: list[str] = []
 
@@ -239,4 +243,4 @@ def write_config(
         if key not in updated_keys:
             new_lines.append(f'{key}="{value}"')
 
-    env_path.write_text("\n".join(new_lines) + "\n")
+    env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")

@@ -29,7 +29,7 @@ def _load_toml_table(path: Path, name: str) -> dict:
     Raises:
         ValueError: If the expected ``[tool.<name>]`` table is missing.
     """
-    data = tomllib.loads(path.read_text())
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
     try:
         return data["tool"][name]
     except KeyError:

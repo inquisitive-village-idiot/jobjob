@@ -97,7 +97,7 @@ def build_cached_context(
 
 def _write_summary(output_dir: Path, results: dict) -> Path:
     path = Path(output_dir, "summary.json")
-    path.write_text(json.dumps(results, indent=2, default=str))
+    path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     return path
 
 
@@ -234,7 +234,7 @@ def run_application_workflow(
     # Step 4: skills analysis (folded into the README, kept locally as data).
     skills = analyze_skills(job, query_service, use_cache=use_cache)
     skills_path = Path(output_dir, SKILLS_NAME)
-    skills_path.write_text(json.dumps(skills, indent=2))
+    skills_path.write_text(json.dumps(skills, indent=2), encoding="utf-8")
     results["skills_analysis"] = str(skills_path)
 
     # Step 5: README (summary + folded skills + fit).

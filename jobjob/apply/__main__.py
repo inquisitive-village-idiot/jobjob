@@ -72,7 +72,7 @@ def _read_folder_id(output_dir: Path) -> Optional[str]:
     if not summary.is_file():
         return None
     try:
-        return json.loads(summary.read_text()).get("folder_id")
+        return json.loads(summary.read_text(encoding="utf-8")).get("folder_id")
     except (ValueError, OSError):
         return None
 

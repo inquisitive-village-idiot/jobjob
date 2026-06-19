@@ -188,7 +188,7 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         ValueError: If a configured active profile dir is missing, or the two
             configs violate the zero-overlap rule.
     """
-    load_dotenv(app_config)
+    load_dotenv(app_config, encoding="utf-8")
     profile_dir = resolve_active_profile_dir()
     profile_config: Optional[Path] = None
     if profile_dir is not None:
@@ -202,7 +202,7 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         for key in PROFILE_KEYS:
             os.environ.pop(key, None)
         profile_config = profile_config_file(profile_dir)
-        load_dotenv(profile_config)
+        load_dotenv(profile_config, encoding="utf-8")
     _validate_scopes(app_config, profile_config)
 
     # NOTE: unset applicant fields stay None (no PII default); contact_line and the
