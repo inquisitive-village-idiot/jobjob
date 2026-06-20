@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { ConfigSchema, ConfigScope } from "../types";
 import { FloatingOutline, SectionHeader, useScrollSpy } from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
+import UpdatePanel from "./UpdatePanel";
 
 const slug = (group: string) => group.toLowerCase().replace(/\s+/g, "-");
 
@@ -109,6 +110,8 @@ export default function ConfigPage() {
           </button>
         </div>
       </div>
+
+      <UpdatePanel />
 
       {scopeTabs}
       <p className="text-xs text-gray-500 mb-6">

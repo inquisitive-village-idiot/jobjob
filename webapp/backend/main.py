@@ -36,6 +36,7 @@ from routers import (
     setup,
     static_content,
     tracking,
+    update,
 )
 from security import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SAFE_METHODS, configure_sandbox
 
@@ -157,10 +158,28 @@ def reload_state() -> None:
     }
 
 
+def _background_update_check() -> None:
+    """Refresh the PyPI update cache in a daemon thread so app open doesn't block."""
+    import threading
+
+    def _run() -> None:
+        try:
+            from services import update_service
+
+            update_service.check_for_updates()
+        except Exception:  # never let a background check disturb startup
+            logging.getLogger("jobjob.update").debug(
+                "background update check failed", exc_info=True
+            )
+
+    threading.Thread(target=_run, name="jobjob-update-check", daemon=True).start()
+
+
 # ── Startup: configure sandbox and attach settings to app.state ────────────────
 @app.on_event("startup")
 def _startup() -> None:
     reload_state()
+    _background_update_check()
 
 
 # ── Routers ────────────────────────────────────────────────────────────────────
@@ -173,6 +192,7 @@ app.include_router(
 )
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(setup.router, prefix="/api/setup", tags=["setup"])
+app.include_router(update.router, prefix="/api/update", tags=["update"])
 
 
 @app.get("/api/health")
