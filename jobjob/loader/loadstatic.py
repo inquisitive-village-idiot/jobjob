@@ -40,6 +40,28 @@ def load_pdf_text_or_none(path: Path) -> "str | None":
         return None
 
 
+def load_document_text_or_none(path: Path) -> "str | None":
+    """Return a document's text, or None when a PDF has no extractable text.
+
+    Text snapshots (``.txt``/``.md``) and ``.docx`` are read directly. PDFs return
+    their extracted text, or None for image-only PDFs so the caller can fall back to
+    vision. Unsupported suffixes return None.
+
+    This is the text-first loader for inputs that may be a URL/paste snapshot *or* a
+    PDF — it keeps the image-only-PDF vision fallback intact while reading snapshots
+    directly.
+
+    Arguments:
+        path: Path to the document.
+    Returns:
+        The text content, or None.
+    """
+    if path.suffix.lower() == ".pdf":
+        return load_pdf_text_or_none(path)
+    text = read_document(path)
+    return text or None
+
+
 def load_docx_text(path: Path) -> str:
     """Extract paragraph text from a DOCX file.
 

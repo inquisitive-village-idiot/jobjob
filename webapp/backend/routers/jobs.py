@@ -24,6 +24,12 @@ from budget import calculate_cost, check_budget, record_run
 from security import safe_path
 from services.tracking_service import list_queue
 
+from jobjob.ingest.jd_source import (
+    JDIngestError,
+    snapshot_from_text,
+    snapshot_from_url,
+)
+
 router = APIRouter()
 
 _jobs: dict[str, dict] = {}
@@ -72,6 +78,24 @@ class _QueueHandler(logging.Handler):
 
 class ApplyRequest(BaseModel):
     jd_path: str
+    skip_drive: bool = False
+    template: Optional[str] = None
+    no_cache: bool = False
+    clear_cache: bool = False
+    allow_overwrite: bool = False
+
+
+class UrlApplyRequest(BaseModel):
+    url: str
+    skip_drive: bool = False
+    template: Optional[str] = None
+    no_cache: bool = False
+    clear_cache: bool = False
+    allow_overwrite: bool = False
+
+
+class TextApplyRequest(BaseModel):
+    text: str
     skip_drive: bool = False
     template: Optional[str] = None
     no_cache: bool = False
@@ -244,6 +268,102 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
     return {"job_id": _start_job(run)}
 
 
+def _launch_snapshot_apply(
+    snapshot: Path,
+    *,
+    settings: dict,
+    skip_drive: bool,
+    template: Optional[str],
+    no_cache: bool,
+    clear_cache: bool,
+    allow_overwrite: bool,
+) -> dict:
+    """Feed a freshly-written snapshot into the shared apply pipeline.
+
+    Mirrors :func:`launch_apply`: the snapshot is just another JD input under
+    ``data/jobs/``, so it flows through ``apply_inputs`` unchanged and is moved into
+    ``completed/`` on success.
+    """
+    run = _make_apply_run(
+        snapshot,
+        skip_drive=skip_drive,
+        move_data_dir=Path(settings["data_dir"]),
+        template=template,
+        no_cache=no_cache,
+        clear_cache=clear_cache,
+        allow_overwrite=allow_overwrite,
+    )
+    return {"job_id": _start_job(run), "snapshot": str(snapshot)}
+
+
+@router.post("/apply/from-url")
+def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
+    """Capture a job posting from a URL, then apply. Returns {job_id, snapshot}.
+
+    A plain server-side GET + readability extraction writes a durable snapshot into
+    ``data/jobs/``; the snapshot then runs through the normal apply pipeline. A
+    JS-rendered or auth-gated board yields too little text and is rejected with a
+    422 so the user can fall back to PDF upload or paste-text.
+    """
+    s = _app_settings(request)
+
+    budget_error = check_budget(
+        per_run_budget=s.get("per_run_budget", 2.0),
+        daily_budget=s.get("daily_budget", 20.0),
+    )
+    if budget_error:
+        raise HTTPException(status_code=402, detail=budget_error)
+
+    jobs_dir = Path(s["data_dir"]) / "jobs"
+    try:
+        snapshot = snapshot_from_url(body.url, jobs_dir)
+    except JDIngestError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return _launch_snapshot_apply(
+        snapshot,
+        settings=s,
+        skip_drive=body.skip_drive,
+        template=body.template,
+        no_cache=body.no_cache,
+        clear_cache=body.clear_cache,
+        allow_overwrite=body.allow_overwrite,
+    )
+
+
+@router.post("/apply/from-text")
+def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
+    """Capture a job posting from pasted text, then apply. Returns {job_id, snapshot}.
+
+    The reliable fallback for boards a plain GET can't read: the pasted text is
+    snapshotted into ``data/jobs/`` and runs through the normal apply pipeline.
+    """
+    s = _app_settings(request)
+
+    budget_error = check_budget(
+        per_run_budget=s.get("per_run_budget", 2.0),
+        daily_budget=s.get("daily_budget", 20.0),
+    )
+    if budget_error:
+        raise HTTPException(status_code=402, detail=budget_error)
+
+    jobs_dir = Path(s["data_dir"]) / "jobs"
+    try:
+        snapshot = snapshot_from_text(body.text, jobs_dir)
+    except JDIngestError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    return _launch_snapshot_apply(
+        snapshot,
+        settings=s,
+        skip_drive=body.skip_drive,
+        template=body.template,
+        no_cache=body.no_cache,
+        clear_cache=body.clear_cache,
+        allow_overwrite=body.allow_overwrite,
+    )
+
+
 # The JD copy inside a Drive application folder is named JD_<Company>_<Role> (current)
 # or JobDescription_<Company>_<Role> (older applications) — match both so re-run can
 # find the source JD regardless of when the application was generated.
@@ -263,7 +383,7 @@ def _find_rerun_jd(
     their JD here). Returns the path, or None when neither location has it.
     """
     jobs_dir = Path(data_dir) / "completed" / "jobs"
-    for ext in (".pdf", ".png", ".jpg", ".jpeg"):
+    for ext in (".pdf", ".png", ".jpg", ".jpeg", ".md", ".txt"):
         candidate = jobs_dir / f"{folder_name}{ext}"
         if candidate.is_file():
             return candidate

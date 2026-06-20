@@ -134,6 +134,35 @@ export function useJobs(onSettled?: () => void) {
     return api.del("/tracking/queue", { path });
   }, []);
 
+  // Capture a JD from a URL or pasted text (server writes a snapshot), then apply.
+  const launchApplyFromSource = useCallback(
+    async (
+      source: { url: string } | { text: string },
+      opts: { skipDrive: boolean }
+    ): Promise<string> => {
+      const endpoint =
+        "url" in source ? "/jobs/apply/from-url" : "/jobs/apply/from-text";
+      const res = await api.post<{ job_id: string; snapshot: string }>(endpoint, {
+        ...source,
+        skip_drive: opts.skipDrive,
+      });
+      const label =
+        "url" in source
+          ? source.url
+          : res.snapshot.split("/").pop() ?? "Pasted JD";
+      track({
+        id: res.job_id,
+        kind: "apply",
+        label,
+        path: res.snapshot,
+        status: "running",
+        lines: [],
+      });
+      return res.job_id;
+    },
+    [track]
+  );
+
   const launchApplyRerun = useCallback(
     async (
       folderName: string,
@@ -228,6 +257,7 @@ export function useJobs(onSettled?: () => void) {
   return {
     jobs,
     launchApply,
+    launchApplyFromSource,
     relaunchApply,
     deleteQueued,
     launchApplyRerun,

@@ -6,6 +6,7 @@ import { useJobs } from "../hooks/useJobs";
 import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
 import ScheduleModal from "../components/ScheduleModal";
+import AddJdPanel from "../components/AddJdPanel";
 import { FloatingOutline, useScrollSpy } from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
 
@@ -31,6 +32,7 @@ export default function QueuePage() {
 
   const {
     launchApply,
+    launchApplyFromSource,
     relaunchApply,
     deleteQueued,
     launchEnrich,
@@ -108,7 +110,14 @@ export default function QueuePage() {
           </div>
 
           {/* Apply section */}
-          <div id="q-apply" className="scroll-mt-16">
+          <div id="q-apply" className="scroll-mt-16 space-y-4">
+            <AddJdPanel
+              onSubmit={async (source, opts) => {
+                const jobId = await launchApplyFromSource(source, opts);
+                setViewingJobId(jobId);
+                return jobId;
+              }}
+            />
             <QueueSection
               title="Apply"
               items={queue === null ? null : jdQueue}

@@ -47,5 +47,36 @@ class TestParseJobDescription(ThisTestCase):
         with self.subTest("defaults missing iterable field to empty"):
             self.assertEqual((), result.technical_skills)
 
+    def test_parses_text_snapshot_through_query(self) -> None:
+        """A Markdown snapshot (URL/paste capture) is read and sent to the model."""
+        import tempfile
+        from pathlib import Path
+
+        payload = {"company_name": "Acme Gazette", "role_title": "Science Correspondent"}
+        captured: dict = {}
+
+        def _query(prompt, **kwargs):
+            # query_ai_service returns parsed JSON (a mapping), not a raw string.
+            captured["prompt"] = prompt
+            return payload
+
+        snapshot = Path(tempfile.mkdtemp()) / "jd-20260620-acme.md"
+        snapshot.write_text(
+            "<!-- source: https://jobs.example.com/acme -->\n\n"
+            "Acme Gazette seeks a science correspondent to cover print science.",
+            encoding="utf-8",
+        )
+
+        service = mock.MagicMock(__name__="service")
+        result = MOD.parse_job_description(
+            snapshot, service, use_cache=False, _query=_query
+        )
+
+        with self.subTest("snapshot text reached the prompt"):
+            self.assertIn("science correspondent", captured["prompt"])
+        with self.subTest("parsed from snapshot, not vision"):
+            self.assertEqual("Acme Gazette", result.company_name)
+            service.complete_document.assert_not_called()
+
 
 # __END__

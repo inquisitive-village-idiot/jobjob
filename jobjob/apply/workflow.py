@@ -247,9 +247,11 @@ def run_application_workflow(
     )
     results["readme"] = str(readme_path)
 
-    # Copy the JD into the output directory as JD_<Company>_<Role>.pdf (PascalCase).
+    # Copy the JD into the output directory as JD_<Company>_<Role><ext> (PascalCase).
+    # The source suffix is preserved so a text/Markdown snapshot (URL/paste capture)
+    # stays a snapshot rather than being mislabeled .pdf.
     jd_name = f"JD_{gdrive.pascal_case(job.company_name)}_{gdrive.pascal_case(job.role_title)}"
-    jd_copy = Path(output_dir, f"{jd_name}.pdf")
+    jd_copy = Path(output_dir, f"{jd_name}{Path(job_description_pdf).suffix}")
     # NOTE: in re-process mode the input IS this file; don't copy it onto itself.
     if Path(job_description_pdf).resolve() != jd_copy.resolve():
         shutil.copy2(job_description_pdf, jd_copy)
