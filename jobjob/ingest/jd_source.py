@@ -25,6 +25,7 @@ import logging
 import re
 from collections.abc import Callable
 from datetime import datetime
+from functools import cache
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
@@ -42,9 +43,16 @@ MIN_PASTE_CHARS = 40
 # A generous default; a slow board should fail loudly rather than hang a request.
 DEFAULT_TIMEOUT = 20.0
 
-_USER_AGENT = (
-    "Mozilla/5.0 (compatible; jobjob/1.0; +https://github.com/inquisitive-village-idiot/jobjob)"
-)
+@cache
+def get_user_agent() -> str:
+    """Return the outbound User-Agent string (cached).
+
+    Identifies the fetcher as an automated, contactable client.
+    """
+    platform = "compatible"  # indicate automated fetcher
+    software = "jobjob/1.0"
+    contact = "https://github.com/inquisitive-village-idiot/jobjob"
+    return f"Mozilla/5.0 ({platform}; {software}; +{contact})"
 
 # Guidance shown when a URL yields too little text — the actionable fallback.
 _EXTRACTION_FAILED_MESSAGE = (
@@ -81,7 +89,7 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> str:
         url,
         timeout=timeout,
         follow_redirects=True,
-        headers={"User-Agent": _USER_AGENT},
+        headers={"User-Agent": get_user_agent()},
     )
     resp.raise_for_status()
     return resp.text
@@ -111,10 +119,17 @@ def _slugify(value: str, max_len: int = 60) -> str:
     return value[:max_len].strip("-") or "posting"
 
 
-def _snapshot_path(jobs_dir: Path, slug: str) -> Path:
-    """Build a unique, timestamped snapshot path under ``jobs_dir``."""
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Path(jobs_dir) / f"jd-{stamp}-{slug}.md"
+def _snapshot_path(jobs_dir: Path, slug: str, _now: datetime | None = None) -> Path:
+    """Build a unique, timestamped snapshot path under ``jobs_dir``.
+
+    Arguments:
+        jobs_dir: The jobs input directory (already a Path).
+        slug: Filesystem-safe slug for the filename.
+        _now: Optional timestamp so the caller can share one value between the
+            filename and the snapshot header (and for deterministic tests).
+    """
+    stamp = (_now or datetime.now()).strftime("%Y%m%d-%H%M%S")
+    return Path(jobs_dir, f"jd-{stamp}-{slug}.md")
 
 
 def write_snapshot(
@@ -142,9 +157,10 @@ def write_snapshot(
     jobs_dir.mkdir(parents=True, exist_ok=True)
 
     slug_source = title or (urlparse(source_url).netloc if source_url else "") or "posting"
-    path = _snapshot_path(jobs_dir, _slugify(slug_source))
+    now = datetime.now()
+    path = _snapshot_path(jobs_dir, _slugify(slug_source), _now=now)
 
-    header = [f"<!-- captured: {datetime.now().isoformat(timespec='seconds')} -->"]
+    header = [f"<!-- captured: {now.isoformat(timespec='seconds')} -->"]
     if source_url:
         header.insert(0, f"<!-- source: {source_url} -->")
     content = "\n".join(header) + "\n\n" + text.strip() + "\n"
