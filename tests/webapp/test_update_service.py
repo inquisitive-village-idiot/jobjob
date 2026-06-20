@@ -29,11 +29,25 @@ def _opener_for(payload: dict):
     return _open
 
 
+def _newer_than(version: str) -> str:
+    """Return a version strictly newer than ``version`` (bump the major component).
+
+    Keeps the PyPI mock relative to the package's actual version so a release bump
+    never silently breaks these tests.
+    """
+    parts = version.split(".")
+    parts[0] = str(int(parts[0]) + 1)
+    return ".".join(parts)
+
+
+# Latest is always one major above whatever the package currently is, and the current
+# version is present in the releases map so ``current_release_date`` resolves.
+_LATEST = _newer_than(u.CURRENT_VERSION)
 _PYPI = {
-    "info": {"version": "1.2.0"},
+    "info": {"version": _LATEST},
     "releases": {
-        "1.0.0": [{"upload_time_iso_8601": "2026-06-19T20:00:00Z"}],
-        "1.2.0": [{"upload_time_iso_8601": "2026-06-25T12:00:00Z"}],
+        u.CURRENT_VERSION: [{"upload_time_iso_8601": "2026-06-19T20:00:00Z"}],
+        _LATEST: [{"upload_time_iso_8601": "2026-06-25T12:00:00Z"}],
     },
 }
 
@@ -64,7 +78,7 @@ class TestVersionCompare:
 class TestCheckForUpdates:
     def test_populates_cache(self):
         cache = u.check_for_updates(_opener=_opener_for(_PYPI))
-        assert cache["latest_version"] == "1.2.0"
+        assert cache["latest_version"] == _LATEST
         assert cache["latest_release_date"] == "2026-06-25T12:00:00Z"
         assert cache["current_release_date"] == "2026-06-19T20:00:00Z"
         assert cache["check_error"] is None
@@ -79,7 +93,7 @@ class TestCheckForUpdates:
         cache = u.check_for_updates(_opener=_boom)
         assert cache["check_error"] == "no network"
         # prior known latest is preserved
-        assert cache["latest_version"] == "1.2.0"
+        assert cache["latest_version"] == _LATEST
 
 
 class TestGetStatus:
@@ -88,7 +102,7 @@ class TestGetStatus:
         u.check_for_updates(_opener=_opener_for(_PYPI))
         st = u.get_status()
         assert st["current_version"] == u.CURRENT_VERSION
-        assert st["latest_version"] == "1.2.0"
+        assert st["latest_version"] == _LATEST
         assert st["update_available"] is True
         assert st["can_update"] is True
         assert st["install_method"] == "pipx"
