@@ -52,6 +52,7 @@ def load_highlights(path: Optional[Path] = None) -> HighlightSet:
             text=entry["text"].strip(),
             keywords=tuple(entry.get("keywords", ())),
             enabled=entry.get("enabled", True),
+            topic=entry.get("topic", ""),
         )
         for entry in table.get("highlight", [])
     ]

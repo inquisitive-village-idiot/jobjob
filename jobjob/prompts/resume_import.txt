@@ -1,0 +1,36 @@
+You are helping a job seeker bootstrap their reusable application content from an
+existing resume. Read the resume below and extract structured, reusable content the
+applicant can keep and tailor for future applications.
+
+RESUME TEXT
+-----------
+{text_content}
+-----------
+
+Respond with ONLY a single JSON object (no prose, no markdown code fences) using exactly
+these top-level keys:
+
+- objective: A one-to-two sentence professional objective/summary written in the
+  candidate's voice, suitable as a resume objective. Empty string if the resume does not
+  support one.
+- sections: A JSON array of the section headings found in the resume (e.g. "Experience",
+  "Education", "Skills"), as plain strings, in the order they appear.
+- highlights: A JSON array of reusable accomplishment blocks, one per distinct
+  accomplishment (aim for five to ten). Each element is an object with these keys:
+    - context: a short snake_case identifier for the block (e.g. "led_team_migration").
+    - topic: a single word, the best fit from this set ONLY: Collaboration, Communication,
+      Creativity, Leadership, Teamwork, Technical.
+    - text: the accomplishment as one or two polished sentences in the candidate's voice,
+      drawn ONLY from what the resume states.
+    - keywords: an array of three to eight lowercase keywords for relevance matching.
+- skills: A JSON array of skill objects the resume supports, each with these keys:
+    - label: a short snake_case identifier (e.g. "data_analysis").
+    - text: the display label (e.g. "Data Analysis").
+    - keywords: an array of one to five lowercase keywords or synonyms.
+- background: {background_guidance}
+{voice_anchor}
+Rules:
+- Use ONLY information supported by the resume. Never invent employers, titles, dates,
+  metrics, or credentials. If something is absent, omit it rather than fabricating it.
+- Preserve the candidate's own voice and terminology.
+- Return valid JSON parseable by a strict parser.

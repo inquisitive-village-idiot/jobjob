@@ -14,12 +14,15 @@ class Highlight:
         text: The block prose.
         keywords: Keywords used to score relevance against a job description.
         enabled: Whether the block is eligible for selection.
+        topic: Single-word grouping for the UI (e.g. Collaboration, Communication,
+            Creativity, Leadership, Teamwork, Technical). Empty string if ungrouped.
     """
 
     context: str
     text: str
     keywords: tuple[str, ...] = dcs.field(default_factory=tuple)
     enabled: bool = True
+    topic: str = ""
 
 
 @dcs.dataclass(frozen=True)

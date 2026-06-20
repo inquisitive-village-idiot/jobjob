@@ -28,7 +28,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # uvicorn is launched from the webapp/backend directory.
 sys.path.insert(0, str(Path(__file__).parent))
 
-from routers import config, jobs, profiles, setup, static_content, tracking
+from routers import (
+    config,
+    jobs,
+    profiles,
+    resume_import,
+    setup,
+    static_content,
+    tracking,
+)
 from security import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SAFE_METHODS, configure_sandbox
 
 logging.basicConfig(
@@ -160,6 +168,9 @@ app.include_router(config.router, prefix="/api/config", tags=["config"])
 app.include_router(profiles.router, prefix="/api/profiles", tags=["profiles"])
 app.include_router(tracking.router, prefix="/api/tracking", tags=["tracking"])
 app.include_router(static_content.router, prefix="/api/static", tags=["static"])
+app.include_router(
+    resume_import.router, prefix="/api/resume-import", tags=["resume-import"]
+)
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(setup.router, prefix="/api/setup", tags=["setup"])
 
