@@ -20,6 +20,10 @@ class TestScaffold(TestCase):
         with mock.patch.object(MOD, "_package_root", return_value=tmp / "pkg"):
             return MOD.scaffold(tmp / "home")
 
+    @staticmethod
+    def _local(home: Path) -> Path:
+        return home / "profiles" / "local"
+
     def test_creates_working_dirs_and_config(self) -> None:
         import tempfile
 
@@ -37,20 +41,51 @@ class TestScaffold(TestCase):
             home = self._scaffold(Path(d))
             env = (home / "config" / ".env").read_text()
             self.assertIn("JOBJOB_ACTIVE_PROFILE=local", env)
-            self.assertIn(f"JOBJOB_PROFILE_LOCAL={home / 'profile'}", env)
+            self.assertIn(f"JOBJOB_PROFILE_LOCAL={self._local(home)}", env)
             self.assertIn(f"DATA_DIR={home / 'data'}", env)
 
-    def test_profile_seeded_from_bundled_static(self) -> None:
+    def test_local_profile_is_blank_skeleton_not_tila(self) -> None:
         import tempfile
 
         with tempfile.TemporaryDirectory() as d:
             home = self._scaffold(Path(d))
-            with self.subTest("content copied"):
-                self.assertTrue((home / "profile" / "content" / "highlights.toml").is_file())
-            with self.subTest("reference copied"):
-                self.assertTrue((home / "profile" / "reference" / "background.md").is_file())
-            with self.subTest(".profile template written"):
-                self.assertTrue((home / "profile" / "config" / ".profile").is_file())
+            local = self._local(home)
+            with self.subTest("content TOMLs present"):
+                self.assertTrue((local / "content" / "highlights.toml").is_file())
+                self.assertTrue((local / "content" / "skills.toml").is_file())
+                self.assertTrue((local / "content" / "templates.toml").is_file())
+            with self.subTest("reference + config present"):
+                self.assertTrue((local / "reference" / "background.md").is_file())
+                self.assertTrue((local / "config" / ".profile").is_file())
+            with self.subTest("no Tila example content leaked in"):
+                # The blank skeleton must not carry the example persona's highlight id.
+                text = (local / "content" / "highlights.toml").read_text()
+                self.assertNotIn("half_life_column", text)
+
+    def test_migrates_legacy_profile_dir(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d) / "home"
+            (home / "config").mkdir(parents=True)
+            (home / "profile" / "content").mkdir(parents=True)
+            (home / "profile" / "content" / "highlights.toml").write_text("legacy")
+            (home / "config" / ".env").write_text(
+                f"JOBJOB_PROFILE_LOCAL={home / 'profile'}\nJOBJOB_ACTIVE_PROFILE=local\n"
+            )
+            with mock.patch.object(MOD, "_package_root", return_value=Path(d) / "pkg"):
+                MOD.scaffold(home)
+            with self.subTest("moved to profiles/local"):
+                self.assertFalse((home / "profile").exists())
+                self.assertEqual(
+                    "legacy",
+                    (self._local(home) / "content" / "highlights.toml").read_text(),
+                )
+            with self.subTest("env path rewritten"):
+                self.assertIn(
+                    f"JOBJOB_PROFILE_LOCAL={self._local(home)}",
+                    (home / "config" / ".env").read_text(),
+                )
 
     def test_idempotent_preserves_existing_files(self) -> None:
         import tempfile

@@ -13,9 +13,17 @@ export type ConfigSchema = Record<string, ConfigField>;
 
 export type ConfigScope = "app" | "profile";
 
+export interface ProfileEntry {
+  name: string;
+  active: boolean;
+  read_only: boolean;
+  external: boolean;
+}
+
 export interface ProfilesInfo {
   active: string | null;
   profiles: string[];
+  entries?: ProfileEntry[];
 }
 
 export interface SetupStatus {

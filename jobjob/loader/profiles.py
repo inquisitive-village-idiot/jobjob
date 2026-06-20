@@ -24,6 +24,12 @@ PROFILE_REGISTRY_PREFIX = "JOBJOB_PROFILE_"
 PROFILE_CONFIG_SUBDIR = "config"
 PROFILE_CONFIG_NAME = ".profile"
 
+# The bundled, read-only example profile (the Tila Mer demo persona). Its location is
+# the package ``static/`` dir, so it is always present and never user-editable (it lives
+# in site-packages under an installed wheel). It is offered alongside the registered
+# profiles as a reference the user can *duplicate* into a profile they own.
+EXAMPLE_PROFILE_NAME = "example"
+
 
 def list_profiles() -> dict[str, Path]:
     """Return the registered profiles as ``{name: repo_path}`` (names lowercased).
@@ -37,6 +43,55 @@ def list_profiles() -> dict[str, Path]:
             name = key[len(PROFILE_REGISTRY_PREFIX):].lower()
             profiles[name] = Path(value.strip().strip("\"'")).expanduser()
     return profiles
+
+
+def bundled_example_dir() -> Optional[Path]:
+    """Return the bundled example profile dir (package ``static/``), or None.
+
+    Computed directly from this file's location (``<root>/jobjob/loader/profiles.py``
+    → ``<root>/static``) so this module stays import-light (no dependency on
+    ``loader.location``). Returns None when ``static/`` is absent (e.g. a stripped
+    install), so callers can simply skip the example.
+    """
+    candidate = Path(__file__).resolve().parents[2] / "static"
+    return candidate if candidate.is_dir() else None
+
+
+def all_profiles() -> dict[str, Path]:
+    """Return the registered profiles plus the bundled ``example`` profile.
+
+    The registry (``list_profiles``) is the user-managed source of truth; the
+    read-only ``example`` is injected here so it is always switchable for reference
+    without polluting the user's config. An explicit ``JOBJOB_PROFILE_EXAMPLE``
+    registry entry overrides the bundled location.
+    """
+    profiles: dict[str, Path] = {}
+    example = bundled_example_dir()
+    if example is not None:
+        profiles[EXAMPLE_PROFILE_NAME] = example
+    profiles.update(list_profiles())
+    return profiles
+
+
+def is_read_only(name: str, profile_dir: Optional[Path] = None) -> bool:
+    """Return True if the named profile (or dir) is the read-only bundled example.
+
+    Read-only is keyed on *location*, not name: any profile whose dir is the bundled
+    ``static/`` cannot be edited (it lives in the read-only package install), even if
+    a user registered it under a different name.
+    """
+    example = bundled_example_dir()
+    if example is None:
+        return False
+    if profile_dir is not None:
+        try:
+            return profile_dir.resolve() == example.resolve()
+        except OSError:
+            return False
+    if name.lower() == EXAMPLE_PROFILE_NAME:
+        return True
+    target = list_profiles().get(name.lower())
+    return target is not None and target.resolve() == example.resolve()
 
 
 def active_profile_name() -> Optional[str]:
@@ -55,7 +110,7 @@ def resolve_active_profile_dir() -> Optional[Path]:
     name = active_profile_name()
     if not name:
         return None
-    return list_profiles().get(name)
+    return all_profiles().get(name)
 
 
 def profile_config_file(profile_dir: Path) -> Path:

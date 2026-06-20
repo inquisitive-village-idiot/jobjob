@@ -3,16 +3,17 @@
 
 The installed-app entry point. On first run it creates a visible working directory
 (``~/Documents/jobjob`` by default) holding the user's writable ``config/`` and
-``data/`` plus a **local profile** (``content/``, ``reference/``, ``config/.profile``)
-seeded from the bundled ``static/`` defaults — so content lives on the user's machine
-with no git repo. It then sets ``JOBJOB_HOME`` (honored by the webapp backend), starts
-uvicorn bound to localhost, and opens the browser, where the setup wizard guides
-credentials. Re-running is idempotent (existing files are left as-is).
+``data/`` plus a **blank local profile** (``profiles/local/`` — empty-but-valid
+``content/``, ``reference/``, ``config/.profile``) so the user starts clean, with no
+Tila Mer example content mixed in. The bundled read-only ``example`` profile is always
+available to switch to or duplicate. It then sets ``JOBJOB_HOME`` (honored by the webapp
+backend), starts uvicorn bound to localhost, and opens the browser, where the setup
+wizard guides credentials. Re-running is idempotent (existing files are left as-is); a
+legacy ``profile/`` layout is migrated to ``profiles/local/`` in place.
 """
 
 import argparse
 import os
-import shutil
 import sys
 import threading
 import webbrowser
@@ -24,16 +25,7 @@ import platformdirs
 APP_NAME = "jobjob"
 DEFAULT_HOME = Path.home() / "Documents" / APP_NAME
 LOCAL_PROFILE_NAME = "local"
-
-_PROFILE_TEMPLATE = """\
-# jobjob local profile — applicant identity + resume template.
-# Fill these in via the setup wizard (or edit by hand). No secrets or local paths here.
-# APPLICANT_NAME=
-# APPLICANT_EMAIL=
-# APPLICANT_PHONE=
-# APPLICANT_LINKEDIN=
-# RESUME_TEMPLATE_ID=
-"""
+PROFILES_SUBDIR = "profiles"
 
 
 def _package_root() -> Path:
@@ -56,11 +48,44 @@ def _env_text(home: Path) -> str:
         f"CACHE_DIR={cache_dir}",
         f"GOOGLE_CREDENTIALS_FILE={config_dir / 'credentials.json'}",
         f"GOOGLE_TOKEN_FILE={config_dir / 'token.pickle'}",
-        f"{profile_key}={home / 'profile'}",
+        f"{profile_key}={_local_profile_dir(home)}",
         f"JOBJOB_ACTIVE_PROFILE={LOCAL_PROFILE_NAME}",
         "",
     ]
     return "\n".join(lines)
+
+
+def _local_profile_dir(home: Path) -> Path:
+    """Return the user's local profile dir (``<home>/profiles/local``)."""
+    return home / PROFILES_SUBDIR / LOCAL_PROFILE_NAME
+
+
+def _migrate_legacy_profile(home: Path) -> None:
+    """Move a pre-unification ``<home>/profile`` to ``<home>/profiles/local`` in place.
+
+    Older installs scaffolded a single ``profile/`` dir (seeded from the Tila Mer
+    example). Unifying on ``profiles/<name>/`` keeps the layout consistent. The move
+    preserves whatever the user has edited; the ``.env`` registry path is rewritten to
+    match. Idempotent and a no-op when there's nothing to migrate.
+    """
+    legacy = home / "profile"
+    target = _local_profile_dir(home)
+    if not legacy.is_dir() or target.exists():
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    legacy.rename(target)
+
+    env_path = home / "config" / ".env"
+    if env_path.is_file():
+        key = f"JOBJOB_PROFILE_{LOCAL_PROFILE_NAME.upper()}"
+        new_lines = []
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith(f"{key}=") and not stripped.startswith("#"):
+                new_lines.append(f"{key}={target}")
+            else:
+                new_lines.append(line)
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
 def scaffold(home: Path) -> Path:
@@ -75,24 +100,24 @@ def scaffold(home: Path) -> Path:
     (home / "config").mkdir(exist_ok=True)
     (home / "data").mkdir(exist_ok=True)
 
+    # Migrate any legacy single-``profile/`` layout before writing/reading the registry
+    # path, so a fresh ``.env`` and an existing install converge on ``profiles/local``.
+    _migrate_legacy_profile(home)
+
     env_path = home / "config" / ".env"
     if not env_path.exists():
         # Always UTF-8: the file is read back by python-dotenv as UTF-8, and the
         # default Windows codepage (cp1252) would mangle non-ASCII (e.g. the em dash).
         env_path.write_text(_env_text(home), encoding="utf-8")
 
-    profile = home / "profile"
-    if not profile.exists():
-        profile.mkdir(parents=True)
-        bundled_static = _package_root() / "static"
-        for sub in ("content", "reference"):
-            src = bundled_static / sub
-            if src.is_dir():
-                shutil.copytree(src, profile / sub)
-        (profile / "config").mkdir(exist_ok=True)
-        (profile / "config" / ".profile").write_text(
-            _PROFILE_TEMPLATE, encoding="utf-8"
-        )
+    # The local profile starts BLANK (skeleton), not seeded from the Tila Mer example —
+    # the bundled read-only ``example`` profile is there to switch to or duplicate. Users
+    # pre-fill the blank profile via the Static Content page or by importing a résumé.
+    from jobjob.loader.skeleton import create_blank_profile
+
+    local = _local_profile_dir(home)
+    if not local.exists():
+        create_blank_profile(local)
     return home
 
 

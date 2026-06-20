@@ -33,6 +33,23 @@ def _repo_root(request: Request) -> Path:
     return request.app.state.repo_root
 
 
+def _guard_writable(request: Request) -> None:
+    """Refuse writes when the active profile is the read-only bundled example.
+
+    The example lives in the read-only package install (site-packages under pipx), so
+    edits would either fail or mutate shared demo content. Steer the user to duplicate
+    it into a profile they own.
+    """
+    if getattr(request.app.state, "profile_read_only", False):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "The example profile is read-only. Duplicate it (Settings → Profiles "
+                "→ Duplicate) to make an editable copy."
+            ),
+        )
+
+
 def _toml_path(request: Request, name: str) -> Path:
     """Resolve a content TOML path: the active profile's ``content/`` if present,
     else the repo's ``static/content`` (mirrors jobjob.loader.location)."""
@@ -90,6 +107,7 @@ def get_toml(name: str, request: Request) -> dict:
 @router.put("/toml/{name}")
 def update_toml(name: str, body: TomlUpdate, request: Request) -> dict:
     """Validate and write updated raw TOML to the content file."""
+    _guard_writable(request)
     if name not in _TOML_FILES:
         raise HTTPException(status_code=404, detail=f"Unknown TOML file: {name}")
     try:
@@ -115,6 +133,7 @@ def update_toml_item(
         index: Zero-based index of the item in its array.
         body: Dict of field names → new values.
     """
+    _guard_writable(request)
     if name not in _TOML_FILES:
         raise HTTPException(status_code=404, detail=f"Unknown TOML file: {name}")
     table_keys, array_key = _ITEM_PATH[name]
@@ -175,6 +194,7 @@ def update_template_section(
         body: Dict of field names → new values (subset of ``heading``/``section``/
             ``enabled``).
     """
+    _guard_writable(request)
     path = _toml_path(request, "templates")
 
     try:
@@ -220,6 +240,7 @@ def update_toml_config(name: str, body: ConfigUpdate, request: Request) -> dict:
     Only existing scalar keys may be set; the item array is never touched. Uses
     tomlkit so comments and formatting are preserved.
     """
+    _guard_writable(request)
     if name not in _TOML_FILES:
         raise HTTPException(status_code=404, detail=f"Unknown TOML file: {name}")
     table_keys, array_key = _ITEM_PATH[name]
@@ -286,6 +307,7 @@ def update_reference_file(
     file_path: str, body: ReferenceUpdate, request: Request
 ) -> dict:
     """Write updated text content to a reference file."""
+    _guard_writable(request)
     path = safe_path(_reference_base(request) / file_path)
     if not path.is_file():
         raise HTTPException(status_code=404, detail="File not found")

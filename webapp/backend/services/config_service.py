@@ -244,3 +244,27 @@ def write_config(
             new_lines.append(f'{key}="{value}"')
 
     env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+
+def remove_config_key(env_path: Path, key: str) -> bool:
+    """Remove every assignment of ``key`` from ``env_path``. Return True if removed.
+
+    Used to unregister a profile (``JOBJOB_PROFILE_<NAME>``) from the app config.
+    Comments and other keys are preserved. Refuses secret keys for symmetry with
+    ``write_config``.
+    """
+    if is_secret(key):
+        raise ValueError(f"Cannot remove secret key via API: {key}")
+    if not env_path.is_file():
+        return False
+    removed = False
+    new_lines: list[str] = []
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        parsed = _parse_env_line(line)
+        if parsed and parsed[0] == key:
+            removed = True
+            continue
+        new_lines.append(line)
+    if removed:
+        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    return removed

@@ -137,6 +137,9 @@ def save(body: SaveRequest, request: Request) -> dict:
 
     Only sections with a non-null ``targets.<name>`` mode are written.
     """
+    from routers.static_content import _guard_writable
+
+    _guard_writable(request)
     _validate_modes(body.targets)
     written: dict[str, Any] = {}
 

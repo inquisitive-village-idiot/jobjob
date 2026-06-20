@@ -29,6 +29,44 @@ class TestListProfiles(TestCase):
             self.assertEqual({}, MOD.list_profiles())
 
 
+class TestBundledExample(TestCase):
+    def test_bundled_example_dir_points_at_static(self) -> None:
+        d = MOD.bundled_example_dir()
+        self.assertIsNotNone(d)
+        self.assertEqual("static", d.name)
+        self.assertTrue((d / "content").is_dir())
+
+    def test_all_profiles_injects_example(self) -> None:
+        with mock.patch.dict("os.environ", {"JOBJOB_PROFILE_DEMO": "/x"}, clear=True):
+            allp = MOD.all_profiles()
+        self.assertIn(MOD.EXAMPLE_PROFILE_NAME, allp)
+        self.assertIn("demo", allp)
+
+    def test_registry_overrides_example(self) -> None:
+        with mock.patch.dict(
+            "os.environ", {"JOBJOB_PROFILE_EXAMPLE": "/custom"}, clear=True
+        ):
+            self.assertEqual(Path("/custom"), MOD.all_profiles()["example"])
+
+    def test_is_read_only_by_name(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True):
+            self.assertTrue(MOD.is_read_only("example"))
+            self.assertFalse(MOD.is_read_only("local"))
+
+    def test_is_read_only_by_dir(self) -> None:
+        static = MOD.bundled_example_dir()
+        self.assertTrue(MOD.is_read_only("anything", static))
+        self.assertFalse(MOD.is_read_only("anything", Path("/tmp/elsewhere")))
+
+    def test_resolve_active_can_select_example(self) -> None:
+        with mock.patch.dict(
+            "os.environ", {"JOBJOB_ACTIVE_PROFILE": "example"}, clear=True
+        ):
+            self.assertEqual(
+                MOD.bundled_example_dir(), MOD.resolve_active_profile_dir()
+            )
+
+
 class TestActiveProfile(TestCase):
     def test_active_name_lowercased(self) -> None:
         with mock.patch.dict("os.environ", {"JOBJOB_ACTIVE_PROFILE": "Demo"}, clear=True):
