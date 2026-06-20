@@ -103,8 +103,17 @@ in the app to edit them in the browser:
 | Cover letters | Example letters (style reference) |
 | STARs | STAR-format stories of your experience |
 
-The app ships with example content to start from — replace it with your own. (These files
-live in `~/Documents/jobjob/profile/` if you prefer to edit them directly.)
+Your profile starts **empty** so none of the bundled example persona's content sneaks
+into your applications. Two shortcuts to fill it faster:
+
+- **Import a résumé** — on the Static Content tab, import an existing résumé to
+  pre-fill highlights, skills, and background, then review before saving.
+- **Borrow from the example** — the app includes a read-only **example** profile (the
+  fictional *Tila Mer*). Switch to it from **account menu → Profiles** to see how a
+  complete profile looks, or **Duplicate** it and edit your copy.
+
+(Your content lives in `~/Documents/jobjob/profiles/local/` if you prefer to edit the
+files directly. See the [Profiles guide](profiles.md).)
 
 ---
 
@@ -132,15 +141,19 @@ Everything is under your jobjob folder (default `~/Documents/jobjob`):
 
 ```
 ~/Documents/jobjob/
-  config/.env        ← your settings (managed by the wizard/Settings)
-  data/jobs/         ← drop job-description PDFs here
-  data/completed/    ← finished applications
-  profile/           ← your content + reference documents
+  config/.env          ← your settings (managed by the wizard/Settings)
+  data/jobs/           ← drop job-description PDFs here
+  data/completed/      ← finished applications
+  profiles/local/      ← your content + reference documents
+  profiles/<name>/     ← any additional profiles you create
 ```
 
 ---
 
 ## Updating
+
+The app checks for updates on launch and shows them under **Settings** — click
+**Update** there to upgrade in place. Or from the terminal:
 
 ```
 uv tool upgrade jobjob      # or: pipx upgrade jobjob

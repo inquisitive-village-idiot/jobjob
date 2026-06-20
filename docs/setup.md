@@ -11,12 +11,12 @@ anyone contributing to or maintaining jobjob.
 ## Prerequisites
 
 - Python ≥ 3.12
-- [pdm](https://pdm-project.org/) (recommended) or plain `pip`
+- [uv](https://docs.astral.sh/uv/) (recommended) or plain `pip`
 
 ## Install
 
 ```sh
-pdm install          # recommended — installs all dependency groups
+uv sync              # recommended — creates the venv and installs dependencies
 # — or —
 pip install -e .     # installs the package in editable mode
 ```
@@ -30,9 +30,9 @@ appear in both):
   ```sh
   cp config/.env.template config/.env
   ```
-- **Profile config** — `<profile-repo>/config/.profile`, committed inside each
-  profile repo. Selected via the app config's `JOBJOB_PROFILE_*` registry +
-  `JOBJOB_ACTIVE_PROFILE`.
+- **Profile config** — `<profile>/config/.profile`, inside each profile directory.
+  Selected via the app config's `JOBJOB_PROFILE_*` registry + `JOBJOB_ACTIVE_PROFILE`.
+  See the [Profiles guide](profiles.md) for the full profile model.
 
 ### App config (`config/.env`)
 
@@ -48,10 +48,10 @@ appear in both):
 | `APPLICATIONS_LOCAL_DIR` | Local synced Drive mirror | No |
 | `DATA_DIR` | Input/output root (default: `data`) | No |
 | `LINKEDIN_SHEET_ID` | Contacts spreadsheet id | `enrich` only |
-| `JOBJOB_PROFILE_<NAME>` | Registry: path to a profile repo | Yes |
+| `JOBJOB_PROFILE_<NAME>` | Registry: path to a profile directory | Yes |
 | `JOBJOB_ACTIVE_PROFILE` | Name of the active profile | Yes |
 
-### Profile config (`<profile-repo>/config/.profile`)
+### Profile config (`<profile>/config/.profile`)
 
 | Variable | Purpose | Required |
 |---|---|---|
@@ -79,17 +79,17 @@ For step-by-step credential-acquisition instructions see
 
 ---
 
-## Static content
+## Profile content
 
-`static/content/` holds TOML files that drive resume customization:
+Each profile's `content/` holds TOML files that drive resume customization:
 
 | File | Purpose |
 |---|---|
 | `highlights.toml` | Credential blocks with keywords; the model selects the most relevant per JD |
 | `skills.toml` | Skill entries with labels and keywords; used in the skills analysis |
-| `templates.toml` | Resume archetypes (e.g. `leadership_biotech`) mapping keywords to Google Doc IDs |
+| `templates.toml` | Resume archetypes (e.g. `print_correspondent`) mapping keywords to Google Doc IDs |
 
-`static/reference/` holds free-text documents the model reads as context:
+Each profile's `reference/` holds free-text documents the model reads as context:
 
 | Path | Purpose |
 |---|---|
@@ -98,9 +98,11 @@ For step-by-step credential-acquisition instructions see
 | `stars/` | STAR-format experience blocks (honesty enforcement layer) |
 | `writing_style.*` | Voice and writing rules |
 
-Both directories are editable via the local webapp (`webapp/`). They serve as
-fallbacks when no profile is active (e.g., tests or fresh clone). Do not store real
-personal credentials here — these files are committed to the repo.
+Both directories are editable via the local webapp (`webapp/`). The repo's bundled
+`static/content` and `static/reference` are the read-only **example** profile (the
+fictional *Tila Mer*) and the fallback used when no profile is active (tests, a fresh
+clone). Do not store real personal credentials in `static/` — it is committed to the
+repo. See the [Profiles guide](profiles.md).
 
 ---
 
@@ -109,24 +111,20 @@ personal credentials here — these files are committed to the repo.
 ### Running tests
 
 ```sh
-pdm run test                                           # unittest
-pdm run ptest                                          # pytest
-python -m unittest discover -t ./ -s tests/jobjob     # unittest (manual)
-pytest                                                 # pytest (manual)
+uv run --group test pytest               # full suite
+uv run --group test pytest --no-cov      # skip coverage (faster)
 ```
 
 ### Linting
 
 ```sh
-pdm run lint    # ruff check .
+uv run ruff check .
 ```
 
-### Code quality tools
+### Docs
 
 ```sh
-pdm run init-hooks    # install pre-commit hooks
-pdm run rm-hooks      # uninstall pre-commit hooks
-pdm run clean         # remove __pycache__, .pyc, .pytest_cache
+uv run --group docs sphinx-build -b html docs/source docs/build
 ```
 
 ### Running the webapp (development mode)

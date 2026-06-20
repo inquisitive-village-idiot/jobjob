@@ -11,7 +11,7 @@ jobjob apply <job_description> [options]
 | `job_description` | Path to the job-description PDF |
 | `-o / --output <dir>` | Output directory (default: `./out/<date> - <Company> - <Role>/`) |
 | `--skip-drive` | Skip all Google Drive/Docs operations; write local artifacts only |
-| `--template <name>` | Force a specific resume archetype (e.g. `leadership_research`). If omitted the model classifies the JD against `static/content/templates.toml`. |
+| `--template <name>` | Force a specific resume archetype (e.g. `features_writer`). If omitted the model classifies the JD against the active profile's `content/templates.toml`. |
 | `--no-cache` | Disable the response cache for this run |
 | `--clear-cache` | Purge the response cache before running |
 | `--reprocess` | Re-process a previously generated application: point at the JD copy inside its output directory; local files and the original Drive folder are updated in place |
