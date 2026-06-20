@@ -84,6 +84,43 @@ function CheckIcon() {
   );
 }
 
+// Copy-to-clipboard icon button. Shared by per-item cards and per-group headers so
+// the copy affordance (icon swap + "Copied!" flash) stays consistent everywhere.
+function CopyButton({
+  text,
+  label = "Copy text",
+}: {
+  text: string;
+  label?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const onClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const value = text.trim();
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      title={copied ? "Copied!" : label}
+      aria-label={copied ? "Copied" : label}
+      className={`p-1 rounded transition-colors ${
+        copied
+          ? "text-green-600 bg-green-50"
+          : "text-gray-400 hover:text-green-600 hover:bg-green-50"
+      }`}
+    >
+      {copied ? <CheckIcon /> : <ClipboardIcon />}
+    </button>
+  );
+}
+
 function KeywordPills({ keywords }: { keywords: string[] }) {
   const sorted = [...keywords].sort((a, b) => a.localeCompare(b));
   return (
@@ -211,20 +248,6 @@ function ItemCard({
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const copyText = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const text =
-      (editableFields.text as string | undefined) ??
-      (editableFields.description as string | undefined) ??
-      "";
-    if (!text) return;
-    navigator.clipboard.writeText(text.trim()).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  };
 
   const startEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -281,18 +304,13 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-2 ml-2 shrink-0">
           {"text" in editableFields || "description" in editableFields ? (
-            <button
-              onClick={copyText}
-              title={copied ? "Copied!" : "Copy text"}
-              aria-label={copied ? "Copied" : "Copy text"}
-              className={`p-1 rounded transition-colors ${
-                copied
-                  ? "text-green-600 bg-green-50"
-                  : "text-gray-400 hover:text-green-600 hover:bg-green-50"
-              }`}
-            >
-              {copied ? <CheckIcon /> : <ClipboardIcon />}
-            </button>
+            <CopyButton
+              text={
+                (editableFields.text as string | undefined) ??
+                (editableFields.description as string | undefined) ??
+                ""
+              }
+            />
           ) : null}
           <button
             onClick={startEdit}
@@ -434,8 +452,10 @@ function CategoryView({
   const parsed = file.parsed as Record<string, unknown> | null;
   const titles = categoryTitles(name, parsed);
   const params = categoryParams(name, parsed);
+  const showSections = name === "templates";
   const outline: OutlineItem[] = [
     { id: "sc-parameters", label: "Parameters" },
+    ...(showSections ? [{ id: "sc-sections", label: "Sections" }] : []),
     { id: "sc-items", label: "Items" },
     ...titles.map((t, i) => ({ id: `sc-item-${i}`, label: t, indent: true })),
   ];
@@ -453,6 +473,12 @@ function CategoryView({
           <SectionHeader>Parameters</SectionHeader>
           <ParametersTable name={name} params={params} onSaved={onSaved} />
         </section>
+        {showSections && (
+          <section id="sc-sections" className="scroll-mt-16">
+            <SectionHeader>Sections</SectionHeader>
+            <SectionsPanel file={file} onSaved={onSaved} />
+          </section>
+        )}
         <section id="sc-items" className="scroll-mt-16">
           <SectionHeader>Items</SectionHeader>
           <StyledTomlItems name={name} file={file} onSaved={onSaved} />
@@ -658,7 +684,13 @@ interface ParsedHighlight {
   context: string;
   enabled?: boolean;
   text?: string;
+  topic?: string;
   keywords?: string[];
+}
+interface ParsedSection {
+  heading: string;
+  section: string;
+  enabled?: boolean;
 }
 interface ParsedSkill {
   text: string;
@@ -671,6 +703,220 @@ interface ParsedTemplate {
   doc_id?: string;
   description?: string;
   keywords?: string[];
+}
+
+// ── Topic grouping (highlights) ───────────────────────────────────────────────
+
+const UNGROUPED_TOPIC = "Other";
+
+interface HighlightEntry {
+  item: ParsedHighlight;
+  index: number; // original array index — the PATCH route addresses items by index
+}
+interface TopicGrouping {
+  topic: string;
+  entries: HighlightEntry[];
+}
+
+// Group highlights by `topic`, preserving first-seen order for both groups and items
+// so the original array indices stay addressable.
+function groupByTopic(items: ParsedHighlight[]): TopicGrouping[] {
+  const order: string[] = [];
+  const byTopic = new Map<string, HighlightEntry[]>();
+  items.forEach((item, index) => {
+    const topic = (item.topic ?? "").trim() || UNGROUPED_TOPIC;
+    if (!byTopic.has(topic)) {
+      byTopic.set(topic, []);
+      order.push(topic);
+    }
+    byTopic.get(topic)!.push({ item, index });
+  });
+  return order.map((topic) => ({ topic, entries: byTopic.get(topic)! }));
+}
+
+// A topic header (group enable/disable + copy-all) over its highlight cards.
+function TopicGroup({
+  topic,
+  entries,
+  tomlName,
+  onSaved,
+  toggleAllSignal,
+}: {
+  topic: string;
+  entries: HighlightEntry[];
+  tomlName: TomlName;
+  onSaved: (f: TomlFile) => void;
+  toggleAllSignal: { n: number; value: boolean };
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const enabledEntries = entries.filter((e) => e.item.enabled !== false);
+  // A topic is "on" if any of its highlights is enabled; the toggle flips the whole
+  // group (off when on, on when off) so disabling a topic disables its highlights.
+  const groupEnabled = enabledEntries.length > 0;
+
+  const copyText = enabledEntries
+    .map((e) => (e.item.text ?? "").trim())
+    .filter(Boolean)
+    .join("\n");
+
+  const toggleGroup = async () => {
+    const next = !groupEnabled;
+    setBusy(true);
+    setError(null);
+    try {
+      // Patch each highlight in turn (the route addresses items individually); the
+      // file is re-read server-side per call, so sequential writes stay consistent.
+      let last: TomlFile | null = null;
+      for (const e of entries) {
+        last = await api.patch<TomlFile>(
+          `/static/toml/${tomlName}/items/${e.index}`,
+          { fields: { enabled: next } }
+        );
+      }
+      if (last) onSaved(last);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-2 pb-1 border-b-2 border-gray-200">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+            {topic}
+          </h3>
+          <span className="text-xs text-gray-400">
+            {enabledEntries.length}/{entries.length} enabled
+          </span>
+          {error && <span className="text-xs text-red-600 truncate">{error}</span>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {copyText && <CopyButton text={copyText} label="Copy enabled highlights" />}
+          <button
+            onClick={toggleGroup}
+            disabled={busy}
+            title={groupEnabled ? "Disable all in topic" : "Enable all in topic"}
+            className="text-xs px-2 py-0.5 rounded border border-gray-300 text-gray-600
+              hover:bg-gray-50 disabled:opacity-40"
+          >
+            {busy ? "…" : groupEnabled ? "Disable all" : "Enable all"}
+          </button>
+        </div>
+      </div>
+      <div className="space-y-5">
+        {entries.map((e) => (
+          <ItemCard
+            key={e.item.context ?? e.index}
+            index={e.index}
+            title={formatTitle(e.item.context ?? String(e.index))}
+            enabled={e.item.enabled}
+            editableFields={{
+              text: e.item.text ?? "",
+              enabled: e.item.enabled ?? true,
+              keywords: e.item.keywords ?? [],
+            }}
+            tomlName={tomlName}
+            onSaved={onSaved}
+            toggleAllSignal={toggleAllSignal}
+            domId={`sc-item-${e.index}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Resume sections panel (templates) ─────────────────────────────────────────
+
+// Per-section enable toggles for the resume template. Disabling a section makes the
+// apply flow omit its edit, leaving the template text untouched.
+function SectionsPanel({
+  file,
+  onSaved,
+}: {
+  file: TomlFile;
+  onSaved: (f: TomlFile) => void;
+}) {
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const parsed = file.parsed as Record<string, unknown> | null;
+  const sections = (((parsed?.tool as Record<string, unknown> | undefined)
+    ?.templates as Record<string, unknown> | undefined)?.section ??
+    []) as ParsedSection[];
+
+  if (sections.length === 0) {
+    return <p className="text-sm text-gray-400">No editable sections defined.</p>;
+  }
+
+  const toggle = async (index: number, next: boolean) => {
+    setBusyIndex(index);
+    setError(null);
+    try {
+      onSaved(
+        await api.patch<TomlFile>(`/static/toml/templates/sections/${index}`, {
+          fields: { enabled: next },
+        })
+      );
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusyIndex(null);
+    }
+  };
+
+  const enabledHeadings = sections
+    .filter((s) => s.enabled !== false)
+    .map((s) => s.heading)
+    .join("\n");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-gray-500">
+          Toggle which resume sections the apply flow edits. A disabled section is left
+          untouched in the copied template.
+        </p>
+        {enabledHeadings && (
+          <CopyButton text={enabledHeadings} label="Copy enabled headings" />
+        )}
+      </div>
+      <div className="inline-block border border-gray-200 rounded-lg overflow-hidden">
+        <table className="text-sm">
+          <tbody className="divide-y divide-gray-100">
+            {sections.map((s, i) => (
+              <tr key={`${s.heading}-${i}`} className="bg-white">
+                <td className="px-3 py-2 font-medium text-gray-700">{s.heading}</td>
+                <td className="px-3 py-2 text-xs text-gray-400 font-mono">
+                  {s.section}
+                </td>
+                <td className="px-3 py-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={s.enabled !== false}
+                      disabled={busyIndex === i}
+                      onChange={(e) => toggle(i, e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-xs text-gray-600">
+                      {s.enabled !== false ? "Enabled" : "Disabled"}
+                    </span>
+                  </label>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 function StyledTomlItems({
@@ -712,25 +958,19 @@ function StyledTomlItems({
   if (name === "highlights") {
     const items = ((tool?.highlights as Record<string, unknown>)?.highlight ??
       []) as ParsedHighlight[];
+    const groups = groupByTopic(items);
     return (
       <div>
         <ToggleAllButton />
-        <div className="space-y-5">
-          {items.map((item, i) => (
-            <ItemCard
-              key={item.context ?? i}
-              index={i}
-              title={formatTitle(item.context ?? String(i))}
-              enabled={item.enabled}
-              editableFields={{
-                text: item.text ?? "",
-                enabled: item.enabled ?? true,
-                keywords: item.keywords ?? [],
-              }}
+        <div className="space-y-8">
+          {groups.map((g) => (
+            <TopicGroup
+              key={g.topic}
+              topic={g.topic}
+              entries={g.entries}
               tomlName={name}
               onSaved={onSaved}
               toggleAllSignal={toggleAllSignal}
-              domId={`sc-item-${i}`}
             />
           ))}
         </div>

@@ -8,14 +8,18 @@ default = "print_correspondent"
 
 # Editable sections, located by their heading (matched case-insensitively). `section`
 # selects how the region is filled: "objective" (rewritten for the role) or "highlights"
-# (bullets replaced with the selected highlights, verbatim).
+# (bullets replaced with the selected highlights, verbatim). `enabled` (default true)
+# toggles whether the apply flow edits the section; disable it to leave the template
+# text untouched.
 [[tool.templates.section]]
 heading = "Objective"
 section = "objective"
+enabled = true
 
 [[tool.templates.section]]
 heading = "Key Career Highlights"
 section = "highlights"
+enabled = true
 
 [[tool.templates.template]]
 name = "print_correspondent"

@@ -117,6 +117,24 @@ class TestLoadHighlightsFromToml(ThisTestCase):
         result = MOD.load_highlights(path=p)
         self.assertEqual(3, result.default_number)
 
+    def test_loads_topic_when_present(self) -> None:
+        p = self._write_toml(
+            '[tool.highlights]\n'
+            '[[tool.highlights.highlight]]\n'
+            'context = "x"\ntext = "text"\ntopic = "Technical"\n'
+        )
+        result = MOD.load_highlights(path=p)
+        self.assertEqual("Technical", result.highlights[0].topic)
+
+    def test_topic_defaults_to_empty_string(self) -> None:
+        p = self._write_toml(
+            '[tool.highlights]\n'
+            '[[tool.highlights.highlight]]\n'
+            'context = "x"\ntext = "text"\n'
+        )
+        result = MOD.load_highlights(path=p)
+        self.assertEqual("", result.highlights[0].topic)
+
 
 class TestLoadSkillsExplicit(ThisTestCase):
     """Test load_skills using real static TOML."""
@@ -198,6 +216,35 @@ class TestLoadTemplatesEdgeCases(ThisTestCase):
         )
         result = MOD.load_templates(path=p)
         self.assertEqual((), result.templates[0].keywords)
+
+    def test_section_enabled_defaults_to_true(self) -> None:
+        p = Path(self.get_tmpdir(), "templates.toml")
+        p.write_text(
+            '[tool.templates]\n'
+            '[[tool.templates.section]]\n'
+            'heading = "Objective"\nsection = "objective"\n'
+            '[[tool.templates.template]]\n'
+            'name = "default"\narchetype = "General"\ndoc_id = "D123"\n'
+        )
+        result = MOD.load_templates(path=p)
+        section = result.by_name("default").sections[0]
+        self.assertTrue(section.enabled)
+
+    def test_section_enabled_false_is_loaded(self) -> None:
+        p = Path(self.get_tmpdir(), "templates.toml")
+        p.write_text(
+            '[tool.templates]\n'
+            '[[tool.templates.section]]\n'
+            'heading = "Objective"\nsection = "objective"\nenabled = false\n'
+            '[[tool.templates.section]]\n'
+            'heading = "Key Career Highlights"\nsection = "highlights"\n'
+            '[[tool.templates.template]]\n'
+            'name = "default"\narchetype = "General"\ndoc_id = "D123"\n'
+        )
+        result = MOD.load_templates(path=p)
+        sections = result.by_name("default").sections
+        by_kind = {s.section: s.enabled for s in sections}
+        self.assertEqual({"objective": False, "highlights": True}, by_kind)
 
 
 # __END__

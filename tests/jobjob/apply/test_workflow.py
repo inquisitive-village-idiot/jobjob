@@ -17,7 +17,7 @@ from jobjob.loader import location
 from jobjob.structure.applicant import Applicant
 from jobjob.structure.highlight import Highlight, make_highlight_set
 from jobjob.structure.reference import ReferenceDocs
-from jobjob.structure.template import ResumeTemplate, make_template_set
+from jobjob.structure.template import ResumeSection, ResumeTemplate, make_template_set
 
 LOGGER = logging.getLogger(__name__)
 
@@ -294,6 +294,29 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             self.assertEqual({MOD.README_NAME, MOD.COVER_LETTER_NAME}, names)
         with self.subTest("JD uploaded as a file"):
             self.assertEqual(1, mocks["upload_file"].call_count)
+
+    def test_passes_only_enabled_sections_to_tailor_resume(self) -> None:
+        mocks = self.patch_gapi()
+        sections = (
+            ResumeSection(heading="Objective", section="objective", enabled=True),
+            ResumeSection(
+                heading="Key Career Highlights", section="highlights", enabled=False
+            ),
+        )
+        template = ResumeTemplate(
+            name="features", archetype="B", doc_id="TPL", sections=sections
+        )
+        mocks["load_templates"].return_value = make_template_set(
+            [template], default="features"
+        )
+
+        self.run_drive()
+
+        passed = mocks["tailor_resume"].call_args.kwargs["sections"]
+        with self.subTest("disabled section omitted"):
+            self.assertEqual(("Objective",), tuple(s.heading for s in passed))
+        with self.subTest("only enabled sections survive the filter"):
+            self.assertTrue(all(s.enabled for s in passed))
 
 
 class TestApplyInputs(ThisTestCase):

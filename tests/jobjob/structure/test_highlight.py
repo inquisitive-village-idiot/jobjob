@@ -31,6 +31,14 @@ class TestHighlight(ThisTestCase):
         h = MOD.Highlight(context="x", text="X")
         self.assertTrue(h.enabled)
 
+    def test_defaults_topic_to_empty_string(self) -> None:
+        h = MOD.Highlight(context="x", text="X")
+        self.assertEqual("", h.topic)
+
+    def test_carries_topic(self) -> None:
+        h = MOD.Highlight(context="x", text="X", topic="Technical")
+        self.assertEqual("Technical", h.topic)
+
 
 class TestHighlightSet(ThisTestCase):
     """Test HighlightSet methods."""
@@ -66,6 +74,19 @@ class TestHighlightSet(ThisTestCase):
         hs = MOD.HighlightSet(highlights=tuple(self.make_highlights()))
         index = hs.by_context()
         self.assertFalse(index["b"].enabled)
+
+    def test_disabling_a_topic_group_excludes_it_from_enabled(self) -> None:
+        # Mirrors the per-topic toggle: flipping every highlight in a topic off
+        # removes the whole group from selection (which filters on enabled()).
+        highlights = (
+            MOD.Highlight(context="a", text="A", topic="Technical", enabled=False),
+            MOD.Highlight(context="b", text="B", topic="Technical", enabled=False),
+            MOD.Highlight(context="c", text="C", topic="Leadership", enabled=True),
+        )
+        hs = MOD.HighlightSet(highlights=highlights)
+        enabled = hs.enabled()
+        self.assertEqual({"c"}, {h.context for h in enabled})
+        self.assertTrue(all(h.topic != "Technical" for h in enabled))
 
 
 class TestMakeHighlightSet(ThisTestCase):

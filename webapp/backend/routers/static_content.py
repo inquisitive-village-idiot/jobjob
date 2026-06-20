@@ -153,6 +153,66 @@ def update_toml_item(
     return {"name": name, "content": raw, "parsed": parsed, "parse_error": None}
 
 
+# Section fields the UI may set on a [[tool.templates.section]] entry. ``enabled`` is
+# the toggle; the others are allowed for completeness. Restricting the set keeps a typo
+# from silently adding a stray key.
+_SECTION_FIELDS = {"heading", "section", "enabled"}
+
+
+@router.patch("/toml/templates/sections/{index}")
+def update_template_section(
+    index: int, body: ItemUpdate, request: Request
+) -> dict:
+    """Update a section in ``[[tool.templates.section]]`` (e.g. toggle ``enabled``).
+
+    Sections live in a separate array from the templates themselves, so they need a
+    dedicated route. Flipping ``enabled`` lets the apply flow omit a section's edit
+    (leaving the template text untouched). Uses tomlkit to preserve comments and
+    formatting; a missing field (e.g. ``enabled`` not yet present) is added.
+
+    Arguments:
+        index: Zero-based index of the section in the array.
+        body: Dict of field names → new values (subset of ``heading``/``section``/
+            ``enabled``).
+    """
+    path = _toml_path(request, "templates")
+
+    try:
+        doc = tomlkit.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not parse TOML: {exc}")
+
+    node: Any = doc
+    for key in ("tool", "templates", "section"):
+        node = node.get(key) if hasattr(node, "get") else None
+        if node is None:
+            raise HTTPException(
+                status_code=404,
+                detail="No [[tool.templates.section]] array in templates.toml",
+            )
+    sections = node
+
+    if index < 0 or index >= len(sections):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Section index {index} out of range (0–{len(sections)-1})",
+        )
+
+    section = sections[index]
+    for field, value in body.fields.items():
+        if field not in _SECTION_FIELDS:
+            raise HTTPException(
+                status_code=422, detail=f"Unknown section field '{field}'"
+            )
+        section[field] = value
+
+    path.write_text(tomlkit.dumps(doc), encoding="utf-8")
+
+    raw = path.read_text(encoding="utf-8")
+    parsed = tomllib.loads(raw)
+    return {"name": "templates", "content": raw, "parsed": parsed, "parse_error": None}
+
+
 @router.patch("/toml/{name}/config")
 def update_toml_config(name: str, body: ConfigUpdate, request: Request) -> dict:
     """Update tool-level scalar config (e.g. ``default_number``) in ``[tool.<name>]``.

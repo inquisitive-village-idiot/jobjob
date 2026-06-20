@@ -129,7 +129,11 @@ def load_templates(
         for entry in table.get("template", [])
     ]
     sections = [
-        ResumeSection(heading=entry["heading"], section=entry["section"])
+        ResumeSection(
+            heading=entry["heading"],
+            section=entry["section"],
+            enabled=entry.get("enabled", True),
+        )
         for entry in table.get("section", [])
     ]
     return make_template_set(templates, default=table.get("default"), sections=sections)

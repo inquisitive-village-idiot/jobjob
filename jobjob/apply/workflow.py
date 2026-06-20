@@ -352,14 +352,17 @@ def _run_drive_resume_steps(
 
     # Tailor the copied template to the role: rewrite the objective and replace the
     # Key Career Highlights within their configured sections, recording each edit for
-    # the application summary and any skipped sections as issues for the README.
+    # the application summary and any skipped sections as issues for the README. Only
+    # enabled sections are tailored; a disabled section is left untouched (its edit is
+    # simply omitted, so no anchor is searched for).
+    enabled_sections = tuple(s for s in template.sections if s.enabled)
     resume_text, results["resume_changes"], resume_issues = tailor_resume(
         docs_service,
         resume_id,
         job,
         selected_highlights,
         query_service,
-        sections=template.sections,
+        sections=enabled_sections,
         use_cache=use_cache,
         logger=logger,
     )

@@ -19,10 +19,13 @@ class ResumeSection:
         section: How the section is filled — ``SECTION_OBJECTIVE`` (model-rewritten
             paragraph) or ``SECTION_HIGHLIGHTS`` (bullets replaced with selected
             highlights, verbatim).
+        enabled: Whether the apply flow edits this section. A disabled section is
+            omitted from tailoring so its template text is left untouched.
     """
 
     heading: str
     section: str
+    enabled: bool = True
 
 
 @dcs.dataclass(frozen=True)
