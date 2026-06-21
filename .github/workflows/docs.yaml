@@ -24,6 +24,10 @@ jobs:
       - name: Install package and docs dependencies
         run: |
           python -m pip install --upgrade pip
+          # The wheel force-includes webapp/frontend/dist (gitignored, built only in the
+          # release job). The docs build doesn't need the compiled UI, so create a
+          # placeholder dir to satisfy the build backend during the editable install.
+          mkdir -p webapp/frontend/dist
           pip install -e .
           pip install sphinx sphinx-rtd-theme myst-parser
       - name: Sphinx build
