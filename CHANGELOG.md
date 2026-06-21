@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.0.1] - 2026-06-21
+
+- [PATCH] Refresh the README (accurate install/profiles, status badges) and the documentation guides
+- [PATCH] Publish a Sphinx documentation site to GitHub Pages
+- [PATCH] Add an "Upgrading from 1.x" note (the in-app updater requires 2.0.0+; the profile layout auto-migrates)
+
 ## [2.0.0] - 2026-06-20
 
 - [MAJOR] Unify simple and advanced usage into one profile model

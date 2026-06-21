@@ -161,6 +161,15 @@ uv tool upgrade jobjob      # or: pipx upgrade jobjob
 
 Your jobjob folder (settings, content, applications) is untouched by updates.
 
+> The in-app update check and **Update** button are available in **2.0.0 and later**.
+> On 1.x, upgrade once from the terminal; after that you can update from Settings.
+
+### Upgrading from 1.x
+
+Upgrade the normal way (above). The first launch on 2.0.0+ automatically moves your old
+`profile/` folder to `profiles/local/` — nothing to do, and nothing is lost. See the
+[Profiles guide](profiles.md) for the profile model.
+
 ---
 
 ## Power users / developers

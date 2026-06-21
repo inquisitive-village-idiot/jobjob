@@ -21,6 +21,17 @@ uv sync              # recommended — creates the venv and installs dependencie
 pip install -e .     # installs the package in editable mode
 ```
 
+## Upgrading
+
+Installed copies upgrade like any pip/pipx/uv tool (`uv tool upgrade jobjob` /
+`pipx upgrade jobjob`). On **2.0.0 and later** you can also update from the dashboard
+(**Settings → Update**); that in-app updater is 2.0.0+ only.
+
+**From 1.x:** the working-dir layout changed in 2.0.0 — a single `profile/` directory
+became `profiles/<name>/`. On first launch, `jobjob-app` migrates `profile/` →
+`profiles/local/` automatically (a directory move plus a registry-path rewrite;
+idempotent, nothing lost). See the [Profiles guide](profiles.md).
+
 ## Environment configuration
 
 Configuration is split into two disjoint tiers (validated at load — no key may
