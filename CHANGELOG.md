@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.0.2] - 2026-06-21
+
+- [PATCH] Internal code-quality cleanup (no behavior change): inject loggers through call chains instead of declaring module-level loggers, and pre-compile regular expressions as module-level constants
+
 ## [2.0.1] - 2026-06-21
 
 - [PATCH] Refresh the README (accurate install/profiles, status badges) and the documentation guides
