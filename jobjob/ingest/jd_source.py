@@ -30,7 +30,10 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-logger = logging.getLogger(__name__)
+# Pre-compiled patterns for slugifying filenames and validating the URL scheme.
+_SLUG_STRIP_RE = re.compile(r"[^\w\s-]", re.UNICODE)
+_SLUG_DASH_RE = re.compile(r"[\s_-]+")
+_HTTP_SCHEME_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 # Below this many characters of *extracted* text we assume extraction failed: a
 # JS-rendered or auth-gated board returned an empty skeleton to a plain GET.
@@ -114,8 +117,8 @@ def extract_main_text(html: str) -> str:
 
 def _slugify(value: str, max_len: int = 60) -> str:
     """Return a filesystem-safe, lowercase, hyphenated slug for a filename."""
-    value = re.sub(r"[^\w\s-]", "", value, flags=re.UNICODE).strip().lower()
-    value = re.sub(r"[\s_-]+", "-", value)
+    value = _SLUG_STRIP_RE.sub("", value).strip().lower()
+    value = _SLUG_DASH_RE.sub("-", value)
     return value[:max_len].strip("-") or "posting"
 
 
@@ -138,6 +141,7 @@ def write_snapshot(
     *,
     source_url: Optional[str] = None,
     title: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
 ) -> Path:
     """Write ``text`` as a Markdown snapshot into ``jobs_dir`` and return the path.
 
@@ -150,9 +154,11 @@ def write_snapshot(
         jobs_dir: The jobs input directory (created if missing).
         source_url: Originating URL, recorded for provenance and used for the slug.
         title: Optional human title used for the filename slug.
+        logger: Optional logger; falls back to the module logger.
     Returns:
         The path to the written snapshot.
     """
+    _logger = logger or logging.getLogger(__name__)
     jobs_dir = Path(jobs_dir)
     jobs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +172,7 @@ def write_snapshot(
     content = "\n".join(header) + "\n\n" + text.strip() + "\n"
 
     path.write_text(content, encoding="utf-8")
-    logger.info("Wrote JD snapshot: %s (%d chars)", path, len(text))
+    _logger.info("Wrote JD snapshot: %s (%d chars)", path, len(text))
     return path
 
 
@@ -175,6 +181,7 @@ def snapshot_from_url(
     jobs_dir: Path,
     *,
     min_chars: int = MIN_SNAPSHOT_CHARS,
+    logger: Optional[logging.Logger] = None,
     _fetch_html: Callable[[str], str] = _http_get,
     _extract: Callable[[str], str] = extract_main_text,
 ) -> Path:
@@ -185,6 +192,7 @@ def snapshot_from_url(
         jobs_dir: The jobs input directory.
         min_chars: Minimum extracted length below which extraction is treated as a
             failure (JS-rendered/auth-gated board returning an empty skeleton).
+        logger: Optional logger; falls back to the module logger.
         _fetch_html: Injection point for the HTTP GET (testing).
         _extract: Injection point for main-text extraction (testing).
     Returns:
@@ -193,10 +201,11 @@ def snapshot_from_url(
         JDIngestError: If the URL is missing/invalid, the fetch fails, or too little
             text was extracted to parse.
     """
+    _logger = logger or logging.getLogger(__name__)
     url = (url or "").strip()
     if not url:
         raise JDIngestError("No URL provided.")
-    if not re.match(r"^https?://", url, re.IGNORECASE):
+    if not _HTTP_SCHEME_RE.match(url):
         raise JDIngestError("URL must start with http:// or https://.")
 
     try:
@@ -206,10 +215,10 @@ def snapshot_from_url(
 
     text = _extract(html)
     if len(text) < min_chars:
-        logger.warning("Extraction yielded %d chars from %s; refusing to parse.", len(text), url)
+        _logger.warning("Extraction yielded %d chars from %s; refusing to parse.", len(text), url)
         raise JDIngestError(_EXTRACTION_FAILED_MESSAGE)
 
-    return write_snapshot(text, jobs_dir, source_url=url)
+    return write_snapshot(text, jobs_dir, source_url=url, logger=logger)
 
 
 def snapshot_from_text(
@@ -218,6 +227,7 @@ def snapshot_from_text(
     *,
     min_chars: int = MIN_PASTE_CHARS,
     title: Optional[str] = None,
+    logger: Optional[logging.Logger] = None,
 ) -> Path:
     """Write pasted posting ``text`` as a snapshot into ``jobs_dir``.
 
@@ -228,6 +238,7 @@ def snapshot_from_text(
         jobs_dir: The jobs input directory.
         min_chars: Minimum length below which the text is rejected as too short.
         title: Optional human title used for the filename slug.
+        logger: Optional logger; passed through to the snapshot writer.
     Returns:
         The path to the written snapshot.
     Raises:
@@ -238,7 +249,7 @@ def snapshot_from_text(
         raise JDIngestError(
             f"Pasted text is too short to be a job posting (need at least {min_chars} characters)."
         )
-    return write_snapshot(cleaned, jobs_dir, title=title)
+    return write_snapshot(cleaned, jobs_dir, title=title, logger=logger)
 
 
 # __END__

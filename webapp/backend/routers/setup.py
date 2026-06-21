@@ -20,7 +20,6 @@ from jobjob.config import APP_KEYS, PROFILE_KEYS
 from services.config_service import _parse_env_line, read_config
 
 router = APIRouter()
-_LOGGER = logging.getLogger("jobjob.setup")
 
 _DISMISS_MARKER = ".setup_dismissed"
 
@@ -118,9 +117,12 @@ async def upload_credentials(request: Request, file: UploadFile = File(...)) -> 
     return {"ok": True, "path": str(dest_path)}
 
 
-def _run_google_auth(credentials_file, token_file) -> None:
+def _run_google_auth(
+    credentials_file, token_file, *, logger: logging.Logger | None = None
+) -> None:
     from jobjob.loader.auth import get_google_credentials
 
+    _logger = logger or logging.getLogger("jobjob.setup")
     _auth_state.update(running=True, error=None)
     try:
         get_google_credentials(
@@ -129,7 +131,7 @@ def _run_google_auth(credentials_file, token_file) -> None:
             force_reauth=True,
         )
     except Exception as exc:  # noqa: BLE001 — surface any failure to the wizard.
-        _LOGGER.error("Google OAuth failed: %s", exc)
+        _logger.error("Google OAuth failed: %s", exc)
         _auth_state["error"] = str(exc)
     finally:
         _auth_state["running"] = False

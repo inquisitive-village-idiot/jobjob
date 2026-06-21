@@ -19,8 +19,6 @@ from pathlib import Path
 
 from jobjob.__about__ import __version__ as CURRENT_VERSION
 
-logger = logging.getLogger("jobjob.update")
-
 PACKAGE_NAME = "jobjob"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 _CACHE_FILE = Path.home() / ".cache" / "jobjob" / "update.json"
@@ -108,21 +106,27 @@ def _load_cache() -> dict:
         return {}
 
 
-def _save_cache(data: dict) -> None:
+def _save_cache(data: dict, *, logger: logging.Logger | None = None) -> None:
+    _logger = logger or logging.getLogger(__name__)
     try:
         _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
         _CACHE_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
     except OSError as exc:  # cache is best-effort; never break the request
-        logger.warning("Could not write update cache: %s", exc)
+        _logger.warning("Could not write update cache: %s", exc)
 
 
-def check_for_updates(_opener=urllib.request.urlopen) -> dict:
+def check_for_updates(_opener=urllib.request.urlopen, *, logger: logging.Logger | None = None) -> dict:
     """Query PyPI, refresh the cache, and return it.
 
     Network/parse failures are caught and recorded as ``check_error`` while preserving
     any previously-known latest version — this is the resilience boundary, so it logs
     and continues rather than raising.
+
+    Arguments:
+        _opener: Injection point for the URL opener (testing).
+        logger: Optional logger; falls back to the module logger.
     """
+    _logger = logger or logging.getLogger(__name__)
     cache = _load_cache()
     cache["last_checked"] = _now_iso()
     try:
@@ -134,8 +138,8 @@ def check_for_updates(_opener=urllib.request.urlopen) -> dict:
         cache["check_error"] = None
     except (urllib.error.URLError, OSError, ValueError, TimeoutError) as exc:
         cache["check_error"] = str(exc)
-        logger.warning("Update check failed: %s", exc)
-    _save_cache(cache)
+        _logger.warning("Update check failed: %s", exc)
+    _save_cache(cache, logger=logger)
     return cache
 
 

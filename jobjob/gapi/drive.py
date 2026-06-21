@@ -22,6 +22,10 @@ GDOC_MIME = "application/vnd.google-apps.document"
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 PDF_MIME = "application/pdf"
 
+# Pre-compiled patterns for normalizing display/folder names.
+_WHITESPACE_RE = re.compile(r"\s+")
+_NON_ALNUM_RE = re.compile(r"[^0-9A-Za-z]+")
+
 
 def sanitize_name(value: str) -> str:
     """Return ``value`` reduced to alphanumerics, spaces, hyphens, underscores.
@@ -30,7 +34,7 @@ def sanitize_name(value: str) -> str:
         does not leave double spaces ("Data  AI").
     """
     kept = "".join(c for c in value if c.isalnum() or c in " -_")
-    return re.sub(r"\s+", " ", kept).strip()
+    return _WHITESPACE_RE.sub(" ", kept).strip()
 
 
 def pascal_case(value: str) -> str:
@@ -39,7 +43,7 @@ def pascal_case(value: str) -> str:
     NOTE: capitalizes the first letter of each word but preserves existing internal
         capitals (so "ML Engineer" -> "MLEngineer").
     """
-    words = re.split(r"[^0-9A-Za-z]+", value)
+    words = _NON_ALNUM_RE.split(value)
     return "".join(word[:1].upper() + word[1:] for word in words if word)
 
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """."""
 
-import logging
 import os
 import pickle
 from collections.abc import Callable, Iterable
@@ -12,8 +11,6 @@ from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-
-LOGGER = logging.getLogger(__name__)
 
 # Google credentials
 # ======================================================================

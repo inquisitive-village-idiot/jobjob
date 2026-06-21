@@ -20,10 +20,11 @@ from jobjob.loader.location import get_prompt_path
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
-logger = logging.getLogger(__name__)
-
 BACKGROUND_MODES = ("conservative", "fuller")
 SAVE_MODES = ("replace", "append")
+
+# Pre-compiled pattern for slugifying labels/contexts into snake_case identifiers.
+_SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 _CONSERVATIVE_GUIDANCE = (
     "A concise professional-background narrative (two to four sentences) summarizing the "
@@ -59,7 +60,7 @@ class ResumeImportDraft:
 
 def _slugify(value: str, fallback: str = "item") -> str:
     """Return a lowercase snake_case identifier derived from ``value``."""
-    slug = re.sub(r"[^a-z0-9]+", "_", (value or "").lower()).strip("_")
+    slug = _SLUG_RE.sub("_", (value or "").lower()).strip("_")
     return slug or fallback
 
 
@@ -111,16 +112,22 @@ def skill_from_dict(data: dict, seen: Optional[set[str]] = None) -> Skill:
     )
 
 
-def _voice_anchor(reference_dir: Optional[Path], max_chars: int = 4000) -> str:
+def _voice_anchor(
+    reference_dir: Optional[Path],
+    max_chars: int = 4000,
+    *,
+    logger: Optional[logging.Logger] = None,
+) -> str:
     """Return a voice-sample block from writing_style/cover_letters, or "".
 
     Used only in fuller mode: gives the model the candidate's own voice to mirror in
     the objective and background, without copying the samples' content.
     """
+    _logger = logger or logging.getLogger(__name__)
     try:
         docs = load_reference_documents(reference_dir)
     except Exception as exc:  # reference dir may be absent in a fresh install
-        logger.debug("No reference docs for voice anchor: %s", exc)
+        _logger.debug("No reference docs for voice anchor: %s", exc)
         return ""
     parts = [p for p in (docs.writing_style, docs.cover_letter_examples) if p]
     if not parts:
@@ -139,6 +146,7 @@ def build_prompt(
     background_mode: str = "fuller",
     reference_dir: Optional[Path] = None,
     prompt_path: Optional[Path] = None,
+    logger: Optional[logging.Logger] = None,
 ) -> str:
     """Format the resume-import prompt for the given resume text and background mode."""
     if background_mode not in BACKGROUND_MODES:
@@ -146,7 +154,11 @@ def build_prompt(
             f"Unknown background_mode {background_mode!r}; expected one of {BACKGROUND_MODES}"
         )
     guidance = _FULLER_GUIDANCE if background_mode == "fuller" else _CONSERVATIVE_GUIDANCE
-    anchor = _voice_anchor(reference_dir) if background_mode == "fuller" else ""
+    anchor = (
+        _voice_anchor(reference_dir, logger=logger)
+        if background_mode == "fuller"
+        else ""
+    )
     template = (prompt_path or get_prompt_path("resume_import")).read_text(encoding="utf-8")
     return template.format(
         text_content=text_content,
@@ -188,6 +200,7 @@ def extract_resume(
     background_mode: str = "fuller",
     reference_dir: Optional[Path] = None,
     use_cache: bool = True,
+    logger: Optional[logging.Logger] = None,
     _query: Callable[..., Any] = query_ai_service,
     _load_text: Callable[[Path], str] = read_document,
 ) -> ResumeImportDraft:
@@ -200,6 +213,7 @@ def extract_resume(
             "conservative" (factual, minimal).
         reference_dir: Override the reference dir used for voice samples (testing).
         use_cache: Whether the query consults/populates the response cache.
+        logger: Optional logger; passed through to prompt building.
         _query: Injection point for the AI query (testing).
         _load_text: Injection point for the document text reader (testing).
     Returns:
@@ -215,7 +229,10 @@ def extract_resume(
             "PDF, export a text-based PDF or DOCX and try again."
         )
     prompt = build_prompt(
-        text, background_mode=background_mode, reference_dir=reference_dir
+        text,
+        background_mode=background_mode,
+        reference_dir=reference_dir,
+        logger=logger,
     )
     data = _query(prompt, _query_service=query_service, use_cache=use_cache)
     if not isinstance(data, dict):

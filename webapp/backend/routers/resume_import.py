@@ -32,8 +32,6 @@ from jobjob.ingest.resume_import import (
 from jobjob.ingest.save import save_background, save_highlights, save_skills
 from jobjob.loader.loadstatic import SUPPORTED_SUFFIXES
 
-logger = logging.getLogger("jobjob.resume_import")
-
 router = APIRouter()
 
 # Resume documents we can read text from (image-only PDFs are rejected with guidance).
@@ -87,6 +85,7 @@ async def extract(
             + ", ".join(sorted(_ALLOWED_SUFFIXES)),
         )
 
+    _logger = logging.getLogger("jobjob.resume_import")
     data = await file.read()
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
         tmp.write(data)
@@ -94,12 +93,12 @@ async def extract(
         client = _ai_client()
         try:
             draft = extract_resume(
-                Path(tmp.name), client, background_mode=background_mode
+                Path(tmp.name), client, background_mode=background_mode, logger=_logger
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))
         except Exception as exc:  # surface model/transport errors cleanly
-            logger.exception("Resume extraction failed")
+            _logger.exception("Resume extraction failed")
             raise HTTPException(status_code=500, detail=f"Extraction failed: {exc}")
 
     result = draft_to_dict(draft)
