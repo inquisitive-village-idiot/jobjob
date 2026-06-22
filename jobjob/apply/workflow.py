@@ -135,6 +135,7 @@ def run_application_workflow(
     parent_id: Optional[str] = None,
     reuse_folder_id: Optional[str] = None,
     allow_overwrite: bool = False,
+    industry: Optional[str] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _drive_builder: Callable[..., Any] = build_drive_service,
@@ -155,6 +156,8 @@ def run_application_workflow(
         template_name: Explicit template name; if None the archetype is auto-detected.
         parent_id: Applications-root folder id (Drive mode).
         reuse_folder_id: Existing Drive folder id to update in place (re-process mode).
+        industry: Optional domain/industry context for the active profile, passed to
+            the resume-objective prompt so the company is described accurately.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _drive_builder: Injection point for the Drive service builder (testing).
@@ -209,6 +212,7 @@ def run_application_workflow(
             reuse_folder_id=reuse_folder_id,
             allow_overwrite=allow_overwrite,
             use_cache=use_cache,
+            industry=industry,
             results=results,
             logger=_logger,
             _credentials_loader=_credentials_loader,
@@ -313,6 +317,7 @@ def _run_drive_resume_steps(
     _credentials_loader: Callable[..., Any],
     _drive_builder: Callable[..., Any],
     _docs_builder: Callable[..., Any],
+    industry: Optional[str] = None,
 ) -> tuple[Optional[str], Any, Optional[str]]:
     """Authenticate, find/create the folder, copy and tailor the resume template.
 
@@ -364,6 +369,7 @@ def _run_drive_resume_steps(
         query_service,
         sections=enabled_sections,
         use_cache=use_cache,
+        industry=industry,
         logger=logger,
     )
     if resume_issues:
@@ -454,6 +460,7 @@ def apply_inputs(
     parent_id: Optional[str] = None,
     data_dir: Optional[Path] = None,
     allow_overwrite: bool = False,
+    industry: Optional[str] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _classify: Callable[..., str] = classify_file,
@@ -482,6 +489,8 @@ def apply_inputs(
         parent_id: Applications-root Drive folder id.
         data_dir: Root holding ``completed/``; when set (and not ``skip_drive``), a
             successfully-applied JD is moved into ``<data_dir>/completed/jobs/``.
+        industry: Optional domain/industry context for the active profile, forwarded
+            to the resume-objective prompt.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _classify: Injection point for the file classifier (testing).
@@ -526,6 +535,7 @@ def apply_inputs(
                 template_name=template_name,
                 parent_id=parent_id,
                 allow_overwrite=allow_overwrite,
+                industry=industry,
                 logger=_logger,
                 _credentials_loader=_credentials_loader,
             )

@@ -187,7 +187,7 @@ class TestLoadTemplatesExplicit(ThisTestCase):
     def test_loads_templates(self) -> None:
         self.assertGreater(len(self.result.templates), 0)
 
-    def test_has_leadership_biotech(self) -> None:
+    def test_has_print_correspondent(self) -> None:
         self.assertIn("print_correspondent", self.result.names())
 
     def test_has_default_set(self) -> None:

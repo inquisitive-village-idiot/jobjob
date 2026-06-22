@@ -56,6 +56,10 @@ ENV_APPLICANT_NAME = "APPLICANT_NAME"
 ENV_APPLICANT_PHONE = "APPLICANT_PHONE"
 ENV_APPLICANT_EMAIL = "APPLICANT_EMAIL"
 ENV_APPLICANT_LINKEDIN = "APPLICANT_LINKEDIN"
+# Optional domain/industry context for this profile (e.g. "science journalism").
+# Injected into the resume-objective prompt so the model describes the target
+# company accurately; left out of the prompt entirely when unset.
+ENV_INDUSTRY = "INDUSTRY"
 
 # Config tiers — disjoint by construction; enforced by _validate_scopes.
 # APP: one jobjob instance (secrets, local paths, output IDs, registry).
@@ -78,6 +82,7 @@ PROFILE_KEYS = frozenset({
     ENV_APPLICANT_EMAIL,
     ENV_APPLICANT_LINKEDIN,
     ENV_RESUME_TEMPLATE_ID,
+    ENV_INDUSTRY,
 })
 
 _TRUE_VALUES = ("true", "1", "yes")
@@ -117,6 +122,8 @@ class Settings:
         linkedin_sheet_id: Spreadsheet id for the contacts sheet (enrich).
         data_dir: Root holding ``jobs/``, ``profiles/`` and ``completed/`` — where a
             processed JD is moved on completion.
+        industry: Optional domain/industry context for the active profile, injected
+            into the resume-objective prompt; None means no domain hint is added.
     """
 
     applicant: Applicant
@@ -128,6 +135,7 @@ class Settings:
     data_dir: Path = DEFAULT_DATA_DIR
     profile_name: Optional[str] = None
     profile_dir: Optional[Path] = None
+    industry: Optional[str] = None
 
 
 def _path(value: Optional[str]) -> Optional[Path]:
@@ -229,6 +237,7 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         data_dir=_path(os.environ.get(ENV_DATA_DIR)) or DEFAULT_DATA_DIR,
         profile_name=active_profile_name(),
         profile_dir=profile_dir,
+        industry=(os.environ.get(ENV_INDUSTRY) or "").strip() or None,
     )
 
 

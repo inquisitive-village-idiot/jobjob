@@ -33,6 +33,21 @@ class TestLoadSettings(ThisTestCase):
         self.assertEqual("Ada Lovelace", settings.applicant.name)
         self.assertEqual("ada@example.com", settings.applicant.email)
 
+    def test_reads_industry_from_env(self) -> None:
+        settings = self.load_with_env({MOD.ENV_INDUSTRY: "science journalism"})
+        self.assertEqual("science journalism", settings.industry)
+
+    def test_industry_none_when_unset(self) -> None:
+        self.assertIsNone(self.load_with_env({}).industry)
+
+    def test_industry_blank_is_none(self) -> None:
+        # A whitespace-only value is treated as "no domain hint", not "".
+        self.assertIsNone(self.load_with_env({MOD.ENV_INDUSTRY: "   "}).industry)
+
+    def test_industry_is_profile_scoped(self) -> None:
+        self.assertIn(MOD.ENV_INDUSTRY, MOD.PROFILE_KEYS)
+        self.assertNotIn(MOD.ENV_INDUSTRY, MOD.APP_KEYS)
+
     def test_defaults_model_when_unset(self) -> None:
         settings = self.load_with_env({})
         self.assertEqual(MOD.DEFAULT_MODEL, settings.model)

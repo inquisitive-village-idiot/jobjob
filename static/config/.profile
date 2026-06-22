@@ -11,3 +11,6 @@ APPLICANT_EMAIL="tila.mer@inkstained.news"
 APPLICANT_PHONE="(312) 555-0148"
 APPLICANT_LINKEDIN=""
 RESUME_TEMPLATE_ID=""
+# Optional domain hint so the resume objective describes the target company
+# accurately for the field (blank = no hint).
+INDUSTRY="science journalism"

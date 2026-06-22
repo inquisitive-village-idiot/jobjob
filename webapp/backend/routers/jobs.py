@@ -220,6 +220,7 @@ def _make_apply_run(
             parent_id=settings.google.applications_folder_id,
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
+            industry=settings.industry,
             logger=logging.getLogger("jobjob.apply"),
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -539,6 +540,7 @@ def launch_apply_all(request: Request) -> dict:
             use_cache=settings.cache_enabled,
             parent_id=settings.google.applications_folder_id,
             data_dir=data_dir,
+            industry=settings.industry,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
         )

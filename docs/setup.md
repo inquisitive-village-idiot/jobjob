@@ -71,6 +71,7 @@ appear in both):
 | `APPLICANT_PHONE` | Phone number for cover-letter header | No |
 | `APPLICANT_EMAIL` | Email address for cover-letter header | No |
 | `APPLICANT_LINKEDIN` | LinkedIn URL for cover-letter header | No |
+| `INDUSTRY` | Optional domain/field (e.g. "science journalism") used to describe the target company accurately when tailoring the resume objective | No |
 
 ### Google OAuth
 

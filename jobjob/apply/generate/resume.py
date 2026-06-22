@@ -42,7 +42,22 @@ def _truncate(text: str) -> str:
     return text if len(text) <= _TRUNCATE else text[: _TRUNCATE - 1] + "…"
 
 
-def _build_objective_prompt(job: JobDescription, current_objective: str) -> str:
+def _build_objective_prompt(
+    job: JobDescription, current_objective: str, industry: Optional[str] = None
+) -> str:
+    # When the profile declares its field, anchor "describe the company accurately"
+    # to that domain; otherwise keep a neutral rule with no baked-in example.
+    if industry and industry.strip():
+        accuracy_rule = (
+            "2. Describe the company accurately for its actual industry "
+            f"({industry.strip()}); do not mislabel it as a different kind of "
+            "company\n"
+        )
+    else:
+        accuracy_rule = (
+            "2. Describe the company accurately; do not mislabel the kind of "
+            "company it is\n"
+        )
     return (
         "Rewrite the OBJECTIVE statement of a resume for a specific role.\n\n"
         f"TARGET ROLE: {job.role_title} at {job.company_name}\n\n"
@@ -53,8 +68,7 @@ def _build_objective_prompt(job: JobDescription, current_objective: str) -> str:
         "a natural form of the role title — expand or drop internal "
         "abbreviations/jargon (e.g. org-unit codes) that an outside reader would not "
         "use\n"
-        "2. Describe the company accurately (e.g. do not call a large pharma company a "
-        "'biotech company')\n"
+        f"{accuracy_rule}"
         "3. Keep it to 1-2 sentences, and preserve any existing relocation sentence "
         "verbatim\n"
         "4. Do not invent facts; only use the current objective and job information "
@@ -71,6 +85,7 @@ def tailor_resume(
     query_service: Callable[[str], str],
     sections: Iterable[ResumeSection] = (),
     use_cache: bool = True,
+    industry: Optional[str] = None,
     logger: logging.Logger | None = None,
     _query: Callable[..., Any] = query_ai_service,
 ) -> tuple[str, list[str], list[str]]:
@@ -90,6 +105,8 @@ def tailor_resume(
         query_service: Callable that sends a prompt and returns the model text.
         sections: Editable sections (heading + kind) from the template config.
         use_cache: Whether the model call consults/populates the response cache.
+        industry: Optional domain/industry context for the active profile, passed to
+            the objective prompt so the company is described accurately.
         logger: Optional logger for injection.
         _query: Injection point for ``query_ai_service`` (testing).
     Returns:
@@ -119,7 +136,7 @@ def tailor_resume(
         if section.section == SECTION_OBJECTIVE:
             _tailor_objective(
                 body, job, query_service, use_cache, index_ops, changes, issues,
-                _query=_query, logger=_logger,
+                industry=industry, _query=_query, logger=_logger,
             )
         elif section.section == SECTION_HIGHLIGHTS:
             _tailor_highlights(body, highlight_texts, index_ops, changes, issues)
@@ -160,6 +177,8 @@ def _tailor_objective(
     index_ops: list[tuple[int, list[dict]]],
     changes: list[str],
     issues: list[str],
+    *,
+    industry: Optional[str] = None,
     _query: Callable[..., Any],
     logger: logging.Logger,
 ) -> None:
@@ -170,7 +189,7 @@ def _tailor_objective(
     target = body[0]
     current = paragraph_text(target).strip()
     edits = _query(
-        _build_objective_prompt(job, current),
+        _build_objective_prompt(job, current, industry),
         _query_service=query_service,
         use_cache=use_cache,
     )

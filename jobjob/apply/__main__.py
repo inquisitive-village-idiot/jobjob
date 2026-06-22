@@ -114,6 +114,7 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
             template_name=args.template,
             parent_id=settings.google.applications_folder_id,
             reuse_folder_id=reuse_folder_id,
+            industry=settings.industry,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -132,6 +133,7 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
         template_name=args.template,
         parent_id=settings.google.applications_folder_id,
         data_dir=settings.data_dir,
+        industry=settings.industry,
         logger=_logger,
         _credentials_loader=build_credentials_loader(settings),
     )

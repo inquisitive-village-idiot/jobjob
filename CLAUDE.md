@@ -120,7 +120,8 @@ committed):
 | `JOBJOB_PROFILE_<NAME>` / `JOBJOB_ACTIVE_PROFILE` | Profile registry + active | Yes |
 
 **Profile config** — `<profile-repo>/config/.profile` (committed): `RESUME_TEMPLATE_ID`,
-`APPLICANT_NAME` / `_PHONE` / `_EMAIL` / `_LINKEDIN`. No local paths, no secrets.
+`APPLICANT_NAME` / `_PHONE` / `_EMAIL` / `_LINKEDIN`, `INDUSTRY` (optional domain hint
+injected into the resume-objective prompt). No local paths, no secrets.
 
 (`REFERENCE_DOCS_DIR` is removed — reference docs come from the active profile's
 `reference/`.)

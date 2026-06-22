@@ -33,7 +33,7 @@ class ResumeTemplate:
     """A resume template tailored to a role archetype.
 
     Attributes:
-        name: Stable key (e.g. "leadership_biotech").
+        name: Stable key (e.g. "print_correspondent").
         archetype: Human-readable archetype label.
         doc_id: Google Doc id of the template.
         keywords: Keywords used to auto-detect the archetype from a job description.

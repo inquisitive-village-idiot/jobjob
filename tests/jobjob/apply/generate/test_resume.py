@@ -18,6 +18,35 @@ def _job(**kwargs) -> JobDescription:
     return JobDescription(**defaults)
 
 
+class TestBuildObjectivePrompt(TestCase):
+    """The objective prompt's company-accuracy rule is industry-configurable."""
+
+    def test_injects_industry_when_set(self) -> None:
+        prompt = MOD._build_objective_prompt(
+            _job(company_name="Acme", role_title="Editor"),
+            "current objective",
+            "science journalism",
+        )
+        self.assertIn("science journalism", prompt)
+        self.assertIn("actual industry", prompt)
+
+    def test_neutral_rule_when_unset(self) -> None:
+        prompt = MOD._build_objective_prompt(_job(), "current objective")
+        self.assertIn("Describe the company accurately", prompt)
+        self.assertNotIn("actual industry", prompt)
+
+    def test_blank_industry_is_neutral(self) -> None:
+        prompt = MOD._build_objective_prompt(_job(), "current objective", "   ")
+        self.assertNotIn("actual industry", prompt)
+
+    def test_no_hardcoded_domain_example(self) -> None:
+        # The old prompt baked in a biotech/pharma example; it must be gone.
+        for industry in (None, "fintech"):
+            prompt = MOD._build_objective_prompt(_job(), "obj", industry)
+            self.assertNotIn("biotech", prompt.lower())
+            self.assertNotIn("pharma", prompt.lower())
+
+
 def _heading(text: str, start: int, end: int) -> dict:
     return {
         "startIndex": start, "endIndex": end,

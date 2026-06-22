@@ -123,6 +123,16 @@ _SCHEMA: dict[str, dict[str, Any]] = {
         "description": "LinkedIn profile URL for cover letter headers.",
         "required": False,
     },
+    "INDUSTRY": {
+        "label": "Industry / Domain",
+        "group": "Domain",
+        "description": (
+            "Your field, e.g. 'science journalism' or 'commercial print'. Used to "
+            "describe the target company accurately when tailoring the resume "
+            "objective. Leave blank for no domain hint."
+        ),
+        "required": False,
+    },
 }
 
 
