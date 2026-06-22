@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.1.0] - 2026-06-22
+
+- [MINOR] Add an optional per-profile Industry / Domain setting (Settings → Profile) that is injected into the resume-objective prompt so the target company is described accurately for your field; neutral default when unset
+- [PATCH] Model profile read-only/ownership as tracked state and isolate the bundled example profile under `static/example/` (no behavior change)
+
 ## [2.0.2] - 2026-06-21
 
 - [PATCH] Internal code-quality cleanup (no behavior change): inject loggers through call chains instead of declaring module-level loggers, and pre-compile regular expressions as module-level constants
