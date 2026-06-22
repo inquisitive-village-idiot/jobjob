@@ -56,12 +56,25 @@ jobs:
         run: |
           mkdir -p webapp/frontend/dist
           uv sync --group dev
+      - name: Select changed Python files that still exist
+        id: pyfiles
+        # paths-filter lists deleted/renamed-from paths too; drop any that no longer
+        # exist so the formatters don't choke on a missing path (e.g. after a rename).
+        run: |
+          existing=""
+          for f in ${{ needs.change-matrix.outputs.python_files }}; do
+            [ -f "$f" ] && existing="$existing $f"
+          done
+          echo "files=$existing" >> "$GITHUB_OUTPUT"
       - name: isort
-        run: uv run isort ${{ needs.change-matrix.outputs.python_files }}
+        if: steps.pyfiles.outputs.files != ''
+        run: uv run isort ${{ steps.pyfiles.outputs.files }}
       - name: black
-        run: uv run black ${{ needs.change-matrix.outputs.python_files }}
+        if: steps.pyfiles.outputs.files != ''
+        run: uv run black ${{ steps.pyfiles.outputs.files }}
       - name: ruff
-        run: uv run ruff check ${{ needs.change-matrix.outputs.python_files }}
+        if: steps.pyfiles.outputs.files != ''
+        run: uv run ruff check ${{ steps.pyfiles.outputs.files }}
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "format: isort + black"
