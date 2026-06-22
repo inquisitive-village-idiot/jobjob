@@ -14,15 +14,16 @@ in a single run with minimal manual touchup.
 jobjob/                   # Python package: CLI (apply/enrich), loaders, ailib, gapi
   prompts/                # Bundled default prompt templates (app behavior)
 config/.env               # App config — machine-local, gitignored (template committed)
-static/content,reference  # Default content/reference (fallback when no profile active)
+static/example/           # Bundled read-only example profile (content/reference/config);
+                          #   also the fallback when no profile is active
 webapp/                   # FastAPI backend + React frontend (local dashboard)
 tests/                    # Tests + tests/fixtures (example JD/profile PDFs)
 ```
 
 Credential content + reference docs live in **profile repos** (`content/`,
 `reference/`, `config/.profile`), selected via the app config's profile registry —
-see README.md and the `jobjob-config-profiles` design. The repo's `static/content`
-and `static/reference` are fallbacks (tests / fresh clone / no active profile).
+see README.md and the `jobjob-config-profiles` design. The bundled example profile
+(`static/example/`) doubles as the fallback (tests / fresh clone / no active profile).
 
 ## How the Script Works
 
@@ -48,7 +49,7 @@ Output per application:
 
 ## Reference Docs (active profile's `reference/`)
 
-The active profile repo supplies reference docs (falling back to `static/reference`):
+The active profile repo supplies reference docs (falling back to `static/example/reference`):
 
 ```
 reference/
@@ -97,7 +98,7 @@ not in this file. Anchor every claim to those; do not invent variations or bridg
 documented credentials don't support.
 
 The bundled demo profile is a fictional persona, **Tila Mer** (a print science
-correspondent — see `static/content` and `static/reference`), used so the tool ships with a
+correspondent — see `static/example/`), used so the tool ships with a
 coherent, runnable example. Replace it with your own content via the Static Content page.
 
 ## Configuration

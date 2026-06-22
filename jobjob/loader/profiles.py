@@ -15,6 +15,7 @@ active-profile lookup reflects whatever the app config most recently sourced.
 """
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -29,6 +30,63 @@ PROFILE_CONFIG_NAME = ".profile"
 # in site-packages under an installed wheel). It is offered alongside the registered
 # profiles as a reference the user can *duplicate* into a profile they own.
 EXAMPLE_PROFILE_NAME = "example"
+
+
+@dataclass(frozen=True)
+class Profile:
+    """A registered (or bundled) profile with its state resolved once at load time.
+
+    Attributes:
+        name: Lowercased profile name (its registry suffix).
+        path: The profile directory.
+        read_only: True if this is the bundled example (lives in the read-only
+            package ``static/example`` and may only be duplicated).
+        owned: True if jobjob created and manages this dir (a direct child of the
+            home ``profiles/`` base) and so may delete its files. False for the
+            bundled example and for externally-registered, in-place dirs.
+    """
+
+    name: str
+    path: Path
+    read_only: bool
+    owned: bool
+
+
+def _same_dir(a: Path, b: Path) -> bool:
+    """Return True if two paths resolve to the same location (False on OSError)."""
+    try:
+        return a.resolve() == b.resolve()
+    except OSError:
+        return False
+
+
+def build_profiles(profiles_base: Optional[Path] = None) -> dict[str, "Profile"]:
+    """Resolve every profile (registry + bundled example) into ``Profile`` objects.
+
+    ``read_only`` and ``owned`` are computed once here so callers carry the flags
+    instead of recomputing predicates. ``profiles_base`` is the home ``profiles/``
+    dir (used to decide ``owned``); when None, no profile is considered owned.
+
+    Arguments:
+        profiles_base: The ``<home>/profiles`` dir, or None if unknown.
+    Returns:
+        ``{name: Profile}`` for the bundled example plus all registered profiles.
+    """
+    example = bundled_example_dir()
+    base = profiles_base.resolve() if profiles_base is not None else None
+    result: dict[str, Profile] = {}
+    for name, path in all_profiles().items():
+        path = Path(path)
+        read_only = example is not None and _same_dir(path, example)
+        owned = bool(
+            not read_only
+            and base is not None
+            and _same_dir(path.parent, base)
+        )
+        result[name] = Profile(
+            name=name, path=path, read_only=read_only, owned=owned
+        )
+    return result
 
 
 def list_profiles() -> dict[str, Path]:
@@ -46,14 +104,16 @@ def list_profiles() -> dict[str, Path]:
 
 
 def bundled_example_dir() -> Optional[Path]:
-    """Return the bundled example profile dir (package ``static/``), or None.
+    """Return the bundled example profile dir (``static/example``), or None.
 
     Computed directly from this file's location (``<root>/jobjob/loader/profiles.py``
-    → ``<root>/static``) so this module stays import-light (no dependency on
-    ``loader.location``). Returns None when ``static/`` is absent (e.g. a stripped
-    install), so callers can simply skip the example.
+    → ``<root>/static/example``) so this module stays import-light (no dependency on
+    ``loader.location``). The example lives in its own subdir — isolated from any
+    other ``static/`` assets — and doubles as the no-active-profile fallback.
+    Returns None when the dir is absent (e.g. a stripped install), so callers can
+    simply skip the example.
     """
-    candidate = Path(__file__).resolve().parents[2] / "static"
+    candidate = Path(__file__).resolve().parents[2] / "static" / "example"
     return candidate if candidate.is_dir() else None
 
 
@@ -71,27 +131,6 @@ def all_profiles() -> dict[str, Path]:
         profiles[EXAMPLE_PROFILE_NAME] = example
     profiles.update(list_profiles())
     return profiles
-
-
-def is_read_only(name: str, profile_dir: Optional[Path] = None) -> bool:
-    """Return True if the named profile (or dir) is the read-only bundled example.
-
-    Read-only is keyed on *location*, not name: any profile whose dir is the bundled
-    ``static/`` cannot be edited (it lives in the read-only package install), even if
-    a user registered it under a different name.
-    """
-    example = bundled_example_dir()
-    if example is None:
-        return False
-    if profile_dir is not None:
-        try:
-            return profile_dir.resolve() == example.resolve()
-        except OSError:
-            return False
-    if name.lower() == EXAMPLE_PROFILE_NAME:
-        return True
-    target = list_profiles().get(name.lower())
-    return target is not None and target.resolve() == example.resolve()
 
 
 def active_profile_name() -> Optional[str]:

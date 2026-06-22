@@ -111,10 +111,11 @@ Each profile's `reference/` holds free-text documents the model reads as context
 | `writing_style.*` | Voice and writing rules |
 
 Both directories are editable via the local webapp (`webapp/`). The repo's bundled
-`static/content` and `static/reference` are the read-only **example** profile (the
-fictional *Tila Mer*) and the fallback used when no profile is active (tests, a fresh
-clone). Do not store real personal credentials in `static/` — it is committed to the
-repo. See the [Profiles guide](profiles.md).
+`static/example/` is the read-only **example** profile (the fictional *Tila Mer*,
+with its own `content/`, `reference/`, and `config/.profile`) and the fallback used
+when no profile is active (tests, a fresh clone). Do not store real personal
+credentials in `static/` — it is committed to the repo. See the
+[Profiles guide](profiles.md).
 
 ---
 

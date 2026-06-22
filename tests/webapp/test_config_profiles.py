@@ -8,6 +8,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from jobjob.loader.profiles import Profile
 from routers import config as config_router
 from routers import profiles as profiles_router
 
@@ -28,7 +29,10 @@ def client(tmp_path, monkeypatch):
     app.state.app_config_path = app_cfg
     app.state.profile_config_path = prof_cfg
     app.state.profile_name = "demo"
-    app.state.profiles = {"demo": repo, "ic": tmp_path / "ic"}
+    app.state.profiles = {
+        "demo": Profile("demo", repo, read_only=False, owned=True),
+        "ic": Profile("ic", tmp_path / "ic", read_only=False, owned=False),
+    }
 
     def _reload():
         app.state.profile_name = os.environ.get("JOBJOB_ACTIVE_PROFILE", app.state.profile_name)

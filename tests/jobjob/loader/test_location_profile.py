@@ -30,12 +30,16 @@ class TestProfileResolution(TestCase):
         with TemporaryDirectory() as d:
             repo = Path(d)  # no content/ subdir
             with mock.patch.dict("os.environ", _profile_env(repo), clear=True):
-                # Falls back to the repo's static/content (which ships defaults).
-                self.assertTrue(str(MOD.get_content_dir()).endswith("static/content"))
+                # Falls back to the bundled example (static/example/content).
+                self.assertTrue(
+                    str(MOD.get_content_dir()).endswith("static/example/content")
+                )
 
     def test_no_profile_uses_static(self) -> None:
         with mock.patch.dict("os.environ", {}, clear=True):
-            self.assertTrue(str(MOD.get_reference_dir()).endswith("static/reference"))
+            self.assertTrue(
+                str(MOD.get_reference_dir()).endswith("static/example/reference")
+            )
 
     def test_prompt_override_wins_else_default(self) -> None:
         with TemporaryDirectory() as d:

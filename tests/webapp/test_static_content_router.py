@@ -37,7 +37,7 @@ doc_id = ""
 @pytest.fixture
 def repo(tmp_path):
     security.configure_sandbox([tmp_path])
-    content = tmp_path / "static" / "content"
+    content = tmp_path / "static" / "example" / "content"
     content.mkdir(parents=True)
     (content / "templates.toml").write_text(_TEMPLATES_TOML, encoding="utf-8")
     return tmp_path
@@ -60,7 +60,7 @@ class TestSectionToggle:
         )
         assert resp.status_code == 200, resp.text
         doc = tomllib.loads(
-            (repo / "static" / "content" / "templates.toml").read_text(encoding="utf-8")
+            (repo / "static" / "example" / "content" / "templates.toml").read_text(encoding="utf-8")
         )
         sections = doc["tool"]["templates"]["section"]
         assert sections[0]["enabled"] is False
@@ -95,7 +95,7 @@ class TestSectionToggle:
         http.patch(
             "/api/static/toml/templates/sections/0", json={"fields": {"enabled": False}}
         )
-        raw = (repo / "static" / "content" / "templates.toml").read_text(
+        raw = (repo / "static" / "example" / "content" / "templates.toml").read_text(
             encoding="utf-8"
         )
         # tomlkit round-trip keeps the template array intact.

@@ -40,7 +40,7 @@ class TestGetStaticDirHelper(ThisTestCase):
     def test_returns_path_when_dir_exists(self) -> None:
         with mock.patch.object(MOD, "get_root_dir", return_value=_TRUE_ROOT):
             result = MOD._get_static_dir("content")
-        self.assertEqual(_TRUE_ROOT / "static" / "content", result)
+        self.assertEqual(_TRUE_ROOT / "static" / "example" / "content", result)
 
 
 class TestGetStaticPathHelper(ThisTestCase):
@@ -54,7 +54,9 @@ class TestGetStaticPathHelper(ThisTestCase):
     def test_returns_correct_path_for_known_stem(self) -> None:
         with mock.patch.object(MOD, "get_root_dir", return_value=_TRUE_ROOT):
             result = MOD._get_static_path("content", "highlights")
-        self.assertEqual(_TRUE_ROOT / "static" / "content" / "highlights.toml", result)
+        self.assertEqual(
+            _TRUE_ROOT / "static" / "example" / "content" / "highlights.toml", result
+        )
 
 
 class TestGetStaticDir(ThisTestCase):

@@ -20,7 +20,7 @@ from typing import Optional
 from jobjob.loader.profiles import (
     EXAMPLE_PROFILE_NAME,
     PROFILE_REGISTRY_PREFIX,
-    is_read_only,
+    Profile,
 )
 from services.config_service import remove_config_key, write_config
 
@@ -159,33 +159,35 @@ def register_profile(
 
 def delete_profile(
     app_config_path: Path,
-    name: str,
-    profile_dir: Optional[Path],
+    profile: Profile,
     active_name: Optional[str],
 ) -> bool:
-    """Unregister a profile; delete its files only if it is an owned copy.
+    """Unregister a profile; delete its files only if jobjob owns the copy.
 
     Refuses the read-only ``example`` and the currently active profile. External
     (registered-in-place) profiles are unregistered but their files are left on disk —
-    jobjob never created them. Returns True if the on-disk dir was removed.
+    jobjob never created them. ``read_only``/``owned`` are read from the resolved
+    ``Profile`` (computed once at load) rather than recomputed here. Returns True if
+    the on-disk dir was removed.
+
+    Arguments:
+        app_config_path: Path to the app ``config/.env`` holding the registry.
+        profile: The resolved profile to delete.
+        active_name: The currently active profile name, or None.
     """
-    name = name.strip().lower()
-    if is_read_only(name, profile_dir):
+    name = profile.name
+    if profile.read_only:
         raise ProfileError("The example profile is read-only and cannot be deleted.")
     if active_name and name == active_name.strip().lower():
         raise ProfileError(
             "Cannot delete the active profile. Switch to another profile first."
         )
     remove_config_key(app_config_path, registry_key(name))
-    base = profiles_base(app_config_path).resolve()
-    removed = False
-    if profile_dir is not None:
-        resolved = profile_dir.resolve()
-        # Only delete files we own (under <home>/profiles/); leave external dirs alone.
-        if resolved != base and base in resolved.parents and resolved.is_dir():
-            shutil.rmtree(resolved)
-            removed = True
-    return removed
+    # Only delete files we own (a jobjob-created dir under <home>/profiles/).
+    if profile.owned and profile.path.is_dir():
+        shutil.rmtree(profile.path)
+        return True
+    return False
 
 
 # __END__

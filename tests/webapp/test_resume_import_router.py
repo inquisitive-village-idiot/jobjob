@@ -110,8 +110,8 @@ class TestSaveEndpoint:
         assert saved["highlights"]["count"] == 1
         assert "background" in saved
         assert "skills" not in saved  # not targeted
-        assert (repo / "static" / "content" / "highlights.toml").is_file()
-        assert (repo / "static" / "reference" / "background.md").is_file()
+        assert (repo / "static" / "example" / "content" / "highlights.toml").is_file()
+        assert (repo / "static" / "example" / "reference" / "background.md").is_file()
 
     def test_nothing_selected_422(self, client):
         resp = client.post("/api/resume-import/save", json=self._payload())

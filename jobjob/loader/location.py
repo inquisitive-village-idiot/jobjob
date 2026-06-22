@@ -3,8 +3,9 @@
 
 Resolves ``content``, ``reference``, and ``prompt`` resources against the active
 profile repo (``<profile>/<name>``) when one is configured, falling back to the
-code repo's ``static/<name>`` so tests and a fresh clone work without a profile.
-Prompts override per-file but default to the bundled jobjob versions.
+bundled example profile (``static/example/<name>``) so tests and a fresh clone
+work without a profile. Prompts override per-file but default to the bundled
+jobjob versions.
 
 NOTE: resource getters are intentionally NOT cached — resolution depends on the
     active profile (``os.environ``), which can change at runtime on a profile
@@ -22,15 +23,20 @@ from jobjob.loader.profiles import resolve_active_profile_dir
 
 
 def _get_static_dir(name: str) -> Path:
-    """Return path to default static/{name} dir at project root.
+    """Return the bundled fallback dir ``static/example/{name}`` at project root.
+
+    The bundled example profile doubles as the no-active-profile fallback, so its
+    ``content``/``reference`` dirs back tests and a fresh clone.
 
     Raises:
-        FileNotFoundError if default dir does not exist.
+        FileNotFoundError if the dir does not exist.
     """
     root = get_root_dir()
-    result = Path(root, "static", name)
+    result = Path(root, "static", "example", name)
     if not result.is_dir():
-        raise FileNotFoundError(f'"static/{name}" dir not found in project root')
+        raise FileNotFoundError(
+            f'"static/example/{name}" dir not found in project root'
+        )
     return result
 
 

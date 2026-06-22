@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
+from jobjob.loader.profiles import Profile
 from services import profile_service as PS
+
+
+def _profile(name: str, path: Path, *, read_only: bool = False, owned: bool = False):
+    return Profile(name=name, path=Path(path), read_only=read_only, owned=owned)
 
 
 @pytest.fixture
@@ -105,7 +110,9 @@ class TestDelete:
     def test_unregisters_and_removes_owned_dir(self, home):
         _, cfg = home
         dest = PS.create_profile(cfg, {}, "alpha")
-        removed = PS.delete_profile(cfg, "alpha", dest, active_name="local")
+        removed = PS.delete_profile(
+            cfg, _profile("alpha", dest, owned=True), active_name="local"
+        )
         assert removed is True
         assert not dest.exists()
         assert _registry_value(cfg, "alpha") is None
@@ -116,7 +123,9 @@ class TestDelete:
 
         ext = create_blank_profile(tmp_path / "external")
         PS.register_profile(cfg, {}, "ext", str(ext))
-        removed = PS.delete_profile(cfg, "ext", ext.resolve(), active_name="local")
+        removed = PS.delete_profile(
+            cfg, _profile("ext", ext.resolve(), owned=False), active_name="local"
+        )
         assert removed is False
         assert ext.exists()  # never delete files we did not create
         assert _registry_value(cfg, "ext") is None
@@ -125,14 +134,20 @@ class TestDelete:
         _, cfg = home
         dest = PS.create_profile(cfg, {}, "alpha")
         with pytest.raises(PS.ProfileError):
-            PS.delete_profile(cfg, "alpha", dest, active_name="alpha")
+            PS.delete_profile(
+                cfg, _profile("alpha", dest, owned=True), active_name="alpha"
+            )
 
     def test_refuses_read_only_example(self, home):
         _, cfg = home
         from jobjob.loader.profiles import bundled_example_dir
 
         with pytest.raises(PS.ProfileError):
-            PS.delete_profile(cfg, "example", bundled_example_dir(), active_name="local")
+            PS.delete_profile(
+                cfg,
+                _profile("example", bundled_example_dir(), read_only=True),
+                active_name="local",
+            )
 
 
 # __END__

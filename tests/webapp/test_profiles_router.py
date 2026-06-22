@@ -7,8 +7,9 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from jobjob.loader.profiles import all_profiles, active_profile_name
+from jobjob.loader.profiles import active_profile_name, build_profiles
 from routers import profiles as profiles_router
+from services.profile_service import profiles_base
 
 
 @pytest.fixture
@@ -27,7 +28,7 @@ def client(tmp_path, monkeypatch):
     app.state.app_config_path = cfg
 
     def _reload():
-        app.state.profiles = all_profiles()
+        app.state.profiles = build_profiles(profiles_base(cfg))
         app.state.profile_name = active_profile_name()
 
     app.state.reload_state = _reload

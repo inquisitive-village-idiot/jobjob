@@ -10,54 +10,54 @@ the template refresh without a restart.
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from jobjob.loader.profiles import ENV_ACTIVE_PROFILE, is_read_only
+from jobjob.loader.profiles import ENV_ACTIVE_PROFILE, Profile
 from services import profile_service
 from services.config_service import write_config
 
 router = APIRouter()
 
 
+def _profiles(request: Request) -> dict[str, Profile]:
+    """Return the resolved ``{name: Profile}`` map from app state."""
+    return request.app.state.profiles or {}
+
+
+def _registry(request: Request) -> dict[str, Path]:
+    """Project the Profile map to the ``{name: path}`` map profile_service expects."""
+    return {name: p.path for name, p in _profiles(request).items()}
+
+
 def _entries(request: Request) -> list[dict]:
-    """Return per-profile metadata (name, active, read_only, external)."""
-    profiles: dict[str, Path] = request.app.state.profiles or {}
+    """Return per-profile metadata (name, active, read_only, external).
+
+    Reads the read_only/owned flags carried on each ``Profile`` (resolved once at
+    load time) rather than recomputing them per request.
+    """
+    profiles = _profiles(request)
     active = request.app.state.profile_name
-    try:
-        base = profile_service.profiles_base(
-            Path(request.app.state.app_config_path)
-        ).resolve()
-    except Exception:
-        base = None
     out: list[dict] = []
     for name in sorted(profiles):
-        path = Path(profiles[name])
-        read_only = is_read_only(name, path)
-        external = True
-        if base is not None:
-            try:
-                external = not (path.resolve().parent == base)
-            except OSError:
-                external = True
+        p = profiles[name]
         out.append(
             {
                 "name": name,
                 "active": name == active,
-                "read_only": read_only,
-                "external": external and not read_only,
+                "read_only": p.read_only,
+                # External = registered in place; not bundled and not jobjob-owned.
+                "external": not p.read_only and not p.owned,
             }
         )
     return out
 
 
 def _profiles_payload(request: Request) -> dict:
-    profiles = request.app.state.profiles or {}
     return {
         "active": request.app.state.profile_name,
-        "profiles": sorted(profiles.keys()),
+        "profiles": sorted(_profiles(request).keys()),
         "entries": _entries(request),
     }
 
@@ -102,8 +102,7 @@ def set_active_profile(body: ProfileSwitch, request: Request) -> dict:
         400: If the name is not a registered profile.
     """
     name = body.name.strip().lower()
-    profiles = request.app.state.profiles or {}
-    if name not in profiles:
+    if name not in _profiles(request):
         raise HTTPException(
             status_code=400, detail=f"Unknown profile: {body.name}"
         )
@@ -124,7 +123,7 @@ def create_profile(body: ProfileCreate, request: Request) -> dict:
     """Create a new blank profile from the skeleton and register it."""
     try:
         dest = profile_service.create_profile(
-            _app_config(request), request.app.state.profiles or {}, body.name
+            _app_config(request), _registry(request), body.name
         )
     except profile_service.ProfileError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -139,7 +138,7 @@ def duplicate_profile(body: ProfileDuplicate, request: Request) -> dict:
     try:
         dest = profile_service.duplicate_profile(
             _app_config(request),
-            request.app.state.profiles or {},
+            _registry(request),
             body.source,
             body.name,
         )
@@ -156,7 +155,7 @@ def register_profile(body: ProfileRegister, request: Request) -> dict:
     try:
         loc = profile_service.register_profile(
             _app_config(request),
-            request.app.state.profiles or {},
+            _registry(request),
             body.name,
             body.location,
         )
@@ -170,15 +169,13 @@ def register_profile(body: ProfileRegister, request: Request) -> dict:
 @router.delete("/{name}")
 def delete_profile(name: str, request: Request) -> dict:
     """Unregister a profile (deleting its files only if it is an owned copy)."""
-    profiles = request.app.state.profiles or {}
     key = name.strip().lower()
-    profile_dir = profiles.get(key)
+    profile = _profiles(request).get(key)
+    if profile is None:
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {name}")
     try:
         profile_service.delete_profile(
-            _app_config(request),
-            key,
-            Path(profile_dir) if profile_dir is not None else None,
-            request.app.state.profile_name,
+            _app_config(request), profile, request.app.state.profile_name
         )
     except profile_service.ProfileError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

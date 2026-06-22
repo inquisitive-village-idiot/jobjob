@@ -29,7 +29,7 @@ class TestGetContentDir(ThisTestCase):
 
     def test_returns_expected_path(self) -> None:
         found = MOD.get_content_dir()
-        expected = Path(MOD.get_root_dir(), "static/content")
+        expected = Path(MOD.get_root_dir(), "static/example/content")
         self.assertEqual(expected, found)
 
 

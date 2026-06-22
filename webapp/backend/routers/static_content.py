@@ -14,11 +14,11 @@ from security import safe_path
 router = APIRouter()
 
 _TOML_FILES = {
-    "highlights": "static/content/highlights.toml",
-    "skills": "static/content/skills.toml",
-    "templates": "static/content/templates.toml",
+    "highlights": "static/example/content/highlights.toml",
+    "skills": "static/example/content/skills.toml",
+    "templates": "static/example/content/templates.toml",
 }
-_REFERENCE_BASE = "static/reference"
+_REFERENCE_BASE = "static/example/reference"
 
 # Maps TOML name → (table path segments, item array key).
 # e.g. highlights lives at doc["tool"]["highlights"]["highlight"][i]
@@ -52,7 +52,7 @@ def _guard_writable(request: Request) -> None:
 
 def _toml_path(request: Request, name: str) -> Path:
     """Resolve a content TOML path: the active profile's ``content/`` if present,
-    else the repo's ``static/content`` (mirrors jobjob.loader.location)."""
+    else the bundled example ``static/example/content`` (mirrors loader.location)."""
     filename = Path(_TOML_FILES[name]).name
     profile_dir = request.app.state.profile_dir
     if profile_dir and (Path(profile_dir) / "content").is_dir():
@@ -62,7 +62,7 @@ def _toml_path(request: Request, name: str) -> Path:
 
 def _reference_base(request: Request) -> Path:
     """Resolve the reference dir: the active profile's ``reference/`` if present,
-    else the repo's ``static/reference``."""
+    else the bundled example ``static/example/reference``."""
     profile_dir = request.app.state.profile_dir
     if profile_dir and (Path(profile_dir) / "reference").is_dir():
         return safe_path(Path(profile_dir) / "reference")

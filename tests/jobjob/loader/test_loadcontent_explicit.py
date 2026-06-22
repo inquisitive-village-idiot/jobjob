@@ -16,8 +16,10 @@ import jobjob.loader.loadcontent as MOD
 
 LOGGER = logging.getLogger(__name__)
 
-# Absolute path to the static content dir in this repo.
-_STATIC_CONTENT = Path(__file__).parent.parent.parent.parent / "static" / "content"
+# Absolute path to the bundled example content dir in this repo (the fallback).
+_STATIC_CONTENT = (
+    Path(__file__).parent.parent.parent.parent / "static" / "example" / "content"
+)
 
 
 class ThisTestCase(TestCase):

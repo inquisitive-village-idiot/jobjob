@@ -12,7 +12,7 @@ bundled dashboard frontend.
 - `jobjob/loader/` — auth, prompt/content/reference loaders, and static-file location.
   - `profiles.py` resolves the profile registry and the active profile.
   - `location.py` resolves `content`/`reference`/`prompt` against the active profile,
-    falling back to the bundled `static/` defaults.
+    falling back to the bundled example profile (`static/example/`).
   - `loadcontent.py` loads highlights, skills, and templates from a profile's TOML.
   - `skeleton.py` writes a blank-but-valid profile for new users.
 - `jobjob/ailib/` — `query` (retry + cache orchestration), `client/` (thin provider

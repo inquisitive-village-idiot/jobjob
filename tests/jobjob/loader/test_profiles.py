@@ -30,10 +30,11 @@ class TestListProfiles(TestCase):
 
 
 class TestBundledExample(TestCase):
-    def test_bundled_example_dir_points_at_static(self) -> None:
+    def test_bundled_example_dir_is_isolated_subdir(self) -> None:
         d = MOD.bundled_example_dir()
         self.assertIsNotNone(d)
-        self.assertEqual("static", d.name)
+        self.assertEqual("example", d.name)
+        self.assertEqual("static", d.parent.name)
         self.assertTrue((d / "content").is_dir())
 
     def test_all_profiles_injects_example(self) -> None:
@@ -48,16 +49,6 @@ class TestBundledExample(TestCase):
         ):
             self.assertEqual(Path("/custom"), MOD.all_profiles()["example"])
 
-    def test_is_read_only_by_name(self) -> None:
-        with mock.patch.dict("os.environ", {}, clear=True):
-            self.assertTrue(MOD.is_read_only("example"))
-            self.assertFalse(MOD.is_read_only("local"))
-
-    def test_is_read_only_by_dir(self) -> None:
-        static = MOD.bundled_example_dir()
-        self.assertTrue(MOD.is_read_only("anything", static))
-        self.assertFalse(MOD.is_read_only("anything", Path("/tmp/elsewhere")))
-
     def test_resolve_active_can_select_example(self) -> None:
         with mock.patch.dict(
             "os.environ", {"JOBJOB_ACTIVE_PROFILE": "example"}, clear=True
@@ -65,6 +56,41 @@ class TestBundledExample(TestCase):
             self.assertEqual(
                 MOD.bundled_example_dir(), MOD.resolve_active_profile_dir()
             )
+
+
+class TestBuildProfiles(TestCase):
+    """``build_profiles`` carries read_only/owned, resolved once at load time."""
+
+    def test_example_is_read_only_not_owned(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True):
+            profiles = MOD.build_profiles(Path("/home/profiles"))
+        example = profiles["example"]
+        self.assertTrue(example.read_only)
+        self.assertFalse(example.owned)
+        self.assertEqual(MOD.bundled_example_dir(), example.path)
+
+    def test_owned_when_under_base(self) -> None:
+        base = Path("/home/profiles")
+        env = {"JOBJOB_PROFILE_MINE": str(base / "mine")}
+        with mock.patch.dict("os.environ", env, clear=True):
+            profiles = MOD.build_profiles(base)
+        mine = profiles["mine"]
+        self.assertFalse(mine.read_only)
+        self.assertTrue(mine.owned)
+
+    def test_external_dir_not_owned(self) -> None:
+        env = {"JOBJOB_PROFILE_EXT": "/elsewhere/ext"}
+        with mock.patch.dict("os.environ", env, clear=True):
+            profiles = MOD.build_profiles(Path("/home/profiles"))
+        ext = profiles["ext"]
+        self.assertFalse(ext.read_only)
+        self.assertFalse(ext.owned)
+
+    def test_no_base_means_nothing_owned(self) -> None:
+        env = {"JOBJOB_PROFILE_MINE": "/home/profiles/mine"}
+        with mock.patch.dict("os.environ", env, clear=True):
+            profiles = MOD.build_profiles(None)
+        self.assertFalse(profiles["mine"].owned)
 
 
 class TestActiveProfile(TestCase):

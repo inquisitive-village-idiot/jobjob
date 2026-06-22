@@ -116,7 +116,8 @@ def reload_state() -> None:
     without a server restart.
     """
     from jobjob.config import load_settings
-    from jobjob.loader.profiles import all_profiles, is_read_only, profile_config_file
+    from jobjob.loader.profiles import build_profiles, profile_config_file
+    from services.profile_service import profiles_base
 
     settings = load_settings(_APP_CONFIG)
     roots = [_STATIC_DIR, _DATA_DIR, _REPO_ROOT / "config"]
@@ -138,12 +139,11 @@ def reload_state() -> None:
     app.state.profile_config_path = (
         profile_config_file(settings.profile_dir) if settings.profile_dir else None
     )
-    # The switcher/registry includes the bundled read-only ``example`` profile.
-    app.state.profiles = all_profiles()
-    app.state.profile_read_only = is_read_only(
-        settings.profile_name or "",
-        Path(settings.profile_dir) if settings.profile_dir else None,
-    )
+    # Resolve every profile (registry + bundled read-only ``example``) into Profile
+    # objects once, so read_only/owned are carried state rather than recomputed.
+    app.state.profiles = build_profiles(profiles_base(_APP_CONFIG))
+    active = app.state.profiles.get((settings.profile_name or "").lower())
+    app.state.profile_read_only = bool(active and active.read_only)
     app.state.reload_state = reload_state
     data_dir = (
         settings.data_dir
