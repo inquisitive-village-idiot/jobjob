@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from jobjob.ailib.query import query_ai_service
+from jobjob.loader.loadprompt import render_prompt
 from jobjob.loader.loadreference import load_reference_documents
 from jobjob.loader.loadstatic import read_document
-from jobjob.loader.location import get_prompt_path
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
@@ -164,13 +164,14 @@ def build_prompt(
         if background_mode == "fuller"
         else ""
     )
-    template = (prompt_path or get_prompt_path("resume_import")).read_text(
-        encoding="utf-8"
-    )
-    return template.format(
-        text_content=text_content,
-        background_guidance=guidance,
-        voice_anchor=anchor,
+    return render_prompt(
+        "resume_import",
+        {
+            "text_content": text_content,
+            "background_guidance": guidance,
+            "voice_anchor": anchor,
+        },
+        prompt_path=prompt_path,
     )
 
 

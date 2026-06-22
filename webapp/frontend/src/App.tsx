@@ -3,20 +3,22 @@ import DashboardPage from "./pages/DashboardPage";
 import QueuePage from "./pages/QueuePage";
 import ConfigPage from "./pages/ConfigPage";
 import StaticContentPage from "./pages/StaticContentPage";
+import PromptsPage from "./pages/PromptsPage";
 import AccountMenu from "./components/AccountMenu";
 import SetupWizard from "./components/SetupWizard";
 import { api } from "./api/client";
 import type { SetupStatus } from "./types";
 
-type Page = "dashboard" | "queue" | "config" | "static";
+type Page = "dashboard" | "queue" | "config" | "static" | "prompts";
 
 // Config is reached via the account menu (Settings), not the main nav.
 const NAV: { id: Page; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "queue", label: "Queue" },
   { id: "static", label: "Static Content" },
+  { id: "prompts", label: "Prompts" },
 ];
-const PAGES: Page[] = ["dashboard", "queue", "static", "config"];
+const PAGES: Page[] = ["dashboard", "queue", "static", "prompts", "config"];
 
 function pageFromHash(hash: string): Page {
   const id = hash.replace("#", "") as Page;
@@ -92,6 +94,7 @@ export default function App() {
         {page === "queue" && <QueuePage />}
         {page === "config" && <ConfigPage />}
         {page === "static" && <StaticContentPage />}
+        {page === "prompts" && <PromptsPage />}
       </main>
 
       {showWizard && (

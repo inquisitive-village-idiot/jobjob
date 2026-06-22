@@ -1,0 +1,17 @@
+Rewrite the OBJECTIVE statement of a resume for a specific role.
+
+TARGET ROLE: ${role_title} at ${company_name}
+
+KEY JOB REQUIREMENTS:
+${key_requirements}
+
+CURRENT OBJECTIVE:
+${current_objective}
+
+RULES:
+1. Rewrite the objective for THIS role and company: name the company and use a natural form of the role title — expand or drop internal abbreviations/jargon (e.g. org-unit codes) that an outside reader would not use
+2. Describe the company accurately${industry_clause}; do not mislabel the kind of company it is
+3. Keep it to 1-2 sentences, and preserve any existing relocation sentence verbatim
+4. Do not invent facts; only use the current objective and job information provided
+
+Return ONLY valid JSON: {"objective": "the rewritten objective text"}

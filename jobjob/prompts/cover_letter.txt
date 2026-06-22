@@ -1,0 +1,46 @@
+Write a cover letter for the ${role} position at ${company}.
+
+POSITION DETAILS:
+- Role: ${role}
+- Department: ${department}
+- Seniority: ${seniority}
+- Location: ${location}
+- Role summary: ${summary}
+- Key requirements: ${requirements}
+- Main responsibilities: ${responsibilities}
+
+CANDIDATE EXPERIENCE (these highlights appear word-for-word on the resume submitted with this letter):
+${highlights_json}
+
+THE LETTER MUST NOT REGURGITATE THE RESUME:
+- The reader has the resume next to this letter; copying phrases from the highlights wastes the page
+- Retell one or two highlights as short stories instead: the situation, the insight, why it mattered -- in fresh language
+- Add what the resume cannot say: a point of view, a lesson learned, the reasoning behind the work
+
+OPENING:
+- Ground the opening in what the job description itself emphasizes: a named initiative, the mission of the department, or the specific problem this role exists to solve. Name it explicitly.
+- You may draw on well-established knowledge of ${company}, but never invent specifics (initiatives, products, news) you are not sure of.
+- The hook must connect that specific to the candidate's experience -- a non-obvious connection beats a flattering one.
+
+WRITING GUIDELINES:
+- Write conversationally, as if explaining to a colleague why this role excites you
+- One or two concrete examples are enough; don't list everything
+- Make a claim about how the work should be done (a point of view), not just a recitation of what was done
+- Vary sentence length and structure; read it back for rhythm
+- Let the letter flow naturally; prioritize readability over hitting every point
+- 300-400 words maximum
+- Only use facts from the reference documents in your context
+- Avoid em dashes; use commas or semicolons instead
+
+BAD PATTERNS TO AVOID:
+- "[Gerund phrase]. This is what I did at X, and it's what draws me to Y."
+- Openers that describe the candidate instead of engaging the company ("I love...", "I am a...", "As a...")
+- Listing multiple achievements in rapid succession without connecting them
+- Generic praise of the company without specific insight
+- Stock closers ("I'd welcome the chance to discuss..."); close with something specific to this role instead
+- Stiff, formal language that sounds like a template
+
+FORMAT:
+- Start with "Dear ${company} Hiring Manager,"
+- End with "Sincerely,\n\n${name}"
+- Return ONLY the letter body (no header/contact info)

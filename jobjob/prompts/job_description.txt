@@ -1,8 +1,8 @@
 Analyze this job description and extract structured information.
 Return a JSON object with exactly these fields:
-{field_def}
+${field_def}
 
 Job Description:
-{text_content}
+${text_content}
 
 Return ONLY valid JSON, no other text.

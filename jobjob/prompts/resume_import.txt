@@ -4,7 +4,7 @@ applicant can keep and tailor for future applications.
 
 RESUME TEXT
 -----------
-{text_content}
+${text_content}
 -----------
 
 Respond with ONLY a single JSON object (no prose, no markdown code fences) using exactly
@@ -27,8 +27,8 @@ these top-level keys:
     - label: a short snake_case identifier (e.g. "data_analysis").
     - text: the display label (e.g. "Data Analysis").
     - keywords: an array of one to five lowercase keywords or synonyms.
-- background: {background_guidance}
-{voice_anchor}
+- background: ${background_guidance}
+${voice_anchor}
 Rules:
 - Use ONLY information supported by the resume. Never invent employers, titles, dates,
   metrics, or credentials. If something is absent, omit it rather than fabricating it.

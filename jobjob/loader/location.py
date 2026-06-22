@@ -118,6 +118,15 @@ def _package_prompt_dir() -> Path:
     return result
 
 
+def package_prompt_dir() -> Path:
+    """Public accessor for the bundled default prompt dir (``jobjob/prompts``).
+
+    The prompts editor needs the bundled default explicitly (to show it and to reset
+    an override), independent of any active-profile override resolution.
+    """
+    return _package_prompt_dir()
+
+
 def get_prompt_dir() -> Path:
     """Return the prompt dir: the active profile's ``prompt/`` if present, else
     the bundled ``jobjob/prompts``."""
