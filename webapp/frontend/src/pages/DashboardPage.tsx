@@ -5,6 +5,7 @@ import type { AppStatus, CompletedItem, ConfigSchema, QueueItem } from "../types
 import { useJobs } from "../hooks/useJobs";
 import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
+import NotesModal from "../components/NotesModal";
 import { FloatingOutline, useScrollSpy } from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
 
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("apply");
   const [confirming, setConfirming] = useState<QueueItem | null>(null);
   const [rerunningApp, setRerunningApp] = useState<CompletedItem | null>(null);
+  const [notesApp, setNotesApp] = useState<CompletedItem | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
 
@@ -38,14 +40,31 @@ export default function DashboardPage() {
       `/tracking/applications/${encodeURIComponent(item.folder_name)}/status`,
       { status }
     );
+    // A real status change auto-logs a changelog note; reflect that in the badge.
+    const changed = (item.app_status ?? "GENERATED") !== status;
     setCompleted((prev) =>
       prev === null
         ? prev
         : prev.map((c) =>
-            c.folder_name === item.folder_name ? { ...c, app_status: status } : c
+            c.folder_name === item.folder_name
+              ? {
+                  ...c,
+                  app_status: status,
+                  note_count: (c.note_count ?? 0) + (changed ? 1 : 0),
+                }
+              : c
           )
     );
   };
+
+  const setNoteCount = (folderName: string, count: number) =>
+    setCompleted((prev) =>
+      prev === null
+        ? prev
+        : prev.map((c) =>
+            c.folder_name === folderName ? { ...c, note_count: count } : c
+          )
+    );
 
   const appLabel = (item: CompletedItem) =>
     item.company ? `${item.company} — ${item.title || ""}`.trim() : item.folder_name;
@@ -163,6 +182,7 @@ export default function DashboardPage() {
               items={completed === null ? null : jdCompleted}
               onRerun={setRerunningApp}
               onStatusChange={setAppStatus}
+              onNotes={setNotesApp}
             />
           ) : (
             <CompletedProfilesTable
@@ -204,6 +224,14 @@ export default function DashboardPage() {
 
       {viewingJob && (
         <JobProgressModal job={viewingJob} onClose={() => setViewingJobId(null)} />
+      )}
+
+      {notesApp && (
+        <NotesModal
+          item={notesApp}
+          onClose={() => setNotesApp(null)}
+          onCountChange={setNoteCount}
+        />
       )}
     </div>
   );
@@ -311,10 +339,12 @@ function AppRow({
   item,
   onRerun,
   onStatusChange,
+  onNotes,
 }: {
   item: CompletedItem;
   onRerun: (item: CompletedItem) => void;
   onStatusChange: (item: CompletedItem, status: AppStatus) => Promise<void>;
+  onNotes: (item: CompletedItem) => void;
 }) {
   return (
     <tr className="bg-white hover:bg-gray-50">
@@ -344,6 +374,16 @@ function AppRow({
             Drive
           </a>
         )}
+        {item.status_writable && (
+          <button
+            onClick={() => onNotes(item)}
+            className="px-2 py-0.5 text-xs font-medium text-gray-700 border
+              border-gray-200 rounded hover:bg-gray-50 mr-2"
+            title="View status history and add notes"
+          >
+            Notes{item.note_count ? ` (${item.note_count})` : ""}
+          </button>
+        )}
         <button
           onClick={() => onRerun(item)}
           className="px-2 py-0.5 text-xs font-medium text-gray-700 border
@@ -361,10 +401,12 @@ function CompletedAppsTable({
   items,
   onRerun,
   onStatusChange,
+  onNotes,
 }: {
   items: CompletedItem[] | null;
   onRerun: (item: CompletedItem) => void;
   onStatusChange: (item: CompletedItem, status: AppStatus) => Promise<void>;
+  onNotes: (item: CompletedItem) => void;
 }) {
   const groups =
     items === null
@@ -420,6 +462,7 @@ function CompletedAppsTable({
                     item={item}
                     onRerun={onRerun}
                     onStatusChange={onStatusChange}
+                    onNotes={onNotes}
                   />
                 ))}
               </tbody>

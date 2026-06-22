@@ -68,6 +68,17 @@ export const APP_STATUSES = [
 
 export type AppStatus = (typeof APP_STATUSES)[number];
 
+// Mirrors NOTE_STATUS/NOTE_FREEFORM in application_metadata.py — keep in sync.
+export type NoteKind = "status" | "note";
+
+// A changelog entry on an application: an auto-logged status transition or a
+// free-text note the user added.
+export interface AppNote {
+  ts: string;
+  kind: NoteKind;
+  text: string;
+}
+
 export interface CompletedItem {
   name: string;
   path: string;
@@ -81,6 +92,7 @@ export interface CompletedItem {
   title?: string;
   app_status?: AppStatus; // metadata.json > folder-name prefix > GENERATED
   status_writable?: boolean; // false when only the Drive API fallback is in use
+  note_count?: number; // changelog notes recorded for the application
   // Profiles only — parsed from "<created>-<processed>-<Company>-<Person>" (sidecar preferred).
   person?: string;
   date_created?: string;
