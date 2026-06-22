@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.2.0] - 2026-06-22
+
+- [MINOR] Customize the AI prompts per profile from a new Prompts page: edit the résumé-objective, cover-letter, skills-analysis, and document-parsing prompts, with reset-to-default and a reference of the available `${variables}`
+- [MINOR] Track each application's history: status changes are auto-logged with timestamps and you can add free-text notes, viewable from a Notes panel on the dashboard
+
 ## [2.1.1] - 2026-06-22
 
 - [PATCH] Enforce formatting and linting in CI and pre-commit (black, isort, ruff for Python; prettier, eslint for the frontend) — no behavior change
