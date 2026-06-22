@@ -20,7 +20,8 @@ from services.application_metadata import (
     DEFAULT_STATUS,
     METADATA_FILENAME,
     ApplicationStatus,
-    read_status,
+    read_metadata,
+    status_from_metadata,
 )
 from services.drive_service import list_application_folders
 
@@ -149,11 +150,13 @@ def _application_item(
     drive,
     metadata_status: Optional[ApplicationStatus] = None,
     status_writable: bool = False,
+    note_count: int = 0,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
     ``app_status`` precedence: metadata.json > folder-name prefix > GENERATED.
     ``status`` (artifact completeness) is a separate axis and untouched.
+    ``note_count`` is the number of changelog notes recorded for the application.
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -181,6 +184,7 @@ def _application_item(
         "status": status,
         "app_status": app_status,
         "status_writable": status_writable,
+        "note_count": note_count,
         "drive": drive,
         **parsed,
     }
@@ -224,10 +228,12 @@ def _application_items(
                     >= _EXPECTED_ARTIFACTS
                 )
                 try:
-                    metadata_status = read_status(folder)
+                    meta = read_metadata(folder)
+                    metadata_status = status_from_metadata(meta)
                 except (ValueError, OSError) as exc:
                     logger.warning("Unreadable metadata in %s: %s", folder, exc)
-                    metadata_status = None
+                    meta, metadata_status = {}, None
+                note_count = len(meta.get("notes") or [])
                 match = links.get(folder.name)
                 items.append(
                     _application_item(
@@ -236,6 +242,7 @@ def _application_items(
                         status="completed" if complete else "error",
                         metadata_status=metadata_status,
                         status_writable=True,
+                        note_count=note_count,
                         drive=(
                             {
                                 "found": True,

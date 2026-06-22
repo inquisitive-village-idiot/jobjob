@@ -7,7 +7,13 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from security import safe_path
-from services.application_metadata import ApplicationStatus, write_status
+from services.application_metadata import (
+    ApplicationStatus,
+    add_note,
+    read_notes,
+    read_status,
+    write_status,
+)
 from services.tracking_service import (
     invalidate_completed_cache,
     list_completed,
@@ -79,21 +85,17 @@ def get_completed(request: Request, refresh: bool = False) -> list[dict]:
     )
 
 
-class StatusUpdate(BaseModel):
-    status: ApplicationStatus
+def _resolve_app_folder(request: Request, folder_name: str) -> Path:
+    """Resolve and validate an application folder in the local mirror.
 
+    Writes/reads go through the locally-synced Drive mirror, so this requires
+    ``applications_local_dir`` to be configured and the folder to exist.
 
-@router.patch("/applications/{folder_name}/status")
-def set_application_status(
-    folder_name: str, body: StatusUpdate, request: Request
-) -> dict:
-    """Record an application's status in its folder's ``metadata.json``.
-
-    Writes through the locally-synced Drive mirror (the sync client uploads the
-    file), so status changes require ``applications_local_dir`` to be configured.
+    Raises:
+        HTTPException: 400 if the mirror is unconfigured or the name is unsafe;
+            404 if the folder does not exist.
     """
-    s = _settings(request)
-    local_dir = s.get("applications_local_dir")
+    local_dir = _settings(request).get("applications_local_dir")
     if not local_dir:
         raise HTTPException(
             status_code=400,
@@ -116,6 +118,22 @@ def set_application_status(
         raise HTTPException(status_code=400, detail=str(exc))
     if not folder.is_dir():
         raise HTTPException(status_code=404, detail="Application folder not found.")
+    return folder
+
+
+class StatusUpdate(BaseModel):
+    status: ApplicationStatus
+
+
+@router.patch("/applications/{folder_name}/status")
+def set_application_status(
+    folder_name: str, body: StatusUpdate, request: Request
+) -> dict:
+    """Record an application's status in its folder's ``metadata.json``.
+
+    A status change is auto-logged to the application's changelog notes.
+    """
+    folder = _resolve_app_folder(request, folder_name)
     try:
         meta = write_status(folder, body.status)
     except (ValueError, OSError) as exc:
@@ -125,4 +143,42 @@ def set_application_status(
         "folder_name": folder_name,
         "app_status": meta["status"],
         "status_updated_at": meta["status_updated_at"],
+        "note_count": len(meta.get("notes") or []),
+    }
+
+
+@router.get("/applications/{folder_name}/notes")
+def get_application_notes(folder_name: str, request: Request) -> dict:
+    """Return an application's changelog notes (oldest first) and current status."""
+    folder = _resolve_app_folder(request, folder_name)
+    try:
+        status = read_status(folder)
+        notes = read_notes(folder)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=500, detail=f"Could not read metadata: {exc}")
+    return {
+        "folder_name": folder_name,
+        "app_status": status.value if status else None,
+        "notes": notes,
+    }
+
+
+class NoteCreate(BaseModel):
+    text: str
+
+
+@router.post("/applications/{folder_name}/notes")
+def add_application_note(folder_name: str, body: NoteCreate, request: Request) -> dict:
+    """Append a free-text changelog note to an application's ``metadata.json``."""
+    folder = _resolve_app_folder(request, folder_name)
+    try:
+        meta = add_note(folder, body.text)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write metadata: {exc}")
+    invalidate_completed_cache()
+    return {
+        "folder_name": folder_name,
+        "notes": meta.get("notes") or [],
     }

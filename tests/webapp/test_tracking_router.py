@@ -51,7 +51,11 @@ class TestSetApplicationStatus:
         assert body["status_updated_at"]
         on_disk = json.loads((mirror / _FOLDER / METADATA_FILENAME).read_text())
         assert on_disk["status"] == "APPLIED"
-        assert on_disk["notes"] == []
+        # The first status set is auto-logged to the changelog.
+        assert len(on_disk["notes"]) == 1
+        assert on_disk["notes"][0]["kind"] == "status"
+        assert on_disk["notes"][0]["text"] == "Status set to APPLIED"
+        assert body["note_count"] == 1
 
     def test_unknown_status_rejected(self, client):
         resp = _patch(client, _FOLDER, "BOGUS")
@@ -82,3 +86,45 @@ class TestSetApplicationStatus:
         resp = _patch(client, _FOLDER, "IGNORED")
         assert resp.status_code == 200
         assert tracking_service._completed_cache is None
+
+
+def _notes_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/notes"
+
+
+class TestApplicationNotes:
+    def test_get_notes_empty(self, client):
+        resp = client.get(_notes_url(_FOLDER))
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "folder_name": _FOLDER,
+            "app_status": None,
+            "notes": [],
+        }
+
+    def test_add_note_persists_and_returns_list(self, client, mirror):
+        resp = client.post(_notes_url(_FOLDER), json={"text": "recruiter reached out"})
+        assert resp.status_code == 200, resp.text
+        notes = resp.json()["notes"]
+        assert len(notes) == 1
+        assert notes[0]["kind"] == "note"
+        assert notes[0]["text"] == "recruiter reached out"
+        on_disk = json.loads((mirror / _FOLDER / METADATA_FILENAME).read_text())
+        assert on_disk["notes"] == notes
+
+    def test_empty_note_rejected(self, client):
+        resp = client.post(_notes_url(_FOLDER), json={"text": "   "})
+        assert resp.status_code == 422
+
+    def test_status_change_shows_in_notes(self, client):
+        _patch(client, _FOLDER, "APPLIED")
+        resp = client.get(_notes_url(_FOLDER))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["app_status"] == "APPLIED"
+        assert body["notes"][0]["kind"] == "status"
+        assert body["notes"][0]["text"] == "Status set to APPLIED"
+
+    def test_missing_folder_404(self, client):
+        resp = client.post(_notes_url("2026-09-09 - Nope - Role"), json={"text": "x"})
+        assert resp.status_code == 404
