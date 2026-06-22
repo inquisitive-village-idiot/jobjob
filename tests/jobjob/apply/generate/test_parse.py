@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Test."""
 
-from tests.fixtures import fixture_dir, fixture_path
 import json
 import logging
 from unittest import TestCase, mock
 
 import jobjob.apply.generate.parse as MOD
-from jobjob.loader import location
 from jobjob.structure.job_decription import JobDescription
+from tests.fixtures import fixture_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,7 +51,10 @@ class TestParseJobDescription(ThisTestCase):
         import tempfile
         from pathlib import Path
 
-        payload = {"company_name": "Acme Gazette", "role_title": "Science Correspondent"}
+        payload = {
+            "company_name": "Acme Gazette",
+            "role_title": "Science Correspondent",
+        }
         captured: dict = {}
 
         def _query(prompt, **kwargs):

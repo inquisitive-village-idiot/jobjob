@@ -30,9 +30,7 @@ def example_dir(tmp_path):
 class TestReadOnlyGuard:
     def test_put_toml_blocked(self, example_dir):
         client = _app(read_only=True, profile_dir=example_dir)
-        r = client.put(
-            "/api/static/toml/skills", json={"content": "[tool.skills]\n"}
-        )
+        r = client.put("/api/static/toml/skills", json={"content": "[tool.skills]\n"})
         assert r.status_code == 403
         assert "read-only" in r.json()["detail"].lower()
 
@@ -45,9 +43,7 @@ class TestReadOnlyGuard:
 
     def test_reference_write_blocked(self, example_dir):
         client = _app(read_only=True, profile_dir=example_dir)
-        r = client.put(
-            "/api/static/reference/background.md", json={"content": "x"}
-        )
+        r = client.put("/api/static/reference/background.md", json={"content": "x"})
         assert r.status_code == 403
 
     def test_writable_profile_allows_toml(self, example_dir):

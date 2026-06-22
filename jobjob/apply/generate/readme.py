@@ -44,10 +44,9 @@ def assess_fit(skills: Mapping) -> Fit:
         band = BAND_WEAK
     elif not stretch:
         band = BAND_STRONG
-    elif (
-        len(stretch) <= MODERATE_GAP_THRESHOLD
-        or len(supported) >= SUPPORT_RATIO * len(stretch)
-    ):
+    elif len(stretch) <= MODERATE_GAP_THRESHOLD or len(
+        supported
+    ) >= SUPPORT_RATIO * len(stretch):
         band = BAND_MODERATE
     else:
         band = BAND_WEAK
@@ -55,11 +54,7 @@ def assess_fit(skills: Mapping) -> Fit:
     strengths = tuple(s.get("skill", "") for s in supported if s.get("skill"))
     weaknesses = tuple(
         g["skill"]
-        + (
-            " (aspirational)"
-            if g.get("severity", "stretch") == "aspirational"
-            else ""
-        )
+        + (" (aspirational)" if g.get("severity", "stretch") == "aspirational" else "")
         for g in gaps
         if g.get("skill")
     )

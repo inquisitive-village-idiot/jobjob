@@ -37,7 +37,8 @@ def parse_pdf_to_dataclass(
         path: The PDF to parse.
         klass: The dataclass to populate (its field docs define the schema).
         prompt_stem: Stem of the prompt template in ``static/prompt``.
-        query_service: AIClient (``__call__`` for text; ``complete_document`` for vision).
+        query_service: AIClient (``__call__`` for text; ``complete_document`` for
+            vision).
         prompt_path: Override path to the prompt template.
         use_cache: Whether the text path consults/populates the response cache.
             The vision path never caches (the prompt is identical across files).
@@ -49,11 +50,14 @@ def parse_pdf_to_dataclass(
     path = Path(path)
     text = _load_text(path)
     if text:
-        prompt = format_dataclass_prompt(klass, prompt_stem, text, prompt_path=prompt_path)
+        prompt = format_dataclass_prompt(
+            klass, prompt_stem, text, prompt_path=prompt_path
+        )
         data = _query(prompt, _query_service=query_service, use_cache=use_cache)
     else:
         # NOTE: vision path — attach the PDF and let the model read it. The prompt is
-        #   the same for every image-only file, so caching is disabled to avoid collisions.
+        #   the same for every image-only file, so caching is disabled to avoid
+        #   collisions.
         prompt = format_dataclass_prompt(
             klass, prompt_stem, VISION_TEXT_PLACEHOLDER, prompt_path=prompt_path
         )

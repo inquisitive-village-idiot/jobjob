@@ -42,7 +42,11 @@ export default function ScheduleModal({ items, onClose, onConfirm }: Props) {
   const toggle = (path: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(path) ? next.delete(path) : next.add(path);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
       return next;
     });
 
@@ -97,7 +101,10 @@ export default function ScheduleModal({ items, onClose, onConfirm }: Props) {
             </label>
             <div className="flex gap-3">
               {(["sync", "async"] as const).map((m) => (
-                <label key={m} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                <label
+                  key={m}
+                  className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer"
+                >
                   <input
                     type="radio"
                     name="mode"
@@ -138,7 +145,9 @@ export default function ScheduleModal({ items, onClose, onConfirm }: Props) {
                 type="number"
                 min={0}
                 value={intervalMinutes}
-                onChange={(e) => setIntervalMinutes(Math.max(0, Number(e.target.value)))}
+                onChange={(e) =>
+                  setIntervalMinutes(Math.max(0, Number(e.target.value)))
+                }
                 className="w-24 border border-gray-300 rounded px-3 py-1.5 text-sm"
               />
               <span className="text-xs text-gray-500">minutes</span>
@@ -195,7 +204,9 @@ export default function ScheduleModal({ items, onClose, onConfirm }: Props) {
                         onChange={() => toggle(item.path)}
                         className="rounded shrink-0"
                       />
-                      <span className="text-sm text-gray-900 truncate flex-1">{item.name}</span>
+                      <span className="text-sm text-gray-900 truncate flex-1">
+                        {item.name}
+                      </span>
                       <span className="text-xs text-gray-400 shrink-0">
                         {item.subfolder === "profiles" ? "Enrich" : "Apply"}
                       </span>

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Test."""
 
-from tests.fixtures import fixture_path
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 import jobjob.loader.loadstatic as MOD
+from tests.fixtures import fixture_path
 
 LOGGER = logging.getLogger(__name__)
 

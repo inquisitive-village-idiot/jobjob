@@ -21,7 +21,9 @@ export default function DashboardPage() {
 
   const fetchCompleted = (force: boolean) =>
     api
-      .get<CompletedItem[]>(force ? "/tracking/completed?refresh=true" : "/tracking/completed")
+      .get<CompletedItem[]>(
+        force ? "/tracking/completed?refresh=true" : "/tracking/completed"
+      )
       .then(setCompleted)
       .catch((e) => setError(String(e)));
 
@@ -56,10 +58,14 @@ export default function DashboardPage() {
     model?: string;
   }) => {
     if (!rerunningApp) return;
-    const jobId = await launchApplyRerun(rerunningApp.folder_name, appLabel(rerunningApp), {
-      skipDrive,
-      model,
-    });
+    const jobId = await launchApplyRerun(
+      rerunningApp.folder_name,
+      appLabel(rerunningApp),
+      {
+        skipDrive,
+        model,
+      }
+    );
     setRerunningApp(null);
     setViewingJobId(jobId);
   };
@@ -72,7 +78,6 @@ export default function DashboardPage() {
       .get<ConfigSchema>("/config")
       .then((s) => setModelOptions(s.CLAUDE_MODEL?.options ?? []))
       .catch(() => setModelOptions([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sidebar + scroll-spy mirror the table's per-status sections (apply tab only).
@@ -394,7 +399,10 @@ function CompletedAppsTable({
               </tr>
             </thead>
             {groups.map((g) => (
-              <tbody key={g.status} className="divide-y divide-gray-100 border-t border-gray-200">
+              <tbody
+                key={g.status}
+                className="divide-y divide-gray-100 border-t border-gray-200"
+              >
                 <tr id={`db-status-${g.status}`} className="scroll-mt-16">
                   <td colSpan={5} className="px-4 py-1.5 bg-gray-50/70">
                     <span

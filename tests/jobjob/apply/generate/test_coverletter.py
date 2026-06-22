@@ -16,12 +16,31 @@ class ThisTestCase(TestCase):
     """Base test case for the module."""
 
     def make_job(self, **kwargs) -> JobDescription:
-        defaults = {f: "" for f in ("company_name", "role_title", "department",
-                                     "seniority_level", "salary", "hiring_manager",
-                                     "summary")}
-        defaults.update({f: () for f in ("location", "key_requirements",
-                                         "responsibilities", "technical_skills",
-                                         "soft_skills", "keywords")})
+        defaults = {
+            f: ""
+            for f in (
+                "company_name",
+                "role_title",
+                "department",
+                "seniority_level",
+                "salary",
+                "hiring_manager",
+                "summary",
+            )
+        }
+        defaults.update(
+            {
+                f: ()
+                for f in (
+                    "location",
+                    "key_requirements",
+                    "responsibilities",
+                    "technical_skills",
+                    "soft_skills",
+                    "keywords",
+                )
+            }
+        )
         defaults.update(kwargs)
         return JobDescription(**defaults)
 

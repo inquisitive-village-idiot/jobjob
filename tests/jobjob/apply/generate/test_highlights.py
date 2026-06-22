@@ -16,20 +16,43 @@ class ThisTestCase(TestCase):
     """Base test case for the module."""
 
     def make_job(self, **kwargs) -> JobDescription:
-        defaults = {f: "" for f in ("company_name", "role_title", "department",
-                                     "seniority_level", "salary", "hiring_manager",
-                                     "summary")}
-        defaults.update({f: () for f in ("location", "key_requirements",
-                                         "responsibilities", "technical_skills",
-                                         "soft_skills", "keywords")})
+        defaults = {
+            f: ""
+            for f in (
+                "company_name",
+                "role_title",
+                "department",
+                "seniority_level",
+                "salary",
+                "hiring_manager",
+                "summary",
+            )
+        }
+        defaults.update(
+            {
+                f: ()
+                for f in (
+                    "location",
+                    "key_requirements",
+                    "responsibilities",
+                    "technical_skills",
+                    "soft_skills",
+                    "keywords",
+                )
+            }
+        )
         defaults.update(kwargs)
         return JobDescription(**defaults)
 
     def make_set(self):
         highlights = [
             Highlight(context="py", text="Python work", keywords=("python",)),
-            Highlight(context="fda", text="FDA submission", keywords=("fda", "regulatory")),
-            Highlight(context="off", text="Disabled", keywords=("python",), enabled=False),
+            Highlight(
+                context="fda", text="FDA submission", keywords=("fda", "regulatory")
+            ),
+            Highlight(
+                context="off", text="Disabled", keywords=("python",), enabled=False
+            ),
             Highlight(context="misc", text="Other", keywords=("misc",)),
         ]
         return make_highlight_set(highlights, default_number=2)
@@ -54,9 +77,7 @@ class TestSelectHighlights(ThisTestCase):
         service = mock.MagicMock(__name__="service")
         service.return_value = json.dumps(["fda", "py"])
 
-        result = MOD.select_highlights(
-            job, self.make_set(), service, use_cache=False
-        )
+        result = MOD.select_highlights(job, self.make_set(), service, use_cache=False)
 
         contexts = tuple(h.context for h in result)
         self.assertEqual(("fda", "py"), contexts)
@@ -67,9 +88,7 @@ class TestSelectHighlights(ThisTestCase):
         # "off" is disabled, "bogus" is unknown -> both dropped; back-fill to 2.
         service.return_value = json.dumps(["off", "bogus", "py"])
 
-        result = MOD.select_highlights(
-            job, self.make_set(), service, use_cache=False
-        )
+        result = MOD.select_highlights(job, self.make_set(), service, use_cache=False)
 
         contexts = set(h.context for h in result)
         self.assertEqual(2, len(result))

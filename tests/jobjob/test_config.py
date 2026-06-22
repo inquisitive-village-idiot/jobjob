@@ -113,8 +113,8 @@ class TestTwoTierLoad(TestCase):
             self.assertEqual("demo", settings.profile_name)
             self.assertEqual(repo, settings.profile_dir)
             self.assertEqual("Ada Lovelace", settings.applicant.name)  # from profile
-            self.assertEqual("TPL", settings.google.template_id)        # from profile
-            self.assertEqual("claude-opus-4-8", settings.model)         # from app
+            self.assertEqual("TPL", settings.google.template_id)  # from profile
+            self.assertEqual("claude-opus-4-8", settings.model)  # from app
             self.assertEqual("FOLDER", settings.google.applications_folder_id)
 
     def test_rejects_profile_key_in_app_config(self) -> None:

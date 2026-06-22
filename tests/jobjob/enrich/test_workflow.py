@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test."""
 
-from tests.fixtures import fixture_dir, fixture_path
 import json
 import logging
 import tempfile
@@ -13,7 +12,7 @@ from unittest import TestCase, mock
 import jobjob.enrich.workflow as MOD
 from jobjob.ailib.client.anthropic import AnthropicAdapter
 from jobjob.ailib.session import AIClient
-from jobjob.loader import location
+from tests.fixtures import fixture_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,8 +21,10 @@ def _response(text: str) -> SimpleNamespace:
     return SimpleNamespace(
         content=[SimpleNamespace(text=text)],
         usage=SimpleNamespace(
-            input_tokens=1, output_tokens=1,
-            cache_creation_input_tokens=0, cache_read_input_tokens=0,
+            input_tokens=1,
+            output_tokens=1,
+            cache_creation_input_tokens=0,
+            cache_read_input_tokens=0,
         ),
     )
 
@@ -65,7 +66,8 @@ class TestEnrichProfile(ThisTestCase):
 
     def test_writes_to_sheet_when_not_dry_run(self) -> None:
         service = mock.MagicMock()
-        service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
+        get_call = service.spreadsheets.return_value.values.return_value.get
+        get_call.return_value.execute.return_value = {
             "values": [["location", "company", "role", "name", "linkedin_url"]]
         }
         results = MOD.enrich_profile(
@@ -211,8 +213,7 @@ class TestEnrichInputsMove(TestCase):
     def test_created_date_taken_from_filename(self) -> None:
         data = self.get_tmpdir()
         src = (
-            data / "profiles"
-            / "screencapture-linkedin-in-jane-2026-05-21-09_33_56.pdf"
+            data / "profiles" / "screencapture-linkedin-in-jane-2026-05-21-09_33_56.pdf"
         )
         src.parent.mkdir(parents=True)
         src.write_text("x")
@@ -222,7 +223,10 @@ class TestEnrichInputsMove(TestCase):
             return_value={"profile": {"name": "Jane Doe", "company": "Acme"}},
         ):
             MOD.enrich_inputs(
-                src, query_service=mock.MagicMock(), spreadsheet_id="SHEET", data_dir=data
+                src,
+                query_service=mock.MagicMock(),
+                spreadsheet_id="SHEET",
+                data_dir=data,
             )
         moved = list((data / "completed" / "profiles").glob("*.pdf"))[0]
         self.assertTrue(moved.name.startswith("20260521-"))
@@ -266,7 +270,8 @@ class TestMoveCompletedProfile(TestCase):
         name = MOD.completed_profile_name(
             "Jane Doe", "Acme & Co", created=date(2026, 5, 21)
         )
-        # <created8>-<processed8>-<Company>-<Person>; 8-digit dates, PascalCase, 4 parts.
+        # <created8>-<processed8>-<Company>-<Person>; 8-digit dates, PascalCase,
+        # 4 parts.
         self.assertRegex(name, r"^20260521-\d{8}-AcmeCo-JaneDoe$")
 
 

@@ -12,7 +12,10 @@ from jobjob.structure.applicant import Applicant
 
 LOGGER = logging.getLogger(__name__)
 
-BODY = "Dear Acme Hiring Manager,\n\nFirst paragraph.\n\nSecond paragraph.\n\nSincerely,\n\nJ. Doe"
+BODY = (
+    "Dear Acme Hiring Manager,\n\nFirst paragraph.\n\n"
+    "Second paragraph.\n\nSincerely,\n\nJ. Doe"
+)
 
 
 class ThisTestCase(TestCase):
@@ -30,7 +33,10 @@ class TestCreateCoverLetterPdf(ThisTestCase):
     def test_writes_nonempty_pdf(self) -> None:
         out = Path(self.get_tmpdir(), "cl.pdf")
         result = create_cover_letter_pdf(
-            BODY, out, role_title="Engineer", company_name="Acme",
+            BODY,
+            out,
+            role_title="Engineer",
+            company_name="Acme",
             applicant=Applicant(),
         )
         self.assertEqual(out, result)
@@ -44,7 +50,10 @@ class TestCreateCoverLetterDocx(ThisTestCase):
     def test_writes_nonempty_docx(self) -> None:
         out = Path(self.get_tmpdir(), "cl.docx")
         result = create_cover_letter_docx(
-            BODY, out, role_title="Engineer", company_name="Acme",
+            BODY,
+            out,
+            role_title="Engineer",
+            company_name="Acme",
             applicant=Applicant(),
         )
         self.assertEqual(out, result)

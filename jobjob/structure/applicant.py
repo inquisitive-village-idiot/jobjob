@@ -26,7 +26,9 @@ class Applicant:
 
     def contact_line(self) -> str:
         """Return the ``phone | email | linkedin`` header, omitting unset parts."""
-        return " | ".join(part for part in (self.phone, self.email, self.linkedin) if part)
+        return " | ".join(
+            part for part in (self.phone, self.email, self.linkedin) if part
+        )
 
 
 # __END__

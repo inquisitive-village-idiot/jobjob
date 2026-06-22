@@ -63,7 +63,9 @@ def enrich_profile(
         return results  # EARLY EXIT: preview only.
 
     if not spreadsheet_id:
-        raise ValueError("A spreadsheet id is required (set LINKEDIN_SHEET_ID or --dry-run).")
+        raise ValueError(
+            "A spreadsheet id is required (set LINKEDIN_SHEET_ID or --dry-run)."
+        )
 
     creds = _credentials_loader()
     service = _sheets_builder(creds)
@@ -124,7 +126,11 @@ def write_profile_sidecar(
     parsed values so the dashboard can display them, and is the local, queryable
     record of the contact. Returns the sidecar path.
     """
-    record = {**profile, "date_created": created.isoformat(), "date_processed": processed.isoformat()}
+    record = {
+        **profile,
+        "date_created": created.isoformat(),
+        "date_processed": processed.isoformat(),
+    }
     sidecar = dest.with_suffix(".json")
     sidecar.write_text(json.dumps(record, indent=2), encoding="utf-8")
     return sidecar
@@ -188,7 +194,8 @@ def enrich_inputs(
         use_cache: Whether model calls consult/populate the response cache.
         dry_run: If True, parse without writing to the sheet.
         data_dir: Root holding ``completed/``; when set (and not ``dry_run``), a
-            successfully-enriched profile is moved into ``<data_dir>/completed/profiles/``.
+            successfully-enriched profile is moved into
+            ``<data_dir>/completed/profiles/``.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _sheets_builder: Injection point for the Sheets service builder (testing).
@@ -212,7 +219,9 @@ def enrich_inputs(
         # A directly-named file is processed as-is; within a directory, skip
         # anything that isn't a LinkedIn profile.
         if input_path.is_dir():
-            kind = _classify(f, query_service=query_service, use_cache=use_cache, logger=_logger)
+            kind = _classify(
+                f, query_service=query_service, use_cache=use_cache, logger=_logger
+            )
             if kind != LINKEDIN_PROFILE:
                 _logger.info("Skipping non-profile (%s): %s", kind, f.name)
                 summary["skipped"] += 1

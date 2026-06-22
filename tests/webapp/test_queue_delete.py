@@ -40,7 +40,9 @@ def test_refuses_completed(client):
 
 def test_missing_file_404(client):
     c, tmp = client
-    r = c.request("DELETE", "/api/tracking/queue", json={"path": str(tmp / "jobs" / "nope.pdf")})
+    r = c.request(
+        "DELETE", "/api/tracking/queue", json={"path": str(tmp / "jobs" / "nope.pdf")}
+    )
     assert r.status_code == 404
 
 

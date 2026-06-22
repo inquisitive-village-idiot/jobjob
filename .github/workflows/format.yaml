@@ -1,0 +1,91 @@
+name: Format
+
+on:
+  push:
+    branches: ["develop"]
+  pull_request:
+
+# Auto-formatting commits back to the branch need write access.
+permissions:
+  contents: write
+
+jobs:
+  # Detect which file types changed so each formatter only runs when needed.
+  change-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      python_files: ${{ steps.filter.outputs.python_files }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      json: ${{ steps.filter.outputs.json }}
+      markdown: ${{ steps.filter.outputs.markdown }}
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: shell
+          filters: |
+            python:
+              - "**/*.py"
+            frontend:
+              - "webapp/frontend/**/*.{ts,tsx,css,json,md}"
+            json:
+              - "**/*.json"
+            markdown:
+              - "**/*.md"
+
+  # isort + black format the changed Python files; ruff lints them. Uses the
+  # versions locked in uv.lock so results match local pre-commit exactly.
+  python:
+    needs: change-matrix
+    if: ${{ needs.change-matrix.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: astral-sh/setup-uv@v5
+      - name: Install dev tools
+        # The editable build force-includes webapp/frontend/dist (built only in the
+        # release job), so stub it before syncing — formatters don't need the UI.
+        run: |
+          mkdir -p webapp/frontend/dist
+          uv sync --group dev
+      - name: isort
+        run: uv run isort ${{ needs.change-matrix.outputs.python_files }}
+      - name: black
+        run: uv run black ${{ needs.change-matrix.outputs.python_files }}
+      - name: ruff
+        run: uv run ruff check ${{ needs.change-matrix.outputs.python_files }}
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "format: isort + black"
+
+  # prettier formats and eslint lints the frontend (TypeScript/CSS/JSON/Markdown).
+  frontend:
+    needs: change-matrix
+    if: ${{ needs.change-matrix.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: prettier
+        run: npm run format
+      - name: eslint
+        run: npm run lint
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "format: prettier + eslint"

@@ -22,12 +22,31 @@ class ThisTestCase(TestCase):
         return Path(tmpdir.name)
 
     def make_job(self, **kwargs) -> JobDescription:
-        defaults = {f: "" for f in ("company_name", "role_title", "department",
-                                    "seniority_level", "salary", "hiring_manager",
-                                    "summary")}
-        defaults.update({f: () for f in ("location", "key_requirements",
-                                         "responsibilities", "technical_skills",
-                                         "soft_skills", "keywords")})
+        defaults = {
+            f: ""
+            for f in (
+                "company_name",
+                "role_title",
+                "department",
+                "seniority_level",
+                "salary",
+                "hiring_manager",
+                "summary",
+            )
+        }
+        defaults.update(
+            {
+                f: ()
+                for f in (
+                    "location",
+                    "key_requirements",
+                    "responsibilities",
+                    "technical_skills",
+                    "soft_skills",
+                    "keywords",
+                )
+            }
+        )
         defaults.update(kwargs)
         return JobDescription(**defaults)
 
@@ -98,15 +117,21 @@ class TestGenerateApplicationReadme(ThisTestCase):
     def test_writes_nonempty_docx(self) -> None:
         job = self.make_job(company_name="Acme", role_title="Engineer")
         skills = {
-            "critical_gaps": [{"skill": "Rust", "why_critical": "x", "mitigation": "y"}],
+            "critical_gaps": [
+                {"skill": "Rust", "why_critical": "x", "mitigation": "y"}
+            ],
             "critical_supported": [{"skill": "Python", "evidence": "resume"}],
             "important_supported": [],
             "strong_supporting": [],
         }
         out = Path(self.get_tmpdir(), "readme.docx")
         result = MOD.generate_application_readme(
-            job, skills, out, issues=["parse warning"],
-            template_name="features_writer", template_archetype="Features Writer",
+            job,
+            skills,
+            out,
+            issues=["parse warning"],
+            template_name="features_writer",
+            template_archetype="Features Writer",
             resume_changes=["Swapped objective for the role"],
         )
         self.assertEqual(out, result)
@@ -114,7 +139,7 @@ class TestGenerateApplicationReadme(ThisTestCase):
         self.assertGreater(out.stat().st_size, 0)
 
     def test_renders_template_and_two_column_fit(self) -> None:
-        """The README surfaces the template, its changes, and a Strengths/Weaknesses table."""
+        """README shows the template, its changes, and a Strengths/Weaknesses table."""
         from docx import Document as DocxDocument
 
         job = self.make_job(company_name="Acme", role_title="Engineer")
@@ -124,8 +149,12 @@ class TestGenerateApplicationReadme(ThisTestCase):
         }
         out = Path(self.get_tmpdir(), "readme.docx")
         MOD.generate_application_readme(
-            job, skills, out, template_name="features_writer",
-            template_archetype="Features Writer", resume_changes=["Objective swap"],
+            job,
+            skills,
+            out,
+            template_name="features_writer",
+            template_archetype="Features Writer",
+            resume_changes=["Objective swap"],
         )
         doc = DocxDocument(str(out))
         text = "\n".join(p.text for p in doc.paragraphs)

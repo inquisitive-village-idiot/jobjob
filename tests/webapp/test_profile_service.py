@@ -34,7 +34,9 @@ class TestNormalize:
     def test_lowercases_and_validates(self):
         assert PS.normalize_name("  My_Prof ") == "my_prof"
 
-    @pytest.mark.parametrize("bad", ["", "example", "active", "1abc", "has-hyphen", "a b"])
+    @pytest.mark.parametrize(
+        "bad", ["", "example", "active", "1abc", "has-hyphen", "a b"]
+    )
     def test_rejects(self, bad):
         with pytest.raises(PS.ProfileError):
             PS.normalize_name(bad)

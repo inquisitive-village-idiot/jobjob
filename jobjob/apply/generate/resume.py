@@ -135,8 +135,16 @@ def tailor_resume(
         _, body = found
         if section.section == SECTION_OBJECTIVE:
             _tailor_objective(
-                body, job, query_service, use_cache, index_ops, changes, issues,
-                industry=industry, _query=_query, logger=_logger,
+                body,
+                job,
+                query_service,
+                use_cache,
+                index_ops,
+                changes,
+                issues,
+                industry=industry,
+                _query=_query,
+                logger=_logger,
             )
         elif section.section == SECTION_HIGHLIGHTS:
             _tailor_highlights(body, highlight_texts, index_ops, changes, issues)
@@ -226,7 +234,7 @@ def _tailor_highlights(
     changes.append(f"Replaced {n} highlight bullet(s).")
 
     if len(highlight_texts) > len(body):
-        extras = highlight_texts[len(body):]
+        extras = highlight_texts[len(body) :]
         # Insert just before the last bullet's terminating newline so the new
         # paragraphs land inside the list and inherit its bullet style.
         anchor = body[-1]["endIndex"] - 1
@@ -236,10 +244,19 @@ def _tailor_highlights(
         )
         changes.append(f"Added {len(extras)} highlight bullet(s).")
     elif len(highlight_texts) < len(body):
-        surplus = body[len(highlight_texts):]
+        surplus = body[len(highlight_texts) :]
         start, end = surplus[0]["startIndex"], surplus[-1]["endIndex"]
         index_ops.append(
-            (start, [{"deleteContentRange": {"range": {"startIndex": start, "endIndex": end}}}])
+            (
+                start,
+                [
+                    {
+                        "deleteContentRange": {
+                            "range": {"startIndex": start, "endIndex": end}
+                        }
+                    }
+                ],
+            )
         )
         changes.append(f"Removed {len(surplus)} highlight bullet(s).")
 

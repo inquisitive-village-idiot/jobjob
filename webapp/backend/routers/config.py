@@ -38,7 +38,7 @@ class ConfigUpdate(BaseModel):
 
 @router.get("")
 def get_config(request: Request, scope: str = Query("app")) -> dict:
-    """Return the scoped config keys. Secret values are absent; is_set reflects presence."""
+    """Return the scoped config keys (secrets absent; is_set reflects presence)."""
     path, keys = _target(request, scope)
     return read_config(path, keys=keys)
 

@@ -35,9 +35,7 @@ class TestCreateBlankProfile(TestCase):
             self.assertEqual(
                 (), load_highlights(dest / "content" / "highlights.toml").highlights
             )
-            self.assertEqual(
-                (), load_skills(dest / "content" / "skills.toml").skills
-            )
+            self.assertEqual((), load_skills(dest / "content" / "skills.toml").skills)
             templates = load_templates(dest / "content" / "templates.toml")
             # A default template + the two standard sections exist, but no content.
             self.assertTrue(len(templates.templates) >= 1)
@@ -63,10 +61,11 @@ class TestCreateBlankProfile(TestCase):
         with TemporaryDirectory() as d:
             dest = self._build(Path(d))
             edited = dest / "content" / "skills.toml"
-            edited.write_text('[tool.skills]\ndefault_number = 99\n')
+            edited.write_text("[tool.skills]\ndefault_number = 99\n")
             skeleton.create_blank_profile(dest)
             self.assertEqual(
-                99, tomllib.loads(edited.read_text())["tool"]["skills"]["default_number"]
+                99,
+                tomllib.loads(edited.read_text())["tool"]["skills"]["default_number"],
             )
 
 

@@ -167,7 +167,7 @@ def get_reference_dir() -> Path:
 
 @cache
 def get_root_dir() -> Path:
-    """Return path to the jobjob project root (the dir containing the ``jobjob`` package).
+    """Return the jobjob project root (the dir containing the ``jobjob`` package).
 
     Anchored on this file's location (``<root>/jobjob/loader/location.py``) rather than
     searching the path for ``"jobjob"`` — robust when the checkout/site-packages dir is

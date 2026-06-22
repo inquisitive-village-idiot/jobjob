@@ -86,10 +86,7 @@ export default function ResumeImportPanel() {
       const form = new FormData();
       form.append("file", file);
       form.append("background_mode", backgroundMode);
-      const res = await api.postForm<ExtractResult>(
-        "/resume-import/extract",
-        form
-      );
+      const res = await api.postForm<ExtractResult>("/resume-import/extract", form);
       setDraft(res);
       setSaveBackground(Boolean(res.background));
     } catch (e) {
@@ -102,14 +99,26 @@ export default function ResumeImportPanel() {
   const patchHighlight = (i: number, patch: Partial<DraftHighlight>) =>
     setDraft((d) =>
       d
-        ? { ...d, highlights: d.highlights.map((h, idx) => (idx === i ? { ...h, ...patch } : h)) }
+        ? {
+            ...d,
+            highlights: d.highlights.map((h, idx) =>
+              idx === i ? { ...h, ...patch } : h
+            ),
+          }
         : d
     );
   const removeHighlight = (i: number) =>
-    setDraft((d) => (d ? { ...d, highlights: d.highlights.filter((_, idx) => idx !== i) } : d));
+    setDraft((d) =>
+      d ? { ...d, highlights: d.highlights.filter((_, idx) => idx !== i) } : d
+    );
   const patchSkill = (i: number, patch: Partial<DraftSkill>) =>
     setDraft((d) =>
-      d ? { ...d, skills: d.skills.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) } : d
+      d
+        ? {
+            ...d,
+            skills: d.skills.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
+          }
+        : d
     );
   const removeSkill = (i: number) =>
     setDraft((d) => (d ? { ...d, skills: d.skills.filter((_, idx) => idx !== i) } : d));
@@ -228,12 +237,17 @@ export default function ResumeImportPanel() {
                   onChange={(e) => setSaveHighlights(e.target.checked)}
                 />
                 Save
-                {saveHighlights && <SaveModeSelect value={hlMode} onChange={setHlMode} />}
+                {saveHighlights && (
+                  <SaveModeSelect value={hlMode} onChange={setHlMode} />
+                )}
               </label>
             </div>
             <div className="space-y-3">
               {draft.highlights.map((h, i) => (
-                <div key={i} className="border border-gray-200 rounded-lg p-3 space-y-2">
+                <div
+                  key={i}
+                  className="border border-gray-200 rounded-lg p-3 space-y-2"
+                >
                   <div className="flex items-center gap-2">
                     <select
                       value={h.topic}
@@ -353,7 +367,9 @@ export default function ResumeImportPanel() {
                   onChange={(e) => setSaveBackground(e.target.checked)}
                 />
                 Save
-                {saveBackground && <SaveModeSelect value={bgMode} onChange={setBgMode} />}
+                {saveBackground && (
+                  <SaveModeSelect value={bgMode} onChange={setBgMode} />
+                )}
               </label>
             </div>
             <textarea
@@ -371,9 +387,7 @@ export default function ResumeImportPanel() {
           <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
             <button
               onClick={save}
-              disabled={
-                saving || (!saveHighlights && !saveSkills && !saveBackground)
-              }
+              disabled={saving || (!saveHighlights && !saveSkills && !saveBackground)}
               className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium
                 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >

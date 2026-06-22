@@ -21,10 +21,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from jobjob.ailib.session import AIClient
-from jobjob.classify.classify import JD, classify_file
-from jobjob.gapi import drive as gdrive
-from jobjob.gapi.docs import verify_page_count
-from jobjob.gapi.service import build_docs_service, build_drive_service
 from jobjob.apply.generate.archetype import select_template
 from jobjob.apply.generate.coverletter import generate_cover_letter_text
 from jobjob.apply.generate.highlights import select_highlights
@@ -32,11 +28,15 @@ from jobjob.apply.generate.parse import parse_job_description
 from jobjob.apply.generate.readme import generate_application_readme
 from jobjob.apply.generate.resume import tailor_resume
 from jobjob.apply.generate.skills import analyze_skills
+from jobjob.apply.output.cover_letter_docx import create_cover_letter_docx
+from jobjob.apply.output.cover_letter_pdf import create_cover_letter_pdf
+from jobjob.classify.classify import JD, classify_file
+from jobjob.gapi import drive as gdrive
+from jobjob.gapi.docs import verify_page_count
+from jobjob.gapi.service import build_docs_service, build_drive_service
 from jobjob.loader.auth import get_google_credentials
 from jobjob.loader.loadcontent import load_highlights, load_templates
 from jobjob.loader.loadreference import load_reference_documents
-from jobjob.apply.output.cover_letter_docx import create_cover_letter_docx
-from jobjob.apply.output.cover_letter_pdf import create_cover_letter_pdf
 from jobjob.structure.applicant import Applicant
 from jobjob.structure.highlight import Highlight, HighlightSet
 from jobjob.structure.job_decription import JobDescription
@@ -89,9 +89,7 @@ def build_cached_context(
             f"{reference.writing_style}"
         )
     if resume_text:
-        parts.append(
-            f"=== MY RESUME (CUSTOMIZED FOR THIS ROLE) ===\n{resume_text}"
-        )
+        parts.append(f"=== MY RESUME (CUSTOMIZED FOR THIS ROLE) ===\n{resume_text}")
     return "\n\n".join(parts)
 
 
@@ -176,7 +174,9 @@ def run_application_workflow(
     results["job_info"] = dcs.asdict(job)
     _logger.info("Parsed: %s / %s", job.company_name, job.role_title)
 
-    output_dir = Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="job_app_"))
+    output_dir = (
+        Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="job_app_"))
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     results["output_dir"] = str(output_dir)
 
@@ -225,12 +225,18 @@ def run_application_workflow(
         job, selected, query_service, applicant, use_cache=use_cache
     )
     pdf_path = create_cover_letter_pdf(
-        letter, Path(output_dir, f"{COVER_LETTER_NAME}.pdf"),
-        role_title=job.role_title, company_name=job.company_name, applicant=applicant,
+        letter,
+        Path(output_dir, f"{COVER_LETTER_NAME}.pdf"),
+        role_title=job.role_title,
+        company_name=job.company_name,
+        applicant=applicant,
     )
     docx_path = create_cover_letter_docx(
-        letter, Path(output_dir, f"{COVER_LETTER_NAME}.docx"),
-        role_title=job.role_title, company_name=job.company_name, applicant=applicant,
+        letter,
+        Path(output_dir, f"{COVER_LETTER_NAME}.docx"),
+        role_title=job.role_title,
+        company_name=job.company_name,
+        applicant=applicant,
     )
     results["cover_letter_pdf"] = str(pdf_path)
     results["cover_letter_docx"] = str(docx_path)
@@ -243,7 +249,9 @@ def run_application_workflow(
 
     # Step 5: README (summary + folded skills + fit).
     readme_path = generate_application_readme(
-        job, skills, Path(output_dir, f"{README_NAME}.docx"),
+        job,
+        skills,
+        Path(output_dir, f"{README_NAME}.docx"),
         issues=results.get("issues"),
         template_name=results.get("template"),
         template_archetype=results.get("template_archetype"),
@@ -254,7 +262,10 @@ def run_application_workflow(
     # Copy the JD into the output directory as JD_<Company>_<Role><ext> (PascalCase).
     # The source suffix is preserved so a text/Markdown snapshot (URL/paste capture)
     # stays a snapshot rather than being mislabeled .pdf.
-    jd_name = f"JD_{gdrive.pascal_case(job.company_name)}_{gdrive.pascal_case(job.role_title)}"
+    jd_name = (
+        f"JD_{gdrive.pascal_case(job.company_name)}_"
+        f"{gdrive.pascal_case(job.role_title)}"
+    )
     jd_copy = Path(output_dir, f"{jd_name}{Path(job_description_pdf).suffix}")
     # NOTE: in re-process mode the input IS this file; don't copy it onto itself.
     if Path(job_description_pdf).resolve() != jd_copy.resolve():
@@ -344,7 +355,10 @@ def _run_drive_resume_steps(
                     gdrive.application_folder_name(job.company_name, job.role_title)
                 )
         folder_id = gdrive.create_application_folder(
-            drive_service, job.company_name, job.role_title, parent_id=parent_id,
+            drive_service,
+            job.company_name,
+            job.role_title,
+            parent_id=parent_id,
             logger=logger,
         )
     results["folder_id"] = folder_id
@@ -512,7 +526,9 @@ def apply_inputs(
     summary: dict = {"processed": 0, "skipped": 0, "failed": 0, "items": []}
     for f in files:
         if is_dir:
-            kind = _classify(f, query_service=query_service, use_cache=use_cache, logger=_logger)
+            kind = _classify(
+                f, query_service=query_service, use_cache=use_cache, logger=_logger
+            )
             if kind != JD:
                 _logger.info("Skipping non-JD (%s): %s", kind, f.name)
                 summary["skipped"] += 1

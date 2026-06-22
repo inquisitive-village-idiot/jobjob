@@ -98,7 +98,7 @@ def find_section(content: list, heading: str) -> Optional[tuple[dict, list[dict]
         return None  # EARLY EXIT: heading not present.
 
     body: list[dict] = []
-    for element in content[start + 1:]:
+    for element in content[start + 1 :]:
         if is_heading(element):
             break  # Next section begins.
         if "paragraph" in element:
@@ -121,7 +121,11 @@ def replace_paragraph_text_requests(element: Mapping, new_text: str) -> list[dic
     # Keep the trailing newline (end - 1) so the paragraph and its style remain.
     if end - 1 > start:
         requests.append(
-            {"deleteContentRange": {"range": {"startIndex": start, "endIndex": end - 1}}}
+            {
+                "deleteContentRange": {
+                    "range": {"startIndex": start, "endIndex": end - 1}
+                }
+            }
         )
     if new_text:
         requests.append(

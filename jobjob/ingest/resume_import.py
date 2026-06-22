@@ -27,15 +27,15 @@ SAVE_MODES = ("replace", "append")
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
 _CONSERVATIVE_GUIDANCE = (
-    "A concise professional-background narrative (two to four sentences) summarizing the "
-    "candidate's career, drawn strictly from the resume. Stay factual and conservative; "
-    "do not embellish or infer beyond what is written."
+    "A concise professional-background narrative (two to four sentences) "
+    "summarizing the candidate's career, drawn strictly from the resume. Stay "
+    "factual and conservative; do not embellish or infer beyond what is written."
 )
 _FULLER_GUIDANCE = (
-    "A fuller professional-background narrative (one to two short paragraphs) summarizing "
-    "the candidate's career arc and strengths, drawn from the resume. You may connect "
-    "themes and articulate strengths in the candidate's voice, but never invent employers, "
-    "titles, dates, metrics, or credentials."
+    "A fuller professional-background narrative (one to two short paragraphs) "
+    "summarizing the candidate's career arc and strengths, drawn from the resume. "
+    "You may connect themes and articulate strengths in the candidate's voice, but "
+    "never invent employers, titles, dates, metrics, or credentials."
 )
 
 
@@ -90,7 +90,9 @@ def highlight_from_dict(data: dict, seen: Optional[set[str]] = None) -> Highligh
     """Build a Highlight from a loosely-typed mapping (model output or edited draft)."""
     seen = seen if seen is not None else set()
     text = str(data.get("text") or "").strip()
-    context = _slugify(str(data.get("context") or ""), fallback=_slugify(text[:30], "highlight"))
+    context = _slugify(
+        str(data.get("context") or ""), fallback=_slugify(text[:30], "highlight")
+    )
     return Highlight(
         context=_dedupe_key(context, seen),
         text=text,
@@ -151,15 +153,20 @@ def build_prompt(
     """Format the resume-import prompt for the given resume text and background mode."""
     if background_mode not in BACKGROUND_MODES:
         raise ValueError(
-            f"Unknown background_mode {background_mode!r}; expected one of {BACKGROUND_MODES}"
+            f"Unknown background_mode {background_mode!r}; "
+            f"expected one of {BACKGROUND_MODES}"
         )
-    guidance = _FULLER_GUIDANCE if background_mode == "fuller" else _CONSERVATIVE_GUIDANCE
+    guidance = (
+        _FULLER_GUIDANCE if background_mode == "fuller" else _CONSERVATIVE_GUIDANCE
+    )
     anchor = (
         _voice_anchor(reference_dir, logger=logger)
         if background_mode == "fuller"
         else ""
     )
-    template = (prompt_path or get_prompt_path("resume_import")).read_text(encoding="utf-8")
+    template = (prompt_path or get_prompt_path("resume_import")).read_text(
+        encoding="utf-8"
+    )
     return template.format(
         text_content=text_content,
         background_guidance=guidance,

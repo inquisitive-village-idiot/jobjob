@@ -9,8 +9,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import security
 import routers.resume_import as ri
+import security
 from jobjob.ingest.resume_import import ResumeImportDraft
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
@@ -35,9 +35,13 @@ _DRAFT = ResumeImportDraft(
     objective="Tell true stories about cells.",
     sections=("Experience",),
     highlights=(
-        Highlight(context="a", text="Did a thing.", keywords=("x",), topic="Creativity"),
+        Highlight(
+            context="a", text="Did a thing.", keywords=("x",), topic="Creativity"
+        ),
     ),
-    skills=(Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),),
+    skills=(
+        Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),
+    ),
     background="Tila Mer is a science correspondent.",
 )
 
@@ -92,10 +96,21 @@ class TestSaveEndpoint:
     def _payload(self, **targets):
         return {
             "highlights": [
-                {"context": "a", "topic": "Creativity", "text": "Did a thing.",
-                 "keywords": ["x"], "enabled": True},
+                {
+                    "context": "a",
+                    "topic": "Creativity",
+                    "text": "Did a thing.",
+                    "keywords": ["x"],
+                    "enabled": True,
+                },
             ],
-            "skills": [{"label": "fact_checking", "text": "Fact-Checking", "keywords": ["accuracy"]}],
+            "skills": [
+                {
+                    "label": "fact_checking",
+                    "text": "Fact-Checking",
+                    "keywords": ["accuracy"],
+                }
+            ],
             "background": "Tila Mer is a science correspondent.",
             "targets": targets,
         }

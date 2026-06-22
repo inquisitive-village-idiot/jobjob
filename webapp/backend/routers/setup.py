@@ -91,10 +91,12 @@ class SecretUpdate(BaseModel):
 
 @router.put("/anthropic-key")
 def set_anthropic_key(body: SecretUpdate, request: Request) -> dict:
-    """Write the Anthropic API key to the app config (a secret the config API blocks)."""
+    """Write the Anthropic API key to the app config (a secret the API blocks)."""
     if not body.value.strip():
         raise HTTPException(status_code=400, detail="Empty API key.")
-    _set_env_key(Path(request.app.state.app_config_path), "ANTHROPIC_API_KEY", body.value.strip())
+    _set_env_key(
+        Path(request.app.state.app_config_path), "ANTHROPIC_API_KEY", body.value.strip()
+    )
     return {"ok": True}
 
 
@@ -110,7 +112,9 @@ async def upload_credentials(request: Request, file: UploadFile = File(...)) -> 
     try:
         json.loads(raw)  # validate it is JSON before saving.
     except ValueError:
-        raise HTTPException(status_code=400, detail="Not a valid JSON credentials file.")
+        raise HTTPException(
+            status_code=400, detail="Not a valid JSON credentials file."
+        )
     dest_path = Path(dest)
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     dest_path.write_bytes(raw)

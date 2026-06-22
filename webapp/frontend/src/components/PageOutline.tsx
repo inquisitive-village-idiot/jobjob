@@ -38,8 +38,10 @@ export function useScrollSpy(ids: string[], deps: unknown[]): string {
 // "Google") are easy to scan.
 export function SectionHeader({ children }: { children: ReactNode }) {
   return (
-    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 pb-1.5
-      border-b border-gray-200">
+    <h3
+      className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3 pb-1.5
+      border-b border-gray-200"
+    >
       {children}
     </h3>
   );

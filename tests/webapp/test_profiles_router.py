@@ -53,7 +53,9 @@ class TestCreate:
         assert entries["alpha"]["external"] is False
 
     def test_create_invalid_name_400(self, client):
-        assert client.post("/api/profiles", json={"name": "has-hyphen"}).status_code == 400
+        assert (
+            client.post("/api/profiles", json={"name": "has-hyphen"}).status_code == 400
+        )
 
     def test_create_reserved_400(self, client):
         assert client.post("/api/profiles", json={"name": "example"}).status_code == 400

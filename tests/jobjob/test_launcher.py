@@ -71,7 +71,8 @@ class TestScaffold(TestCase):
             (home / "profile" / "content").mkdir(parents=True)
             (home / "profile" / "content" / "highlights.toml").write_text("legacy")
             (home / "config" / ".env").write_text(
-                f"JOBJOB_PROFILE_LOCAL={home / 'profile'}\nJOBJOB_ACTIVE_PROFILE=local\n"
+                f"JOBJOB_PROFILE_LOCAL={home / 'profile'}\n"
+                "JOBJOB_ACTIVE_PROFILE=local\n"
             )
             with mock.patch.object(MOD, "_package_root", return_value=Path(d) / "pkg"):
                 MOD.scaffold(home)

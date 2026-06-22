@@ -95,7 +95,9 @@ class TestBuildProfiles(TestCase):
 
 class TestActiveProfile(TestCase):
     def test_active_name_lowercased(self) -> None:
-        with mock.patch.dict("os.environ", {"JOBJOB_ACTIVE_PROFILE": "Demo"}, clear=True):
+        with mock.patch.dict(
+            "os.environ", {"JOBJOB_ACTIVE_PROFILE": "Demo"}, clear=True
+        ):
             self.assertEqual("demo", MOD.active_profile_name())
 
     def test_none_when_unset(self) -> None:
@@ -111,7 +113,9 @@ class TestActiveProfile(TestCase):
             self.assertEqual(Path("/repos/demo"), MOD.resolve_active_profile_dir())
 
     def test_resolve_none_when_active_not_registered(self) -> None:
-        with mock.patch.dict("os.environ", {"JOBJOB_ACTIVE_PROFILE": "ghost"}, clear=True):
+        with mock.patch.dict(
+            "os.environ", {"JOBJOB_ACTIVE_PROFILE": "ghost"}, clear=True
+        ):
             self.assertIsNone(MOD.resolve_active_profile_dir())
 
 

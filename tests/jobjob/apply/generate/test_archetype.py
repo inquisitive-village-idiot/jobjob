@@ -16,12 +16,31 @@ class ThisTestCase(TestCase):
     """Base test case for the module."""
 
     def make_job(self, **kwargs) -> JobDescription:
-        defaults = {f: "" for f in ("company_name", "role_title", "department",
-                                    "seniority_level", "salary", "hiring_manager",
-                                    "summary")}
-        defaults.update({f: () for f in ("location", "key_requirements",
-                                         "responsibilities", "technical_skills",
-                                         "soft_skills", "keywords")})
+        defaults = {
+            f: ""
+            for f in (
+                "company_name",
+                "role_title",
+                "department",
+                "seniority_level",
+                "salary",
+                "hiring_manager",
+                "summary",
+            )
+        }
+        defaults.update(
+            {
+                f: ()
+                for f in (
+                    "location",
+                    "key_requirements",
+                    "responsibilities",
+                    "technical_skills",
+                    "soft_skills",
+                    "keywords",
+                )
+            }
+        )
         defaults.update(kwargs)
         return JobDescription(**defaults)
 
@@ -54,8 +73,11 @@ class TestSelectTemplate(ThisTestCase):
     def test_explicit_unknown_name_raises(self) -> None:
         with self.assertRaises(KeyError):
             MOD.select_template(
-                self.make_job(), self.make_set(), mock.MagicMock(__name__="s"),
-                name="nope", use_cache=False,
+                self.make_job(),
+                self.make_set(),
+                mock.MagicMock(__name__="s"),
+                name="nope",
+                use_cache=False,
             )
 
     def test_auto_detects_when_no_name(self) -> None:

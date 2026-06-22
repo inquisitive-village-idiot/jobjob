@@ -15,7 +15,9 @@ class ThisTestCase(TestCase):
     """Base test case for the module."""
 
     def patch_settings(self, token_file):
-        google = SimpleNamespace(credentials_file=Path("creds.json"), token_file=token_file)
+        google = SimpleNamespace(
+            credentials_file=Path("creds.json"), token_file=token_file
+        )
         settings = SimpleNamespace(google=google)
         return mock.patch.object(MOD, "load_settings", return_value=settings)
 

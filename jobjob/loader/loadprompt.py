@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Build extraction prompts from a PDF and a dataclass's field docs."""
 
-
 import dataclasses as dcs
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Optional, Protocol, TypeVar
@@ -80,7 +79,9 @@ def load_prompt_job_description(
     prompt_path: Optional[Path] = None,
 ) -> str:
     """Return a prompt to parse the given job description."""
-    return load_dataclass_prompt(path, klass, "job_description", prompt_path=prompt_path)
+    return load_dataclass_prompt(
+        path, klass, "job_description", prompt_path=prompt_path
+    )
 
 
 # __END__

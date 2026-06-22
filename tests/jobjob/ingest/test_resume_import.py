@@ -116,7 +116,9 @@ class TestBuildPrompt:
         assert "salary {expectations} are {flexible}" in prompt
 
     def test_voice_anchor_only_in_fuller(self, tmp_path):
-        (tmp_path / "writing_style.md").write_text("Wry, plain-spoken.", encoding="utf-8")
+        (tmp_path / "writing_style.md").write_text(
+            "Wry, plain-spoken.", encoding="utf-8"
+        )
         fuller = build_prompt(
             "resume", background_mode="fuller", reference_dir=tmp_path
         )
@@ -146,6 +148,12 @@ class TestFromDictHelpers:
     def test_draft_to_dict_roundtrips_shape(self):
         draft = _extract()
         out = draft_to_dict(draft)
-        assert set(out) >= {"objective", "sections", "background", "highlights", "skills"}
+        assert set(out) >= {
+            "objective",
+            "sections",
+            "background",
+            "highlights",
+            "skills",
+        }
         assert out["highlights"][0]["topic"] == "Creativity"
         assert out["skills"][0]["label"] == "fact_checking"

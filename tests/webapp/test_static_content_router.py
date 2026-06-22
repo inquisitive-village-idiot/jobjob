@@ -11,8 +11,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-import security
 import routers.static_content as sc
+import security
 
 _TEMPLATES_TOML = """\
 [tool.templates]
@@ -60,7 +60,9 @@ class TestSectionToggle:
         )
         assert resp.status_code == 200, resp.text
         doc = tomllib.loads(
-            (repo / "static" / "example" / "content" / "templates.toml").read_text(encoding="utf-8")
+            (repo / "static" / "example" / "content" / "templates.toml").read_text(
+                encoding="utf-8"
+            )
         )
         sections = doc["tool"]["templates"]["section"]
         assert sections[0]["enabled"] is False

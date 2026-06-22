@@ -19,7 +19,10 @@ export default function AccountMenu({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.get<ProfilesInfo>("/profiles").then(setInfo).catch(() => setInfo(null));
+    api
+      .get<ProfilesInfo>("/profiles")
+      .then(setInfo)
+      .catch(() => setInfo(null));
   }, []);
 
   useEffect(() => {
@@ -53,8 +56,10 @@ export default function AccountMenu({
           text-gray-600 hover:bg-gray-100"
         title="Profile and settings"
       >
-        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full
-          bg-blue-600 text-white text-xs font-semibold">
+        <span
+          className="inline-flex items-center justify-center w-5 h-5 rounded-full
+          bg-blue-600 text-white text-xs font-semibold"
+        >
           {active.charAt(0).toUpperCase()}
         </span>
         <span className="capitalize">{active}</span>
@@ -64,8 +69,10 @@ export default function AccountMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg
-          shadow-lg py-1 z-20 text-sm">
+        <div
+          className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg
+          shadow-lg py-1 z-20 text-sm"
+        >
           <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
             Profiles
           </div>

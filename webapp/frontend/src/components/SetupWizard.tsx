@@ -18,7 +18,10 @@ export default function SetupWizard({
   const [status, setStatus] = useState<SetupStatus | null>(null);
 
   const refresh = () =>
-    api.get<SetupStatus>("/setup/status").then(setStatus).catch(() => {});
+    api
+      .get<SetupStatus>("/setup/status")
+      .then(setStatus)
+      .catch(() => {});
 
   useEffect(() => {
     refresh();

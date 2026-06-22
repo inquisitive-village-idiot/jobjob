@@ -129,8 +129,9 @@ class TestFindSection(ThisTestCase):
 
     def test_collects_all_bullets_until_next_heading(self) -> None:
         _, body = MOD.find_section(self._content(), "Key Career Highlights")
-        self.assertEqual(["bullet one", "bullet two"],
-                         [MOD.paragraph_text(b).strip() for b in body])
+        self.assertEqual(
+            ["bullet one", "bullet two"], [MOD.paragraph_text(b).strip() for b in body]
+        )
 
     def test_returns_none_when_absent(self) -> None:
         self.assertIsNone(MOD.find_section(self._content(), "Nonexistent"))
@@ -141,7 +142,9 @@ class TestReplaceParagraphTextRequests(ThisTestCase):
 
     def test_deletes_text_keeps_newline_then_inserts(self) -> None:
         # Paragraph [11, 25): text occupies 11..24, the newline is at 24.
-        reqs = MOD.replace_paragraph_text_requests(_body("old objective\n", 11, 25), "new")
+        reqs = MOD.replace_paragraph_text_requests(
+            _body("old objective\n", 11, 25), "new"
+        )
         with self.subTest("delete preserves the terminating newline"):
             rng = reqs[0]["deleteContentRange"]["range"]
             self.assertEqual({"startIndex": 11, "endIndex": 24}, rng)

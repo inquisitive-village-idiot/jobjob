@@ -46,6 +46,7 @@ MIN_PASTE_CHARS = 40
 # A generous default; a slow board should fail loudly rather than hang a request.
 DEFAULT_TIMEOUT = 20.0
 
+
 @cache
 def get_user_agent() -> str:
     """Return the outbound User-Agent string (cached).
@@ -56,6 +57,7 @@ def get_user_agent() -> str:
     software = "jobjob/1.0"
     contact = "https://github.com/inquisitive-village-idiot/jobjob"
     return f"Mozilla/5.0 ({platform}; {software}; +{contact})"
+
 
 # Guidance shown when a URL yields too little text — the actionable fallback.
 _EXTRACTION_FAILED_MESSAGE = (
@@ -162,7 +164,9 @@ def write_snapshot(
     jobs_dir = Path(jobs_dir)
     jobs_dir.mkdir(parents=True, exist_ok=True)
 
-    slug_source = title or (urlparse(source_url).netloc if source_url else "") or "posting"
+    slug_source = (
+        title or (urlparse(source_url).netloc if source_url else "") or "posting"
+    )
     now = datetime.now()
     path = _snapshot_path(jobs_dir, _slugify(slug_source), _now=now)
 
@@ -215,7 +219,9 @@ def snapshot_from_url(
 
     text = _extract(html)
     if len(text) < min_chars:
-        _logger.warning("Extraction yielded %d chars from %s; refusing to parse.", len(text), url)
+        _logger.warning(
+            "Extraction yielded %d chars from %s; refusing to parse.", len(text), url
+        )
         raise JDIngestError(_EXTRACTION_FAILED_MESSAGE)
 
     return write_snapshot(text, jobs_dir, source_url=url, logger=logger)
@@ -247,7 +253,8 @@ def snapshot_from_text(
     cleaned = (text or "").strip()
     if len(cleaned) < min_chars:
         raise JDIngestError(
-            f"Pasted text is too short to be a job posting (need at least {min_chars} characters)."
+            f"Pasted text is too short to be a job posting "
+            f"(need at least {min_chars} characters)."
         )
     return write_snapshot(cleaned, jobs_dir, title=title, logger=logger)
 

@@ -36,13 +36,13 @@ class TestLoadTomlTable(ThisTestCase):
 
     def test_returns_expected_table(self) -> None:
         p = Path(self.get_tmpdir(), "sample.toml")
-        p.write_text('[tool.highlights]\ndefault_number = 5\n')
+        p.write_text("[tool.highlights]\ndefault_number = 5\n")
         result = MOD._load_toml_table(p, "highlights")
         self.assertEqual(5, result["default_number"])
 
     def test_raises_for_missing_table(self) -> None:
         p = Path(self.get_tmpdir(), "sample.toml")
-        p.write_text('[tool.other]\nfoo = 1\n')
+        p.write_text("[tool.other]\nfoo = 1\n")
         with self.assertRaisesRegex(ValueError, r"\[tool\.highlights\]"):
             MOD._load_toml_table(p, "highlights")
 
@@ -56,6 +56,7 @@ class TestLoadHighlightsExplicit(ThisTestCase):
 
     def test_returns_highlight_set(self) -> None:
         from jobjob.structure.highlight import HighlightSet
+
         self.assertIsInstance(self.result, HighlightSet)
 
     def test_loads_at_least_one_highlight(self) -> None:
@@ -95,8 +96,8 @@ class TestLoadHighlightsFromToml(ThisTestCase):
 
     def test_highlights_with_no_keywords_default_to_empty_tuple(self) -> None:
         p = self._write_toml(
-            '[tool.highlights]\n'
-            '[[tool.highlights.highlight]]\n'
+            "[tool.highlights]\n"
+            "[[tool.highlights.highlight]]\n"
             'context = "x"\n'
             'text = "some text"\n'
         )
@@ -105,24 +106,22 @@ class TestLoadHighlightsFromToml(ThisTestCase):
 
     def test_disabled_highlight_is_loaded_but_marked(self) -> None:
         p = self._write_toml(
-            '[tool.highlights]\n'
-            '[[tool.highlights.highlight]]\n'
+            "[tool.highlights]\n"
+            "[[tool.highlights.highlight]]\n"
             'context = "x"\ntext = "text"\nenabled = false\n'
         )
         result = MOD.load_highlights(path=p)
         self.assertFalse(result.highlights[0].enabled)
 
     def test_overrides_default_number(self) -> None:
-        p = self._write_toml(
-            '[tool.highlights]\ndefault_number = 3\n'
-        )
+        p = self._write_toml("[tool.highlights]\ndefault_number = 3\n")
         result = MOD.load_highlights(path=p)
         self.assertEqual(3, result.default_number)
 
     def test_loads_topic_when_present(self) -> None:
         p = self._write_toml(
-            '[tool.highlights]\n'
-            '[[tool.highlights.highlight]]\n'
+            "[tool.highlights]\n"
+            "[[tool.highlights.highlight]]\n"
             'context = "x"\ntext = "text"\ntopic = "Technical"\n'
         )
         result = MOD.load_highlights(path=p)
@@ -130,8 +129,8 @@ class TestLoadHighlightsFromToml(ThisTestCase):
 
     def test_topic_defaults_to_empty_string(self) -> None:
         p = self._write_toml(
-            '[tool.highlights]\n'
-            '[[tool.highlights.highlight]]\n'
+            "[tool.highlights]\n"
+            "[[tool.highlights.highlight]]\n"
             'context = "x"\ntext = "text"\n'
         )
         result = MOD.load_highlights(path=p)
@@ -147,6 +146,7 @@ class TestLoadSkillsExplicit(ThisTestCase):
 
     def test_returns_skill_set(self) -> None:
         from jobjob.structure.skill import SkillSet
+
         self.assertIsInstance(self.result, SkillSet)
 
     def test_loads_at_least_one_skill(self) -> None:
@@ -165,8 +165,8 @@ class TestLoadSkillsFromToml(ThisTestCase):
     def test_skill_with_no_keywords_defaults_to_empty_tuple(self) -> None:
         p = Path(self.get_tmpdir(), "skills.toml")
         p.write_text(
-            '[tool.skills]\n'
-            '[[tool.skills.skill]]\n'
+            "[tool.skills]\n"
+            "[[tool.skills.skill]]\n"
             'label = "python"\ntext = "Python"\n'
         )
         result = MOD.load_skills(path=p)
@@ -174,7 +174,7 @@ class TestLoadSkillsFromToml(ThisTestCase):
 
     def test_overrides_default_number(self) -> None:
         p = Path(self.get_tmpdir(), "skills.toml")
-        p.write_text('[tool.skills]\ndefault_number = 8\n')
+        p.write_text("[tool.skills]\ndefault_number = 8\n")
         result = MOD.load_skills(path=p)
         self.assertEqual(8, result.default_number)
 
@@ -212,8 +212,8 @@ class TestLoadTemplatesEdgeCases(ThisTestCase):
     def test_templates_with_no_keywords_default_to_empty_tuple(self) -> None:
         p = Path(self.get_tmpdir(), "templates.toml")
         p.write_text(
-            '[tool.templates]\n'
-            '[[tool.templates.template]]\n'
+            "[tool.templates]\n"
+            "[[tool.templates.template]]\n"
             'name = "default"\narchetype = "General"\ndoc_id = "D123"\n'
         )
         result = MOD.load_templates(path=p)
@@ -222,10 +222,10 @@ class TestLoadTemplatesEdgeCases(ThisTestCase):
     def test_section_enabled_defaults_to_true(self) -> None:
         p = Path(self.get_tmpdir(), "templates.toml")
         p.write_text(
-            '[tool.templates]\n'
-            '[[tool.templates.section]]\n'
+            "[tool.templates]\n"
+            "[[tool.templates.section]]\n"
             'heading = "Objective"\nsection = "objective"\n'
-            '[[tool.templates.template]]\n'
+            "[[tool.templates.template]]\n"
             'name = "default"\narchetype = "General"\ndoc_id = "D123"\n'
         )
         result = MOD.load_templates(path=p)
@@ -235,12 +235,12 @@ class TestLoadTemplatesEdgeCases(ThisTestCase):
     def test_section_enabled_false_is_loaded(self) -> None:
         p = Path(self.get_tmpdir(), "templates.toml")
         p.write_text(
-            '[tool.templates]\n'
-            '[[tool.templates.section]]\n'
+            "[tool.templates]\n"
+            "[[tool.templates.section]]\n"
             'heading = "Objective"\nsection = "objective"\nenabled = false\n'
-            '[[tool.templates.section]]\n'
+            "[[tool.templates.section]]\n"
             'heading = "Key Career Highlights"\nsection = "highlights"\n'
-            '[[tool.templates.template]]\n'
+            "[[tool.templates.template]]\n"
             'name = "default"\narchetype = "General"\ndoc_id = "D123"\n'
         )
         result = MOD.load_templates(path=p)

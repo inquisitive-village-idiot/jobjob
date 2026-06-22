@@ -49,8 +49,12 @@ def create_cover_letter_pdf(
 
     styles = getSampleStyleSheet()
     name_style = ParagraphStyle(
-        "Name", parent=styles["Normal"], fontSize=12, leading=14,
-        fontName="Helvetica-Bold", alignment=TA_LEFT,
+        "Name",
+        parent=styles["Normal"],
+        fontSize=12,
+        leading=14,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
     )
     contact_style = ParagraphStyle(
         "Contact", parent=styles["Normal"], fontSize=10, leading=12, alignment=TA_LEFT
@@ -59,14 +63,22 @@ def create_cover_letter_pdf(
         "Date", parent=styles["Normal"], fontSize=11, leading=14, alignment=TA_LEFT
     )
     subject_style = ParagraphStyle(
-        "Subject", parent=styles["Normal"], fontSize=11, leading=14,
-        fontName="Helvetica-Bold", alignment=TA_LEFT,
+        "Subject",
+        parent=styles["Normal"],
+        fontSize=11,
+        leading=14,
+        fontName="Helvetica-Bold",
+        alignment=TA_LEFT,
     )
     # Left-aligned: full justification produces uneven word spacing at this
     # column width, which reads worse than a ragged right edge.
     body_style = ParagraphStyle(
-        "Body", parent=styles["Normal"], fontSize=11, leading=14,
-        alignment=TA_LEFT, spaceAfter=12,
+        "Body",
+        parent=styles["Normal"],
+        fontSize=11,
+        leading=14,
+        alignment=TA_LEFT,
+        spaceAfter=12,
     )
 
     story = [

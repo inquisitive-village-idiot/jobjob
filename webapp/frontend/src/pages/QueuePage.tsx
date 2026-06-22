@@ -49,10 +49,12 @@ export default function QueuePage() {
     setError(null);
     fetchQueue();
     fetchScheduled();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeId = useScrollSpy(["q-queued", "q-apply", "q-enrich"], [queue, scheduled]);
+  const activeId = useScrollSpy(
+    ["q-queued", "q-apply", "q-enrich"],
+    [queue, scheduled]
+  );
 
   const jdQueue = queue?.filter((q) => q.subfolder === "jobs") ?? [];
   const profileQueue = queue?.filter((q) => q.subfolder === "profiles") ?? [];
@@ -97,7 +99,6 @@ export default function QueuePage() {
       <div className="relative">
         <FloatingOutline items={outline} activeId={activeId} />
         <div className="space-y-6">
-
           {/* Queued section */}
           <div id="q-queued" className="scroll-mt-16">
             <ScheduledSection
@@ -142,7 +143,9 @@ export default function QueuePage() {
               onView={setViewingJobId}
               runningJobForPath={runningJobForPath}
               onRefresh={fetchQueue}
-              onProcessAll={profileQueue.length > 0 ? () => processAll("enrich") : undefined}
+              onProcessAll={
+                profileQueue.length > 0 ? () => processAll("enrich") : undefined
+              }
             />
           </div>
         </div>
@@ -247,14 +250,17 @@ function ScheduledSection({
                   <div className="flex items-center gap-2">
                     <span
                       className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                        sched.status === "running" ? "bg-blue-500 animate-pulse" : "bg-gray-400"
+                        sched.status === "running"
+                          ? "bg-blue-500 animate-pulse"
+                          : "bg-gray-400"
                       }`}
                     />
                     <span className="text-xs font-medium text-gray-700">
                       Schedule — {sched.count} item{sched.count !== 1 ? "s" : ""}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {sched.mode} · {sched.concurrency}× · {sched.interval_minutes}m gap
+                      {sched.mode} · {sched.concurrency}× · {sched.interval_minutes}m
+                      gap
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -284,7 +290,8 @@ function ScheduledSection({
                         <span className="text-sm text-gray-800 truncate">{name}</span>
                         {expectedTime && (
                           <span className="text-xs text-gray-400 shrink-0 ml-4">
-                            ~{new Date(expectedTime).toLocaleTimeString([], {
+                            ~
+                            {new Date(expectedTime).toLocaleTimeString([], {
                               hour: "2-digit",
                               minute: "2-digit",
                             })}
@@ -375,7 +382,9 @@ function QueueSection({
                 key={item.path}
                 className="flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50"
               >
-                <span className="text-sm font-medium text-gray-900 truncate">{item.name}</span>
+                <span className="text-sm font-medium text-gray-900 truncate">
+                  {item.name}
+                </span>
                 {job ? (
                   <div className="ml-4 shrink-0 flex items-center gap-2">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500">

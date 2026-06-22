@@ -32,7 +32,9 @@ class TestAdd(ThisTestCase):
         usage.add(self.make_usage(input_tokens=10, output_tokens=5))
         usage.add(
             self.make_usage(
-                input_tokens=3, cache_read_input_tokens=100, cache_creation_input_tokens=2
+                input_tokens=3,
+                cache_read_input_tokens=100,
+                cache_creation_input_tokens=2,
             )
         )
 

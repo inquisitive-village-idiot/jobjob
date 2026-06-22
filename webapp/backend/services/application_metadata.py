@@ -28,6 +28,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
+
 # Mirrored by APP_STATUSES in webapp/frontend/src/types/index.ts — keep in sync.
 class ApplicationStatus(str, Enum):
     """Lifecycle status of a job application."""
@@ -105,9 +106,7 @@ def write_status(folder: Path, status: ApplicationStatus) -> dict:
     data = read_metadata(folder)
     data["schema_version"] = _SCHEMA_VERSION
     data["status"] = status.value
-    data["status_updated_at"] = datetime.now(timezone.utc).isoformat(
-        timespec="seconds"
-    )
+    data["status_updated_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     data.setdefault("notes", [])
 
     fd, tmp_name = tempfile.mkstemp(dir=folder, suffix=".tmp")

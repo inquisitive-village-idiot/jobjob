@@ -51,7 +51,9 @@ def delete_queue_item(body: QueueDelete, request: Request) -> dict:
     except ValueError:
         raise HTTPException(status_code=400, detail="Path is not in the input area.")
     if rel.parts and rel.parts[0] == "completed":
-        raise HTTPException(status_code=400, detail="Refusing to delete completed artifacts.")
+        raise HTTPException(
+            status_code=400, detail="Refusing to delete completed artifacts."
+        )
     if not resolved.is_file():
         raise HTTPException(status_code=404, detail="Queued file not found.")
     resolved.unlink()
@@ -95,7 +97,10 @@ def set_application_status(
     if not local_dir:
         raise HTTPException(
             status_code=400,
-            detail="Local applications mirror not configured; status writes unavailable.",
+            detail=(
+                "Local applications mirror not configured; status writes "
+                "unavailable."
+            ),
         )
     # folder_name must be a plain directory name — no separators or traversal.
     if (
@@ -114,9 +119,7 @@ def set_application_status(
     try:
         meta = write_status(folder, body.status)
     except (ValueError, OSError) as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Could not write metadata: {exc}"
-        )
+        raise HTTPException(status_code=500, detail=f"Could not write metadata: {exc}")
     invalidate_completed_cache()
     return {
         "folder_name": folder_name,

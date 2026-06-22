@@ -23,7 +23,9 @@ def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         prog="jobjob apply",
-        description="Generate a tailored resume and cover letter for a job description.",
+        description=(
+            "Generate a tailored resume and cover letter for a job description."
+        ),
     )
     parser.add_argument(
         "job_description",
@@ -139,7 +141,9 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
     )
     _logger.info(
         "Apply complete: %d processed, %d skipped, %d failed",
-        summary["processed"], summary["skipped"], summary["failed"],
+        summary["processed"],
+        summary["skipped"],
+        summary["failed"],
     )
     return 1 if summary["failed"] and not summary["processed"] else 0
 

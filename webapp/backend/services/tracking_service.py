@@ -3,7 +3,7 @@
 
 Input queue:  ``data/jobs/`` — JD PDFs; ``data/profiles/`` — profile screenshots.
 Completed:    ``data/completed/jobs/``   — JDs, verified against Drive (4 artifacts).
-              ``data/completed/profiles/`` — profiles, no Drive check (sheet records only).
+              ``data/completed/profiles/`` — profiles, no Drive check (sheet only).
               ``data/completed/`` root    — legacy JD items (treated as JDs).
 """
 
@@ -39,6 +39,7 @@ def invalidate_completed_cache() -> None:
     global _completed_cache
     _completed_cache = None
 
+
 _COMPLETED_DIR = "completed"
 _SUPPORTED_EXTENSIONS = frozenset({".pdf", ".png", ".jpg", ".jpeg"})
 
@@ -52,7 +53,9 @@ def _queue_item(f: Path, subfolder: str) -> dict:
     }
 
 
-def list_queue(data_dir: Path, _classify: Callable[..., str] = classify_file) -> list[dict]:
+def list_queue(
+    data_dir: Path, _classify: Callable[..., str] = classify_file
+) -> list[dict]:
     """Return unprocessed input files from ``data/``.
 
     Files dropped directly in ``data/`` are classified (filename/text heuristics,
@@ -77,7 +80,9 @@ def list_queue(data_dir: Path, _classify: Callable[..., str] = classify_file) ->
                 continue
             kind = _classify(f)
             subfolder = (
-                "jobs" if kind == JD else "profiles" if kind == LINKEDIN_PROFILE else None
+                "jobs"
+                if kind == JD
+                else "profiles" if kind == LINKEDIN_PROFILE else None
             )
             if subfolder is None:
                 continue
@@ -122,7 +127,12 @@ def _parse_app_name(name: str) -> dict:
     cleaned = _STATUS_PREFIX_RE.sub("", name) if match else name
     match = _APP_NAME_RE.match(cleaned)
     if not match:
-        return {"date": "", "company": "", "title": cleaned, "prefix_status": prefix_status}
+        return {
+            "date": "",
+            "company": "",
+            "title": cleaned,
+            "prefix_status": prefix_status,
+        }
     return {
         "date": match.group(1),
         "company": match.group(2),
@@ -153,13 +163,15 @@ def _application_item(
         try:
             p = Path(path)
             if p.exists():
-                parsed["date"] = datetime.fromtimestamp(
-                    p.stat().st_mtime
-                ).strftime("%Y-%m-%d")
+                parsed["date"] = datetime.fromtimestamp(p.stat().st_mtime).strftime(
+                    "%Y-%m-%d"
+                )
         except OSError:
             pass
     app_status = (
-        metadata_status.value if metadata_status else prefix_status or DEFAULT_STATUS.value
+        metadata_status.value
+        if metadata_status
+        else prefix_status or DEFAULT_STATUS.value
     )
     return {
         "name": folder_name,
@@ -272,7 +284,11 @@ _PROFILE_NAME_RE = re.compile(r"^(\d{8})-(\d{8})-(.+?)-(.+)$")
 
 def _fmt_yyyymmdd(value: str) -> str:
     """Format an 8-digit ``yyyymmdd`` as ``yyyy-mm-dd`` (else return it unchanged)."""
-    return f"{value[0:4]}-{value[4:6]}-{value[6:8]}" if value.isdigit() and len(value) == 8 else value
+    return (
+        f"{value[0:4]}-{value[4:6]}-{value[6:8]}"
+        if value.isdigit() and len(value) == 8
+        else value
+    )
 
 
 def _profile_completed_item(f: Path, sheet_url: Optional[str] = None) -> dict:

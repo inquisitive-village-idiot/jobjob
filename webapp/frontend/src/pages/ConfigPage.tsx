@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { ConfigSchema, ConfigScope } from "../types";
-import { FloatingOutline, SectionHeader, useScrollSpy } from "../components/PageOutline";
+import {
+  FloatingOutline,
+  SectionHeader,
+  useScrollSpy,
+} from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
 import UpdatePanel from "./UpdatePanel";
 import ProfilesPanel from "./ProfilesPanel";
@@ -9,8 +13,16 @@ import ProfilesPanel from "./ProfilesPanel";
 const slug = (group: string) => group.toLowerCase().replace(/\s+/g, "-");
 
 const SCOPES: { id: ConfigScope; label: string; hint: string }[] = [
-  { id: "app", label: "App", hint: "This jobjob instance — machine-local (config/.env), never committed." },
-  { id: "profile", label: "Profile", hint: "The active profile — committed to its resources repo (config/.profile)." },
+  {
+    id: "app",
+    label: "App",
+    hint: "This jobjob instance — machine-local (config/.env), never committed.",
+  },
+  {
+    id: "profile",
+    label: "Profile",
+    hint: "The active profile — committed to its resources repo (config/.profile).",
+  },
 ];
 
 export default function ConfigPage() {
@@ -39,7 +51,10 @@ export default function ConfigPage() {
     id: `config-${slug(g)}`,
     label: g,
   }));
-  const activeId = useScrollSpy(outline.map((o) => o.id), [schema]);
+  const activeId = useScrollSpy(
+    outline.map((o) => o.id),
+    [schema]
+  );
 
   const scopeTabs = (
     <div className="flex gap-1 mb-1">
@@ -48,7 +63,9 @@ export default function ConfigPage() {
           key={s.id}
           onClick={() => setScope(s.id)}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            scope === s.id ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
+            scope === s.id
+              ? "bg-blue-600 text-white"
+              : "text-gray-600 hover:bg-gray-100"
           }`}
         >
           {s.label}
@@ -124,11 +141,7 @@ export default function ConfigPage() {
         <FloatingOutline items={outline} activeId={activeId} />
         <div className="space-y-10">
           {groups.map((group) => (
-            <section
-              key={group}
-              id={`config-${slug(group)}`}
-              className="scroll-mt-16"
-            >
+            <section key={group} id={`config-${slug(group)}`} className="scroll-mt-16">
               <SectionHeader>{group}</SectionHeader>
               <div className="space-y-4">
                 {Object.entries(schema)
@@ -140,7 +153,9 @@ export default function ConfigPage() {
                         {field.required && <span className="ml-1 text-red-500">*</span>}
                       </label>
                       {field.description && (
-                        <p className="text-xs text-gray-500 mb-1">{field.description}</p>
+                        <p className="text-xs text-gray-500 mb-1">
+                          {field.description}
+                        </p>
                       )}
                       {field.is_secret ? (
                         <div className="flex items-center gap-2">

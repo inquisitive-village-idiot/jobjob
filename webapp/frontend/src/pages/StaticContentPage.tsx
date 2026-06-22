@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import ResumeImportPanel from "./ResumeImportPanel";
 import { api } from "../api/client";
 import type { ReferenceFile, TomlFile } from "../types";
-import { FloatingOutline, SectionHeader, useScrollSpy } from "../components/PageOutline";
+import {
+  FloatingOutline,
+  SectionHeader,
+  useScrollSpy,
+} from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
 
 type Tab = "highlights" | "skills" | "templates" | "reference" | "import";
@@ -25,7 +29,10 @@ const ARRAY_KEY: Record<TomlName, string> = {
 
 type ConfigScalar = string | number | boolean;
 
-function _tool(name: TomlName, parsed: Record<string, unknown> | null): Record<string, unknown> {
+function _tool(
+  name: TomlName,
+  parsed: Record<string, unknown> | null
+): Record<string, unknown> {
   return (
     ((parsed?.tool as Record<string, unknown>)?.[name] as
       | Record<string, unknown>
@@ -38,7 +45,9 @@ function categoryTitles(
   name: TomlName,
   parsed: Record<string, unknown> | null
 ): string[] {
-  const items = (_tool(name, parsed)[ARRAY_KEY[name]] as Record<string, unknown>[] | undefined) ?? [];
+  const items =
+    (_tool(name, parsed)[ARRAY_KEY[name]] as Record<string, unknown>[] | undefined) ??
+    [];
   return items.map((it, i) => {
     if (name === "skills") return String(it.text ?? i);
     return formatTitle(String((name === "templates" ? it.name : it.context) ?? i));
@@ -71,7 +80,11 @@ function ClipboardIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden>
       <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
@@ -79,20 +92,18 @@ function ClipboardIcon() {
 function CheckIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden>
-      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+      <path
+        fillRule="evenodd"
+        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+        clipRule="evenodd"
+      />
     </svg>
   );
 }
 
 // Copy-to-clipboard icon button. Shared by per-item cards and per-group headers so
 // the copy affordance (icon swap + "Copied!" flash) stays consistent everywhere.
-function CopyButton({
-  text,
-  label = "Copy text",
-}: {
-  text: string;
-  label?: string;
-}) {
+function CopyButton({ text, label = "Copy text" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
   const onClick = (e: React.MouseEvent) => {
@@ -145,7 +156,9 @@ function renderValue(key: string, value: unknown) {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   const mono = key === "doc_id" || key === "archetype";
   return (
-    <span className={mono ? "font-mono text-xs" : "whitespace-pre-wrap leading-relaxed"}>
+    <span
+      className={mono ? "font-mono text-xs" : "whitespace-pre-wrap leading-relaxed"}
+    >
       {String(value)}
     </span>
   );
@@ -288,9 +301,7 @@ function ItemCard({
         onClick={() => !editing && setOpen((o) => !o)}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm font-medium text-gray-900 truncate">
-            {title}
-          </span>
+          <span className="text-sm font-medium text-gray-900 truncate">{title}</span>
           {subtitle && (
             <span className="text-xs text-gray-400 hidden sm:inline truncate">
               {subtitle}
@@ -338,9 +349,7 @@ function ItemCard({
                   </label>
                   <textarea
                     value={(draft.text as string) ?? ""}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, text: e.target.value }))
-                    }
+                    onChange={(e) => setDraft((d) => ({ ...d, text: e.target.value }))}
                     rows={5}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded
                       focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y font-sans"
@@ -404,14 +413,10 @@ function ItemCard({
                     value={(draft.keywords as string[]) ?? []}
                     onChange={(v) => setDraft((d) => ({ ...d, keywords: v }))}
                   />
-                  <KeywordPills
-                    keywords={(draft.keywords as string[]) ?? []}
-                  />
+                  <KeywordPills keywords={(draft.keywords as string[]) ?? []} />
                 </div>
               )}
-              {error && (
-                <p className="text-xs text-red-600">{error}</p>
-              )}
+              {error && <p className="text-xs text-red-600">{error}</p>}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={save}
@@ -459,10 +464,17 @@ function CategoryView({
     { id: "sc-items", label: "Items" },
     ...titles.map((t, i) => ({ id: `sc-item-${i}`, label: t, indent: true })),
   ];
-  const activeId = useScrollSpy(outline.map((o) => o.id), [name, titles.length]);
+  const activeId = useScrollSpy(
+    outline.map((o) => o.id),
+    [name, titles.length]
+  );
 
   if (!parsed) {
-    return <p className="text-yellow-600 text-sm">TOML parse error — switch to raw editor.</p>;
+    return (
+      <p className="text-yellow-600 text-sm">
+        TOML parse error — switch to raw editor.
+      </p>
+    );
   }
 
   return (
@@ -519,8 +531,8 @@ function ParametersTable({
           typeof orig === "number"
             ? Number(draft[k])
             : typeof orig === "boolean"
-            ? draft[k] === "true"
-            : draft[k];
+              ? draft[k] === "true"
+              : draft[k];
       }
       onSaved(await api.patch<TomlFile>(`/static/toml/${name}/config`, { fields }));
       setDraft({});
@@ -770,10 +782,9 @@ function TopicGroup({
       // file is re-read server-side per call, so sequential writes stay consistent.
       let last: TomlFile | null = null;
       for (const e of entries) {
-        last = await api.patch<TomlFile>(
-          `/static/toml/${tomlName}/items/${e.index}`,
-          { fields: { enabled: next } }
-        );
+        last = await api.patch<TomlFile>(`/static/toml/${tomlName}/items/${e.index}`, {
+          fields: { enabled: next },
+        });
       }
       if (last) onSaved(last);
     } catch (err) {
@@ -846,9 +857,11 @@ function SectionsPanel({
   const [error, setError] = useState<string | null>(null);
 
   const parsed = file.parsed as Record<string, unknown> | null;
-  const sections = (((parsed?.tool as Record<string, unknown> | undefined)
-    ?.templates as Record<string, unknown> | undefined)?.section ??
-    []) as ParsedSection[];
+  const sections = ((
+    (parsed?.tool as Record<string, unknown> | undefined)?.templates as
+      | Record<string, unknown>
+      | undefined
+  )?.section ?? []) as ParsedSection[];
 
   if (sections.length === 0) {
     return <p className="text-sm text-gray-400">No editable sections defined.</p>;
@@ -939,7 +952,11 @@ function StyledTomlItems({
 
   const parsed = file.parsed as Record<string, unknown> | null;
   if (!parsed) {
-    return <p className="text-yellow-600 text-sm">TOML parse error — switch to raw editor.</p>;
+    return (
+      <p className="text-yellow-600 text-sm">
+        TOML parse error — switch to raw editor.
+      </p>
+    );
   }
 
   const tool = parsed.tool as Record<string, unknown>;
@@ -1116,9 +1133,7 @@ function ReferencePanel() {
         {selected ? (
           <>
             <div className="flex items-center justify-between">
-              <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                {selected}
-              </code>
+              <code className="text-xs bg-gray-100 px-2 py-1 rounded">{selected}</code>
               <div className="flex items-center gap-3">
                 {saved && <span className="text-sm text-green-600">Saved</span>}
                 {error && <span className="text-sm text-red-600">{error}</span>}
@@ -1165,26 +1180,24 @@ export default function StaticContentPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">
-        Static Content
-      </h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-6">Static Content</h1>
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-4">
-          {(
-            ["highlights", "skills", "templates", "reference", "import"] as Tab[]
-          ).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-2 px-1 text-sm font-medium capitalize border-b-2 transition-colors ${
-                activeTab === tab
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab === "import" ? "Import résumé" : tab}
-            </button>
-          ))}
+          {(["highlights", "skills", "templates", "reference", "import"] as Tab[]).map(
+            (tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-2 px-1 text-sm font-medium capitalize border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab === "import" ? "Import résumé" : tab}
+              </button>
+            )
+          )}
         </nav>
       </div>
       {activeTab === "reference" ? (

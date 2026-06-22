@@ -43,9 +43,7 @@ export function useJobs(onSettled?: () => void) {
       const event = JSON.parse(e.data) as SSEEvent;
       if (event.type === "log") {
         setJobs((prev) =>
-          prev.map((j) =>
-            j.id === job.id ? { ...j, lines: [...j.lines, event] } : j
-          )
+          prev.map((j) => (j.id === job.id ? { ...j, lines: [...j.lines, event] } : j))
         );
         return;
       }
@@ -147,9 +145,7 @@ export function useJobs(onSettled?: () => void) {
         skip_drive: opts.skipDrive,
       });
       const label =
-        "url" in source
-          ? source.url
-          : res.snapshot.split("/").pop() ?? "Pasted JD";
+        "url" in source ? source.url : (res.snapshot.split("/").pop() ?? "Pasted JD");
       track({
         id: res.job_id,
         kind: "apply",
@@ -228,7 +224,10 @@ export function useJobs(onSettled?: () => void) {
       start_at: string;
       paths: string[];
     }): Promise<string> => {
-      const res = await api.post<{ job_id: string; count: number }>("/jobs/schedule", params);
+      const res = await api.post<{ job_id: string; count: number }>(
+        "/jobs/schedule",
+        params
+      );
       track({
         id: res.job_id,
         kind: "batch",

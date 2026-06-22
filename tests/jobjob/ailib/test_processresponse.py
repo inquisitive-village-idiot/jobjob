@@ -27,7 +27,7 @@ class TestProcessResponseJson(ThisTestCase):
         self.assertEqual(expected, found)
 
     def test_parses_fenced_json_block(self) -> None:
-        text = "Here you go:\n```json\n{\"k\": \"v\"}\n```\nThanks!"
+        text = 'Here you go:\n```json\n{"k": "v"}\n```\nThanks!'
         expected = {"k": "v"}
         found = MOD.process_response_json(text)
         self.assertEqual(expected, found)
@@ -45,13 +45,13 @@ class TestProcessResponseJson(ThisTestCase):
     def test_falls_through_fenced_invalid_json_to_regex_array(self) -> None:
         # Fenced block contains invalid JSON; the response also has a valid array
         # that the array regex pattern matches.
-        text = '```\ninvalid content\n```\n[1, 2, 3]'
+        text = "```\ninvalid content\n```\n[1, 2, 3]"
         result = MOD.process_response_json(text)
         self.assertEqual([1, 2, 3], result)
 
     def test_falls_through_fenced_and_regex_when_both_invalid(self) -> None:
         # Both the fenced block and any regex-extracted snippet are invalid JSON.
-        text = '```json\n{bad}\n```\nand {also bad} here'
+        text = "```json\n{bad}\n```\nand {also bad} here"
         with self.assertRaisesRegex(ValueError, "No valid JSON"):
             MOD.process_response_json(text)
 

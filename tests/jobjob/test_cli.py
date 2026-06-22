@@ -10,7 +10,9 @@ import jobjob.cli as MOD
 LOGGER = logging.getLogger(__name__)
 
 
-def _make_settings(credentials_file: str = "/tmp/creds.json", token_file: str = "/tmp/token") -> mock.MagicMock:
+def _make_settings(
+    credentials_file: str = "/tmp/creds.json", token_file: str = "/tmp/token"
+) -> mock.MagicMock:
     google = mock.MagicMock()
     google.credentials_file = Path(credentials_file)
     google.token_file = Path(token_file)

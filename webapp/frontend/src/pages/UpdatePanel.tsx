@@ -136,19 +136,15 @@ export default function UpdatePanel() {
 
           <div className="mt-3 text-sm">
             {status.check_error ? (
-              <p className="text-yellow-700">
-                Last check failed: {status.check_error}
-              </p>
+              <p className="text-yellow-700">Last check failed: {status.check_error}</p>
             ) : status.update_available ? (
               status.can_update ? (
-                <p className="text-blue-700">
-                  An update is available.
-                </p>
+                <p className="text-blue-700">An update is available.</p>
               ) : (
                 <p className="text-gray-500">
                   Version {status.latest_version} is available. This is a source
-                  checkout — update with <code>git pull</code> rather than the
-                  in-app installer.
+                  checkout — update with <code>git pull</code> rather than the in-app
+                  installer.
                 </p>
               )
             ) : (

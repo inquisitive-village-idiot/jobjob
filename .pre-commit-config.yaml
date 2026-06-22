@@ -1,21 +1,37 @@
+# Formatting + linting hooks, run through the project's own locked tooling so local
+# results match CI exactly (the "Format" workflow runs the same tools).
+#   Python  : isort, black, ruff   (via `uv run`; config in pyproject.toml)
+#   Frontend: prettier, eslint     (via npm scripts; config in webapp/frontend/)
+# Requires `uv` and `node`/`npm` on PATH.
 repos:
-  - repo: https://github.com/pycqa/isort
-    rev: 5.10.1
+  - repo: local
     hooks:
       - id: isort
-        name: isort (python)
-        args: ["--profile", "black", "--filter-files"]
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
+        name: isort
+        language: system
+        entry: uv run --no-sync isort
+        types: [python]
       - id: black
-        args: ["--exclude", "docs"]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.0.287
-    hooks:
+        name: black
+        language: system
+        entry: uv run --no-sync black
+        types: [python]
       - id: ruff
-  # - repo: https://github.com/pdm-project/pdm
-  #   rev: 2.4.5
-  #   hooks:
-  #     - id: pdm-lock-check
+        name: ruff
+        language: system
+        entry: uv run --no-sync ruff check --fix
+        types: [python]
+      - id: frontend-format
+        name: prettier (frontend)
+        language: system
+        entry: bash -c 'cd webapp/frontend && npm run format'
+        files: ^webapp/frontend/.*\.(ts|tsx|css|json|md)$
+        exclude: ^webapp/frontend/(dist|node_modules)/
+        pass_filenames: false
+      - id: frontend-lint
+        name: eslint (frontend)
+        language: system
+        entry: bash -c 'cd webapp/frontend && npm run lint'
+        files: ^webapp/frontend/.*\.(ts|tsx)$
+        exclude: ^webapp/frontend/(dist|node_modules)/
+        pass_filenames: false

@@ -64,15 +64,13 @@ def find_application_folder(
     role: str,
     parent_id: Optional[str] = None,
 ) -> Optional[str]:
-    """Return the id of an existing application folder for ``company``/``role``, else None."""
+    """Return the id of an existing ``company``/``role`` folder, else None."""
     name = application_folder_name(company, role)
     query = f"name = '{name}' and mimeType = '{FOLDER_MIME}' and trashed = false"
     if parent_id:
         query += f" and '{parent_id}' in parents"
     results = (
-        service.files()
-        .list(q=query, fields="files(id, name)", pageSize=1)
-        .execute()
+        service.files().list(q=query, fields="files(id, name)", pageSize=1).execute()
     )
     existing = results.get("files", [])
     return existing[0]["id"] if existing else None
@@ -87,9 +85,7 @@ def _find_in_folder(service: Any, name: str, folder_id: str) -> Optional[str]:
     """
     query = f"name = '{name}' and '{folder_id}' in parents and trashed = false"
     results = (
-        service.files()
-        .list(q=query, fields="files(id, name)", pageSize=1)
-        .execute()
+        service.files().list(q=query, fields="files(id, name)", pageSize=1).execute()
     )
     files = results.get("files", [])
     return files[0]["id"] if files else None
@@ -152,9 +148,7 @@ def create_application_folder(
     if parent_id:
         metadata["parents"] = [parent_id]
     folder = (
-        service.files()
-        .create(body=metadata, fields="id, name, webViewLink")
-        .execute()
+        service.files().create(body=metadata, fields="id, name, webViewLink").execute()
     )
     _logger.info("Created folder: %s", folder["name"])
     return folder["id"]

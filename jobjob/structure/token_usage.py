@@ -55,7 +55,8 @@ class TokenUsage:
         return (
             f"Tokens - Input: {self.input_tokens:,}, Output: {self.output_tokens:,}, "
             f"Cache created: {self.cache_creation_input_tokens:,}, "
-            f"Cache read: {self.cache_read_input_tokens:,} ({cache_pct:.1f}% from cache)"
+            f"Cache read: {self.cache_read_input_tokens:,} "
+            f"({cache_pct:.1f}% from cache)"
         )
 
 

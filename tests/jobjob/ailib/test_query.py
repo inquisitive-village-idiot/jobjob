@@ -27,12 +27,14 @@ class TestClearCache(ThisTestCase):
     def test_noop_when_no_cache_registered(self) -> None:
         # Ensure no global cache is set; clear_cache should not raise.
         import jobjob.ailib.cachemanager as cm
+
         self.assertIsNone(cm._CACHE)
         MOD.clear_cache()  # Should be a no-op.
 
     def test_clears_active_cache(self) -> None:
         import tempfile
         from pathlib import Path
+
         import jobjob.ailib.cachemanager as cm
 
         tmpdir = Path(tempfile.mkdtemp())
@@ -153,9 +155,13 @@ class TestQueryService(ThisTestCase):
 
     def test_use_cache_true_wires_default_load_and_save(self) -> None:
         mock_service = mock.MagicMock(__name__="svc", return_value='{"ok": true}')
-        with mock.patch.object(MOD, "_default_load_cache", return_value=None) as mock_load, \
-             mock.patch.object(MOD, "_default_save_cache") as mock_save:
-            result = MOD.query_ai_service(
+        with (
+            mock.patch.object(
+                MOD, "_default_load_cache", return_value=None
+            ) as mock_load,
+            mock.patch.object(MOD, "_default_save_cache") as mock_save,
+        ):
+            MOD.query_ai_service(
                 prompt="test", use_cache=True, _query_service=mock_service
             )
         mock_load.assert_called_once()

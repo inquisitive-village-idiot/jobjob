@@ -21,14 +21,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from budget import calculate_cost, check_budget, record_run
-from security import safe_path
-from services.tracking_service import list_queue
-
 from jobjob.ingest.jd_source import (
     JDIngestError,
     snapshot_from_text,
     snapshot_from_url,
 )
+from security import safe_path
+from services.tracking_service import list_queue
 
 router = APIRouter()
 
@@ -165,6 +164,7 @@ def _start_job(fn, *args, **kwargs) -> str:
 
 # ── Single-item endpoints ──────────────────────────────────────────────────────
 
+
 def _make_apply_run(
     jd_path: Path,
     *,
@@ -180,12 +180,14 @@ def _make_apply_run(
 
     Routes through ``apply_inputs`` (the shared CLI entry point), using the current
     configuration (``load_settings`` → model, applicant, credentials). ``move_data_dir``
-    is passed straight through as ``apply_inputs``'s ``data_dir``: a real path moves the
-    JD into ``<data_dir>/completed/`` on success (normal apply); ``None`` skips the move,
-    which is what a re-run wants since its JD already lives in ``completed/jobs/``.
+    is passed straight through as ``apply_inputs``'s ``data_dir``: a real path moves
+    the JD into ``<data_dir>/completed/`` on success (normal apply); ``None`` skips
+    the move, which is what a re-run wants since its JD already lives in
+    ``completed/jobs/``.
 
-    ``model`` is an optional per-run override (not persisted): it replaces the configured
-    model for this run only. Because the response cache is keyed on the prompt alone, an
+    ``model`` is an optional per-run override (not persisted): it replaces the
+    configured model for this run only. Because the response cache is keyed on the
+    prompt alone, an
     override also bypasses the cache — otherwise the configured model's cached response
     would be served and the override silently ignored.
     """
@@ -499,9 +501,11 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
 
 # ── Batch endpoints ────────────────────────────────────────────────────────────
 
+
 @router.post("/apply-all")
 def launch_apply_all(request: Request) -> dict:
-    """Start apply jobs for every JD in the queue, sequentially. Returns {job_id, count}."""
+    """Start apply jobs for every JD in the queue, sequentially (returns
+    ``{job_id, count}``)."""
     s = _app_settings(request)
     data_dir = Path(s["data_dir"])
     items = [i for i in list_queue(data_dir) if i["subfolder"] == "jobs"]
@@ -556,7 +560,8 @@ def launch_apply_all(request: Request) -> dict:
 
 @router.post("/enrich-all")
 def launch_enrich_all(request: Request) -> dict:
-    """Start enrich jobs for every profile in the queue, sequentially. Returns {job_id, count}."""
+    """Start enrich jobs for every profile in the queue, sequentially (returns
+    ``{job_id, count}``)."""
     s = _app_settings(request)
     data_dir = Path(s["data_dir"])
     items = [i for i in list_queue(data_dir) if i["subfolder"] == "profiles"]
@@ -607,11 +612,13 @@ def launch_enrich_all(request: Request) -> dict:
 
 # ── Schedule endpoint ──────────────────────────────────────────────────────────
 
+
 @router.post("/schedule")
 def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
     """Schedule selected files with given mode, concurrency, interval, and start time.
 
-    Returns {job_id, count}.  Schedule metadata is stored in ``_jobs[job_id]["schedule"]``
+    Returns {job_id, count}.  Schedule metadata is stored in
+    ``_jobs[job_id]["schedule"]``
     so ``GET /scheduled`` can surface it for the Queue page.
     """
     s = _app_settings(request)
@@ -639,6 +646,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
         if sf:
             return sf
         from jobjob.classify.classify import JD, classify_file
+
         return "jobs" if classify_file(p) == JD else "profiles"
 
     subfolder_map = {str(p): _get_subfolder(p) for p in valid_paths}
@@ -694,6 +702,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
             sf = subfolder_map[str(p)]
             if sf == "profiles":
                 from jobjob.enrich.workflow import enrich_inputs
+
                 summary = enrich_inputs(
                     p,
                     query_service=client,
@@ -704,6 +713,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                 )
             else:
                 from jobjob.apply.workflow import apply_inputs
+
                 summary = apply_inputs(
                     p,
                     query_service=client,
@@ -718,21 +728,28 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
             for entry in summary.get("items", []):
                 result = entry.get("result")
                 if isinstance(result, dict) and "token_usage" in result:
-                    record_run(calculate_cost(result["token_usage"], model=settings.model))
+                    record_run(
+                        calculate_cost(result["token_usage"], model=settings.model)
+                    )
             return summary
 
         if concurrency == 1:
             for i, p in enumerate(valid_paths):
                 if i > 0 and interval_secs > 0:
                     _logger.info(
-                        "Schedule: waiting %d min before next job.", body.interval_minutes
+                        "Schedule: waiting %d min before next job.",
+                        body.interval_minutes,
                     )
                     time.sleep(interval_secs)
                 try:
                     summary = _process(p)
-                    results.append({"path": str(p), "status": "completed", "summary": summary})
+                    results.append(
+                        {"path": str(p), "status": "completed", "summary": summary}
+                    )
                 except Exception as exc:
-                    results.append({"path": str(p), "status": "failed", "error": str(exc)})
+                    results.append(
+                        {"path": str(p), "status": "failed", "error": str(exc)}
+                    )
         else:
             with ThreadPoolExecutor(max_workers=concurrency) as executor:
                 futures: dict = {}
@@ -745,9 +762,13 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                     path = futures[future]
                     try:
                         summary = future.result()
-                        results.append({"path": path, "status": "completed", "summary": summary})
+                        results.append(
+                            {"path": path, "status": "completed", "summary": summary}
+                        )
                     except Exception as exc:
-                        results.append({"path": path, "status": "failed", "error": str(exc)})
+                        results.append(
+                            {"path": path, "status": "failed", "error": str(exc)}
+                        )
 
         return {"processed": len(results), "items": results}
 
@@ -766,7 +787,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
 
 @router.get("/scheduled")
 def list_scheduled() -> list[dict]:
-    """Return all scheduled batch jobs with schedule metadata (mode, paths, expected times)."""
+    """Return all scheduled batch jobs with their schedule metadata."""
     return [
         {"job_id": jid, "status": job["status"], **job["schedule"]}
         for jid, job in reversed(list(_jobs.items()))
@@ -775,6 +796,7 @@ def list_scheduled() -> list[dict]:
 
 
 # ── Progress / status endpoints ────────────────────────────────────────────────
+
 
 @router.get("/{job_id}/progress")
 async def job_progress(job_id: str) -> StreamingResponse:

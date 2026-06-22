@@ -11,10 +11,7 @@ function getCsrfToken(): string {
   return match ? match.split("=")[1] : "";
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
   const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method);
   const isForm = options.body instanceof FormData;

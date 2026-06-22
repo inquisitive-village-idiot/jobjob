@@ -5,7 +5,6 @@ Secrets are never returned to callers — the schema marks each key as
 ``is_secret`` and returns ``is_set`` (bool) in place of the value.
 """
 
-import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -232,9 +231,7 @@ def write_config(
             raise ValueError(f"Key not allowed in this config scope: {key}")
 
     lines = (
-        env_path.read_text(encoding="utf-8").splitlines()
-        if env_path.is_file()
-        else []
+        env_path.read_text(encoding="utf-8").splitlines() if env_path.is_file() else []
     )
     updated_keys: set[str] = set()
     new_lines: list[str] = []

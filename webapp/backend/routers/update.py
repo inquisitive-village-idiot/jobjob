@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("/status")
 def status() -> dict:
-    """Return current/latest version, release dates, last-checked time, install method."""
+    """Return version, release dates, last-checked time, and install method."""
     return update_service.get_status()
 
 

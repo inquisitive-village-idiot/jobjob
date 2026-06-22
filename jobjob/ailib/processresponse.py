@@ -6,7 +6,6 @@ import re
 from collections.abc import Mapping
 from typing import Any, Protocol, Union
 
-
 # Pre-compiled patterns for salvaging JSON wrapped in prose or markdown fences.
 _FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```")
 _OBJECT_RE = re.compile(r"\{[\s\S]*\}")

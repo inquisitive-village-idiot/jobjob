@@ -19,21 +19,27 @@ def _build_prompt(job: JobDescription) -> str:
         "experience (in your context).\n\n"
         f"JOB INFORMATION:\nCompany: {job.company_name}\nRole: {job.role_title}\n\n"
         f"KEY REQUIREMENTS:\n{json.dumps(list(job.key_requirements), indent=2)}\n\n"
-        f"TECHNICAL SKILLS MENTIONED:\n{json.dumps(list(job.technical_skills), indent=2)}\n\n"
+        "TECHNICAL SKILLS MENTIONED:\n"
+        f"{json.dumps(list(job.technical_skills), indent=2)}\n\n"
         "TASK:\nUsing the resume, STAR examples, highlights, and background in your "
         "context, categorize skills as:\n\n"
-        '- "critical_gaps": Skills essential for the role that I lack documented evidence for\n'
-        '- "critical_supported": Essential skills with explicit evidence in my documentation\n'
+        '- "critical_gaps": Skills essential for the role that I lack documented '
+        "evidence for\n"
+        '- "critical_supported": Essential skills with explicit evidence in my '
+        "documentation\n"
         '- "important_supported": Nice-to-have skills with documented evidence\n'
         '- "strong_supporting": Additional relevant skills from my background\n\n'
         "Return JSON with keys critical_gaps, critical_supported, important_supported, "
         "strong_supporting. Each critical_gaps item has "
         "skill/why_critical/mitigation/severity; "
-        "supported items have skill/evidence; strong_supporting items have skill/relevance.\n\n"
+        "supported items have skill/evidence; strong_supporting items have "
+        "skill/relevance.\n\n"
         "RULES:\n"
-        "1. Only mark a skill as supported if there is EXPLICIT evidence in the documentation\n"
+        "1. Only mark a skill as supported if there is EXPLICIT evidence in the "
+        "documentation\n"
         "2. Be conservative - if uncertain, put it in critical_gaps\n"
-        '3. Extract specific skills, not vague categories (e.g., "Python" not "programming")\n'
+        '3. Extract specific skills, not vague categories (e.g., "Python" not '
+        '"programming")\n'
         "4. Include 3-8 items per category (fewer is fine if not applicable)\n"
         "5. For critical_gaps, always include a realistic mitigation strategy\n"
         "6. For critical_gaps, rate severity as one of:\n"

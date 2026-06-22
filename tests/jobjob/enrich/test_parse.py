@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """Test."""
 
-from tests.fixtures import fixture_dir, fixture_path
 import json
 import logging
 from unittest import TestCase, mock
 
 import jobjob.enrich.parse as MOD
-from jobjob.loader import location
 from jobjob.structure.profile import LinkedInProfile
+from tests.fixtures import fixture_path
 
 LOGGER = logging.getLogger(__name__)
 

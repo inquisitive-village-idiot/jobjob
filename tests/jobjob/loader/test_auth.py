@@ -171,9 +171,8 @@ class TestGetGoogleCredentials(ThisTestCase):
     def test_pickles_new_token_when_token_file_given(self) -> None:
         mock_flow = mock.MagicMock(spec_set=InstalledAppFlow)
         # NOTE: use a picklable sentinel (a MagicMock cannot be pickled).
-        mock_flow.from_client_secrets_file.return_value.run_local_server.return_value = {
-            "token": "abc"
-        }
+        run_server = mock_flow.from_client_secrets_file.return_value.run_local_server
+        run_server.return_value = {"token": "abc"}
 
         path = self.get_fake_credentials_file()
         os.environ[MOD.ENV_GOOGLE_CREDENTIALS_FILE] = str(path)
@@ -275,7 +274,9 @@ class TestGetGoogleCredentialsExtraCases(ThisTestCase):
         valid_token = mock.MagicMock(spec_set=Credentials, valid=True)
         mock_load.return_value = valid_token
 
-        result = MOD.get_google_credentials(_flow_class=mock_flow, _load_token=mock_load)
+        result = MOD.get_google_credentials(
+            _flow_class=mock_flow, _load_token=mock_load
+        )
 
         mock_flow.from_client_secrets_file.assert_not_called()
         self.assertIs(valid_token, result)

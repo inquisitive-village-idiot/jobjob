@@ -61,9 +61,7 @@ class TestSetApplicationStatus:
         resp = _patch(client, "2026-01-09 - Nope - Role", "APPLIED")
         assert resp.status_code == 404
 
-    @pytest.mark.parametrize(
-        "name", ["..", "../etc", "a/b", "a\\b", ".hidden", ""]
-    )
+    @pytest.mark.parametrize("name", ["..", "../etc", "a/b", "a\\b", ".hidden", ""])
     def test_traversal_names_rejected(self, client, name):
         resp = _patch(client, name, "APPLIED")
         assert resp.status_code in (400, 404, 405)  # 404/405: route mismatch

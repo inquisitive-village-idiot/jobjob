@@ -12,9 +12,21 @@ LOGGER = logging.getLogger(__name__)
 
 # The real "contacts" header (column A onward).
 HEADER = [
-    "location", "company", "role", "name", "linkedin_url", "Request", "1st Msg",
-    "2nd", "3rd", "corporate_url", "shared_connections", "notes", "last_verified",
-    "citations", "found_by",
+    "location",
+    "company",
+    "role",
+    "name",
+    "linkedin_url",
+    "Request",
+    "1st Msg",
+    "2nd",
+    "3rd",
+    "corporate_url",
+    "shared_connections",
+    "notes",
+    "last_verified",
+    "citations",
+    "found_by",
 ]
 
 
@@ -29,8 +41,14 @@ class ThisTestCase(TestCase):
         return service
 
     def make_profile(self, **kwargs) -> LinkedInProfile:
-        defaults = {"name": "", "role": "", "company": "", "location": "",
-                    "headline": "", "linkedin_url": ""}
+        defaults = {
+            "name": "",
+            "role": "",
+            "company": "",
+            "location": "",
+            "headline": "",
+            "linkedin_url": "",
+        }
         defaults.update(kwargs)
         return LinkedInProfile(**defaults)
 
@@ -50,7 +68,9 @@ class TestBuildRow(ThisTestCase):
     """Test function."""
 
     def test_full_width_aligned(self) -> None:
-        row = MOD.build_row(HEADER, {"name": 3, "location": 0}, {"name": "X", "location": "Y"})
+        row = MOD.build_row(
+            HEADER, {"name": 3, "location": 0}, {"name": "X", "location": "Y"}
+        )
         self.assertEqual(len(HEADER), len(row))
         self.assertEqual("Y", row[0])
         self.assertEqual("X", row[3])
@@ -63,13 +83,14 @@ class TestAppendProfile(ThisTestCase):
     def test_appends_row_aligned_to_header(self) -> None:
         service = self.make_service(HEADER)
         profile = self.make_profile(
-            name="Jane Doe", role="VP", company="Acme", location="Boston",
+            name="Jane Doe",
+            role="VP",
+            company="Acme",
+            location="Boston",
             linkedin_url="li/jane",
         )
 
-        row = MOD.append_profile(
-            service, "SHEET", profile, date=datetime(2026, 6, 7)
-        )
+        row = MOD.append_profile(service, "SHEET", profile, date=datetime(2026, 6, 7))
 
         with self.subTest("no blank leading columns (location at A)"):
             self.assertEqual("Boston", row[0])
@@ -122,7 +143,11 @@ class TestSheetLock(ThisTestCase):
         }
         ss.batchUpdate.return_value.execute.return_value = {
             "replies": [
-                {"addProtectedRange": {"protectedRange": {"protectedRangeId": range_id}}}
+                {
+                    "addProtectedRange": {
+                        "protectedRange": {"protectedRangeId": range_id}
+                    }
+                }
             ]
         }
         self.ss = ss
@@ -132,7 +157,9 @@ class TestSheetLock(ThisTestCase):
         service = self.make_locking_service()
         with MOD.sheet_lock(service, "SHEET", "contacts"):
             pass
-        bodies = [c.kwargs["body"]["requests"] for c in self.ss.batchUpdate.call_args_list]
+        bodies = [
+            c.kwargs["body"]["requests"] for c in self.ss.batchUpdate.call_args_list
+        ]
         self.assertEqual(2, len(bodies))  # lock (add), then unlock (delete)
         self.assertIn("addProtectedRange", bodies[0][-1])
         self.assertEqual(
@@ -158,7 +185,11 @@ class TestSheetLock(ThisTestCase):
     def test_release_failure_is_swallowed(self) -> None:
         service = self.make_locking_service()
         self.ss.batchUpdate.return_value.execute.side_effect = [
-            {"replies": [{"addProtectedRange": {"protectedRange": {"protectedRangeId": 99}}}]},
+            {
+                "replies": [
+                    {"addProtectedRange": {"protectedRange": {"protectedRangeId": 99}}}
+                ]
+            },
             RuntimeError("unlock boom"),
         ]
         # Must not raise despite the unlock failing.
@@ -167,9 +198,8 @@ class TestSheetLock(ThisTestCase):
 
     def test_append_locks_by_default(self) -> None:
         service = self.make_locking_service()
-        service.spreadsheets.return_value.values.return_value.get.return_value.execute.return_value = {
-            "values": [HEADER]
-        }
+        get_call = service.spreadsheets.return_value.values.return_value.get
+        get_call.return_value.execute.return_value = {"values": [HEADER]}
         MOD.append_profile(service, "SHEET", self.make_profile(name="Jane"))
         self.assertEqual(2, self.ss.batchUpdate.call_count)  # acquire + release
 

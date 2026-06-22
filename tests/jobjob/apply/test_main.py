@@ -48,7 +48,9 @@ class TestMain(ThisTestCase):
                 "apply_inputs",
                 return_value={"processed": 1, "skipped": 0, "failed": 0},
             ) as mock_run:
-                retcode = MOD.main(["jd.pdf", "--skip-drive", "--no-cache", "-o", "out"])
+                retcode = MOD.main(
+                    ["jd.pdf", "--skip-drive", "--no-cache", "-o", "out"]
+                )
 
         args, kwargs = mock_run.call_args
         with self.subTest("returns 0"):
@@ -85,7 +87,9 @@ class TestMain(ThisTestCase):
     def test_clear_cache_when_requested(self) -> None:
         with mock.patch.object(MOD, "load_settings", return_value=_settings()):
             with mock.patch.object(
-                MOD, "apply_inputs", return_value={"processed": 1, "skipped": 0, "failed": 0}
+                MOD,
+                "apply_inputs",
+                return_value={"processed": 1, "skipped": 0, "failed": 0},
             ):
                 with mock.patch.object(MOD, "clear_cache") as mock_clear:
                     MOD.main(["jd.pdf", "--skip-drive", "--clear-cache"])

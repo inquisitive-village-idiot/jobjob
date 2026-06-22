@@ -97,7 +97,9 @@ def _add_issues(doc, issues: Iterable[str]) -> None:
         doc.add_paragraph(issue, style="List Bullet")
 
 
-def _add_items(doc, items: Iterable[Mapping], primary: str, *detail_fields: str) -> None:
+def _add_items(
+    doc, items: Iterable[Mapping], primary: str, *detail_fields: str
+) -> None:
     items = list(items)
     if not items:
         doc.add_paragraph("None.", style="List Bullet")
@@ -113,7 +115,9 @@ def _add_skills(doc, skills: Mapping) -> None:
     doc.add_heading("Skills analysis", level=1)
 
     doc.add_heading("Critical gaps", level=2)
-    _add_items(doc, skills.get("critical_gaps", []), "skill", "why_critical", "mitigation")
+    _add_items(
+        doc, skills.get("critical_gaps", []), "skill", "why_critical", "mitigation"
+    )
 
     doc.add_heading("Critical (supported)", level=2)
     _add_items(doc, skills.get("critical_supported", []), "skill", "evidence")
@@ -151,7 +155,9 @@ def create_readme_docx(
     """
     output_path = Path(output_path)
     doc = DocxDocument()
-    doc.add_heading(f"Application Summary — {job.company_name} / {job.role_title}", level=0)
+    doc.add_heading(
+        f"Application Summary — {job.company_name} / {job.role_title}", level=0
+    )
     _add_overview(doc, job)
     _add_resume(doc, template_name, template_archetype, resume_changes)
     _add_fit(doc, fit)

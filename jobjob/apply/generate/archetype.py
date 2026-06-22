@@ -17,9 +17,7 @@ from jobjob.structure.template import ResumeTemplate, TemplateSet
 
 
 def _build_prompt(job: JobDescription, template_set: TemplateSet) -> str:
-    options = {
-        t.name: (t.description or t.archetype) for t in template_set.templates
-    }
+    options = {t.name: (t.description or t.archetype) for t in template_set.templates}
     return (
         "Choose the single best resume archetype for this job.\n\n"
         f"Company: {job.company_name}\n"

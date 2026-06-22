@@ -2,7 +2,6 @@
 """Tests for the scoped config API and the profiles API (minimal app, no CSRF)."""
 
 import os
-from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -35,7 +34,9 @@ def client(tmp_path, monkeypatch):
     }
 
     def _reload():
-        app.state.profile_name = os.environ.get("JOBJOB_ACTIVE_PROFILE", app.state.profile_name)
+        app.state.profile_name = os.environ.get(
+            "JOBJOB_ACTIVE_PROFILE", app.state.profile_name
+        )
 
     app.state.reload_state = _reload
     monkeypatch.setattr(profiles_router, "write_config", lambda *a, **k: None)
@@ -55,7 +56,8 @@ class TestScopedConfig:
 
     def test_cross_scope_write_rejected(self, client):
         r = client.put(
-            "/api/config", params={"scope": "app"},
+            "/api/config",
+            params={"scope": "app"},
             json={"updates": {"APPLICANT_NAME": "X"}},
         )
         assert r.status_code == 400
@@ -76,4 +78,7 @@ class TestProfiles:
         assert r.json()["active"] == "ic"
 
     def test_switch_unknown_400(self, client):
-        assert client.put("/api/profiles/active", json={"name": "ghost"}).status_code == 400
+        assert (
+            client.put("/api/profiles/active", json={"name": "ghost"}).status_code
+            == 400
+        )

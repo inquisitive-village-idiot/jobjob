@@ -25,7 +25,9 @@ class AIClient:
         usage: Accumulated token usage across calls.
     """
 
-    def __init__(self, adapter: AIAdapter, max_tokens: int = DEFAULT_MAX_TOKENS) -> None:
+    def __init__(
+        self, adapter: AIAdapter, max_tokens: int = DEFAULT_MAX_TOKENS
+    ) -> None:
         """Initialize the client.
 
         Arguments:

@@ -42,8 +42,13 @@ def parse_job_description(
         A populated JobDescription.
     """
     return parse_pdf_to_dataclass(
-        path, klass, "job_description", query_service,
-        prompt_path=prompt_path, use_cache=use_cache, _query=_query,
+        path,
+        klass,
+        "job_description",
+        query_service,
+        prompt_path=prompt_path,
+        use_cache=use_cache,
+        _query=_query,
         _load_text=_load_text,
     )
 

@@ -3,8 +3,8 @@
 
 These functions take explicit destination paths so the same logic serves both the
 CLI (paths resolved via ``jobjob.loader.location``) and the webapp (paths resolved via
-``app.state`` / the active profile). ``mode`` is "replace" (overwrite the existing items)
-or "append" (add to them).
+``app.state`` / the active profile). ``mode`` is "replace" (overwrite the
+existing items) or "append" (add to them).
 """
 
 from collections.abc import Iterable

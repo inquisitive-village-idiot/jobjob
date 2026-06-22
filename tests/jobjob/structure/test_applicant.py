@@ -39,7 +39,9 @@ class TestContactLine(ThisTestCase):
     """Test contact_line method."""
 
     def test_all_fields(self) -> None:
-        a = MOD.Applicant(phone="555-1234", email="j@x.com", linkedin="linkedin.com/in/j")
+        a = MOD.Applicant(
+            phone="555-1234", email="j@x.com", linkedin="linkedin.com/in/j"
+        )
         self.assertEqual("555-1234 | j@x.com | linkedin.com/in/j", a.contact_line())
 
     def test_omits_unset_fields(self) -> None:

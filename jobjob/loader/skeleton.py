@@ -25,7 +25,7 @@ min_characters = 600
 
 # [[tool.highlights.highlight]]
 # context = "short_id"
-# topic = "Technical"   # Collaboration/Communication/Creativity/Leadership/Teamwork/Technical
+# topic = "Technical"   # Collaboration/Communication/Creativity/Leadership/Teamwork
 # enabled = true
 # text = '''One strong, specific accomplishment in your own voice.'''
 # keywords = ["keyword", "another"]
@@ -67,7 +67,7 @@ enabled = true
 name = "default"
 archetype = "Default"
 doc_id = ""
-description = "Your resume template. Set doc_id (or RESUME_TEMPLATE_ID) to your Google Doc."
+description = "Your resume template. Set doc_id (RESUME_TEMPLATE_ID) to a Google Doc."
 keywords = []
 """
 
@@ -113,7 +113,13 @@ def create_blank_profile(dest: Path) -> Path:
     content = dest / "content"
     reference = dest / "reference"
     config = dest / "config"
-    for d in (content, reference, reference / "cover_letters", reference / "stars", config):
+    for d in (
+        content,
+        reference,
+        reference / "cover_letters",
+        reference / "stars",
+        config,
+    ):
         d.mkdir(parents=True, exist_ok=True)
 
     files = {

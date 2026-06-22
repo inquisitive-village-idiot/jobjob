@@ -26,8 +26,8 @@ def _build_drive(
         logger.debug("Drive token not found at %s; skipping Drive check.", token_path)
         return None
     try:
-        from jobjob.loader.auth import get_google_credentials
         from jobjob.gapi.service import build_drive_service
+        from jobjob.loader.auth import get_google_credentials
 
         creds = get_google_credentials(
             credentials_file=Path(credentials_file).expanduser().resolve(),

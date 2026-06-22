@@ -32,15 +32,11 @@ class TestReadStatus:
         assert MOD.read_status(tmp_path) is None
 
     def test_known_status_returned(self, tmp_path):
-        (tmp_path / MOD.METADATA_FILENAME).write_text(
-            json.dumps({"status": "APPLIED"})
-        )
+        (tmp_path / MOD.METADATA_FILENAME).write_text(json.dumps({"status": "APPLIED"}))
         assert MOD.read_status(tmp_path) is MOD.ApplicationStatus.APPLIED
 
     def test_unknown_status_raises(self, tmp_path):
-        (tmp_path / MOD.METADATA_FILENAME).write_text(
-            json.dumps({"status": "BOGUS"})
-        )
+        (tmp_path / MOD.METADATA_FILENAME).write_text(json.dumps({"status": "BOGUS"}))
         with pytest.raises(ValueError):
             MOD.read_status(tmp_path)
 

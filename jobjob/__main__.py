@@ -51,7 +51,7 @@ def main(argv: Optional[Iterable] = None) -> int:
 
 
 def console_main() -> int:
-    """Console-script entry point (``jobjob``): run ``main`` with logging + error handling."""
+    """Console-script entry point: run ``main`` with logging + error handling."""
     return run_main(main)
 
 

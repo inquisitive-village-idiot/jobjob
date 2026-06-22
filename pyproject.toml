@@ -39,6 +39,8 @@ classifiers = [
 dev = [
     "pre-commit>=3.0.4",
     "ruff>=0.0.287",
+    "black>=24.0.0",
+    "isort>=5.13.0",
 ]
 jupyter = [
     "ipykernel>=6.16.2",
@@ -123,7 +125,7 @@ show_missing = true
 
 [tool.black]
 line-length = 88
-target-version = ["py38", "py39", "py310"]
+target-version = ["py312", "py313", "py314"]
 exclude = '''
 /(
     \.eggs
@@ -145,9 +147,16 @@ atomic = true
 line_length = 88
 float_to_top = true
 skip_glob = "**/__init__.py"
+# The webapp backend is a second import root (it adds webapp/backend to sys.path),
+# so its top-level modules import bare (``from services import ...``). List them as
+# first-party alongside ``jobjob`` so isort groups them correctly instead of treating
+# them as third-party. (Analogous to handling an implicit-namespace src root.)
+known_first_party = ["jobjob", "routers", "services", "budget", "security", "main"]
 
 [tool.ruff]
-ignore = []
 line-length = 88
-select = ["E","F","W"]
 exclude = ['__init__.py']
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = []

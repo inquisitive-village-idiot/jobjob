@@ -35,8 +35,13 @@ def parse_profile(
         A populated LinkedInProfile.
     """
     return parse_pdf_to_dataclass(
-        path, klass, "linkedin_profile", query_service,
-        prompt_path=prompt_path, use_cache=use_cache, _query=_query,
+        path,
+        klass,
+        "linkedin_profile",
+        query_service,
+        prompt_path=prompt_path,
+        use_cache=use_cache,
+        _query=_query,
     )
 
 

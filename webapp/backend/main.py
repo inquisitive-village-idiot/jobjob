@@ -24,10 +24,6 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Add the backend dir to sys.path so ``from routers import ...`` works when
-# uvicorn is launched from the webapp/backend directory.
-sys.path.insert(0, str(Path(__file__).parent))
-
 from routers import (
     config,
     jobs,
@@ -39,6 +35,11 @@ from routers import (
     update,
 )
 from security import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SAFE_METHODS, configure_sandbox
+
+# Add the backend dir to sys.path so ``from routers import ...`` works when
+# uvicorn is launched from the webapp/backend directory.
+sys.path.insert(0, str(Path(__file__).parent))
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -90,9 +91,7 @@ class _CSRFMiddleware(BaseHTTPMiddleware):
             cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
             header_token = request.headers.get(CSRF_HEADER_NAME)
             if not cookie_token or cookie_token != header_token:
-                return JSONResponse(
-                    {"detail": "CSRF token mismatch"}, status_code=403
-                )
+                return JSONResponse({"detail": "CSRF token mismatch"}, status_code=403)
         response = await call_next(request)
         if CSRF_COOKIE_NAME not in request.cookies:
             response.set_cookie(
@@ -106,6 +105,7 @@ class _CSRFMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(_CSRFMiddleware)
+
 
 # ── Settings/state assembly (re-runnable for profile switching) ────────────────
 def reload_state() -> None:
@@ -207,4 +207,6 @@ def health() -> dict:
 
 # ── Serve built frontend (production mode) ─────────────────────────────────────
 if _FRONTEND_DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
+    app.mount(
+        "/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend"
+    )

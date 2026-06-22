@@ -19,8 +19,6 @@ from typing import Any, Optional
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from routers.static_content import _reference_base, _toml_path
-
 from jobjob.ingest.resume_import import (
     BACKGROUND_MODES,
     SAVE_MODES,
@@ -31,6 +29,7 @@ from jobjob.ingest.resume_import import (
 )
 from jobjob.ingest.save import save_background, save_highlights, save_skills
 from jobjob.loader.loadstatic import SUPPORTED_SUFFIXES
+from routers.static_content import _reference_base, _toml_path
 
 router = APIRouter()
 
@@ -56,7 +55,7 @@ def _ai_client():
 
 
 def _background_path(request: Request) -> Path:
-    """Resolve the background reference file: existing ``background.*`` else ``background.md``."""
+    """Resolve the background reference file (``background.*`` or ``.md``)."""
     base = _reference_base(request)
     for suffix in SUPPORTED_SUFFIXES:
         candidate = base / f"background{suffix}"

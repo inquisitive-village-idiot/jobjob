@@ -24,8 +24,8 @@ _REFERENCE_BASE = "static/example/reference"
 # e.g. highlights lives at doc["tool"]["highlights"]["highlight"][i]
 _ITEM_PATH: dict[str, tuple[list[str], str]] = {
     "highlights": (["tool", "highlights"], "highlight"),
-    "skills":     (["tool", "skills"],     "skill"),
-    "templates":  (["tool", "templates"],  "template"),
+    "skills": (["tool", "skills"], "skill"),
+    "templates": (["tool", "templates"], "template"),
 }
 
 
@@ -120,9 +120,7 @@ def update_toml(name: str, body: TomlUpdate, request: Request) -> dict:
 
 
 @router.patch("/toml/{name}/items/{index}")
-def update_toml_item(
-    name: str, index: int, body: ItemUpdate, request: Request
-) -> dict:
+def update_toml_item(name: str, index: int, body: ItemUpdate, request: Request) -> dict:
     """Update a single item in a TOML array-of-tables, preserving formatting.
 
     Uses tomlkit so comments and surrounding structure are kept intact.
@@ -179,9 +177,7 @@ _SECTION_FIELDS = {"heading", "section", "enabled"}
 
 
 @router.patch("/toml/templates/sections/{index}")
-def update_template_section(
-    index: int, body: ItemUpdate, request: Request
-) -> dict:
+def update_template_section(index: int, body: ItemUpdate, request: Request) -> dict:
     """Update a section in ``[[tool.templates.section]]`` (e.g. toggle ``enabled``).
 
     Sections live in a separate array from the templates themselves, so they need a

@@ -24,9 +24,7 @@ function pageFromHash(hash: string): Page {
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>(() =>
-    pageFromHash(window.location.hash)
-  );
+  const [page, setPage] = useState<Page>(() => pageFromHash(window.location.hash));
   const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {

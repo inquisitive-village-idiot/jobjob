@@ -88,9 +88,7 @@ class TestCreateApplicationFolder(ThisTestCase):
     def test_creates_when_absent(self) -> None:
         service = self.make_service()
         self.set_list([])
-        self.files.create.return_value.execute.return_value = {
-            "id": "NEW", "name": "n"
-        }
+        self.files.create.return_value.execute.return_value = {"id": "NEW", "name": "n"}
 
         found = MOD.create_application_folder(service, "Acme", "Eng", parent_id="P")
 
@@ -131,7 +129,8 @@ class TestCopyResumeTemplate(ThisTestCase):
         service = self.make_service()
         self.set_list([])
         self.files.copy.return_value.execute.return_value = {
-            "id": "DOC", "name": "Resume"
+            "id": "DOC",
+            "name": "Resume",
         }
 
         found = MOD.copy_resume_template(service, "F", "TPL")
@@ -228,8 +227,12 @@ class TestResetDocToTemplate(ThisTestCase):
         download_cls = mock.MagicMock(return_value=downloader)
 
         MOD._reset_doc_to_template(
-            service, "DOC", "TPL", LOGGER,
-            _download_cls=download_cls, _upload_cls=mock.MagicMock(),
+            service,
+            "DOC",
+            "TPL",
+            LOGGER,
+            _download_cls=download_cls,
+            _upload_cls=mock.MagicMock(),
         )
 
         with self.subTest("exported the template as DOCX"):

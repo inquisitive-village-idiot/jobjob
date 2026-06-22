@@ -63,27 +63,31 @@ ENV_INDUSTRY = "INDUSTRY"
 
 # Config tiers — disjoint by construction; enforced by _validate_scopes.
 # APP: one jobjob instance (secrets, local paths, output IDs, registry).
-APP_KEYS = frozenset({
-    ENV_ANTHROPIC_API_KEY,
-    ENV_MODEL,
-    ENV_CACHE_ENABLED,
-    ENV_CACHE_DIR,
-    ENV_GOOGLE_CREDENTIALS_FILE,
-    ENV_GOOGLE_TOKEN_FILE,
-    ENV_DATA_DIR,
-    ENV_APPLICATIONS_LOCAL_DIR,
-    ENV_APPLICATIONS_FOLDER_ID,
-    ENV_LINKEDIN_SHEET_ID,
-})
+APP_KEYS = frozenset(
+    {
+        ENV_ANTHROPIC_API_KEY,
+        ENV_MODEL,
+        ENV_CACHE_ENABLED,
+        ENV_CACHE_DIR,
+        ENV_GOOGLE_CREDENTIALS_FILE,
+        ENV_GOOGLE_TOKEN_FILE,
+        ENV_DATA_DIR,
+        ENV_APPLICATIONS_LOCAL_DIR,
+        ENV_APPLICATIONS_FOLDER_ID,
+        ENV_LINKEDIN_SHEET_ID,
+    }
+)
 # PROFILE: the active content set (identity + resume template). No local paths.
-PROFILE_KEYS = frozenset({
-    ENV_APPLICANT_NAME,
-    ENV_APPLICANT_PHONE,
-    ENV_APPLICANT_EMAIL,
-    ENV_APPLICANT_LINKEDIN,
-    ENV_RESUME_TEMPLATE_ID,
-    ENV_INDUSTRY,
-})
+PROFILE_KEYS = frozenset(
+    {
+        ENV_APPLICANT_NAME,
+        ENV_APPLICANT_PHONE,
+        ENV_APPLICANT_EMAIL,
+        ENV_APPLICANT_LINKEDIN,
+        ENV_RESUME_TEMPLATE_ID,
+        ENV_INDUSTRY,
+    }
+)
 
 _TRUE_VALUES = ("true", "1", "yes")
 
@@ -170,8 +174,9 @@ def _validate_scopes(app_config: Path, profile_config: Optional[Path]) -> None:
     if profile_config is not None:
         prof_keys = read_env_keys(profile_config)
         prof_misplaced = (prof_keys & APP_KEYS) | {
-            k for k in prof_keys if k.startswith(PROFILE_REGISTRY_PREFIX)
-            or k == "JOBJOB_ACTIVE_PROFILE"
+            k
+            for k in prof_keys
+            if k.startswith(PROFILE_REGISTRY_PREFIX) or k == "JOBJOB_ACTIVE_PROFILE"
         }
         if prof_misplaced:
             raise ValueError(

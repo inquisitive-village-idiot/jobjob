@@ -69,7 +69,9 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
     )
     _logger.info(
         "Enrich complete: %d processed, %d skipped, %d failed",
-        summary["processed"], summary["skipped"], summary["failed"],
+        summary["processed"],
+        summary["skipped"],
+        summary["failed"],
     )
     # Non-zero exit if everything that was eligible failed.
     return 1 if summary["failed"] and not summary["processed"] else 0

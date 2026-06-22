@@ -52,7 +52,9 @@ class TestProfileResolution(TestCase):
                 self.assertEqual(override, MOD.get_prompt_path("job_description"))
                 # A prompt the profile does NOT override falls back to jobjob default.
                 default = MOD.get_prompt_path("linkedin_profile")
-                self.assertTrue(str(default).endswith("jobjob/prompts/linkedin_profile.txt"))
+                self.assertTrue(
+                    str(default).endswith("jobjob/prompts/linkedin_profile.txt")
+                )
 
 
 # __END__

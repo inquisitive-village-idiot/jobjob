@@ -79,13 +79,9 @@ def build_profiles(profiles_base: Optional[Path] = None) -> dict[str, "Profile"]
         path = Path(path)
         read_only = example is not None and _same_dir(path, example)
         owned = bool(
-            not read_only
-            and base is not None
-            and _same_dir(path.parent, base)
+            not read_only and base is not None and _same_dir(path.parent, base)
         )
-        result[name] = Profile(
-            name=name, path=path, read_only=read_only, owned=owned
-        )
+        result[name] = Profile(name=name, path=path, read_only=read_only, owned=owned)
     return result
 
 
@@ -98,7 +94,7 @@ def list_profiles() -> dict[str, Path]:
     profiles: dict[str, Path] = {}
     for key, value in os.environ.items():
         if key.startswith(PROFILE_REGISTRY_PREFIX) and value.strip():
-            name = key[len(PROFILE_REGISTRY_PREFIX):].lower()
+            name = key[len(PROFILE_REGISTRY_PREFIX) :].lower()
             profiles[name] = Path(value.strip().strip("\"'")).expanduser()
     return profiles
 

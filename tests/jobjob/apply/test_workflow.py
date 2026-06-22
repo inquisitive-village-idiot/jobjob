@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Test."""
 
-from tests.fixtures import fixture_dir, fixture_path
 import json
 import logging
 import shutil
@@ -13,11 +12,11 @@ from unittest import TestCase, mock
 import jobjob.apply.workflow as MOD
 from jobjob.ailib.client.anthropic import AnthropicAdapter
 from jobjob.ailib.session import AIClient
-from jobjob.loader import location
 from jobjob.structure.applicant import Applicant
 from jobjob.structure.highlight import Highlight, make_highlight_set
 from jobjob.structure.reference import ReferenceDocs
 from jobjob.structure.template import ResumeSection, ResumeTemplate, make_template_set
+from tests.fixtures import fixture_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,7 +83,12 @@ class TestBuildCachedContext(ThisTestCase):
     def test_includes_highlights_and_reference_sections(self) -> None:
         ref = ReferenceDocs(background="bg", star_examples="stars", writing_style="ws")
         context = MOD.build_cached_context(self.make_set(), ref)
-        for marker in ("AVAILABLE RESUME HIGHLIGHTS", "BACKGROUND", "STAR", "WRITING STYLE"):
+        for marker in (
+            "AVAILABLE RESUME HIGHLIGHTS",
+            "BACKGROUND",
+            "STAR",
+            "WRITING STYLE",
+        ):
             with self.subTest(marker):
                 self.assertIn(marker, context)
 
@@ -169,7 +173,11 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             "tailor_resume": mock.patch.object(
                 MOD,
                 "tailor_resume",
-                return_value=("resume text", ["Set role title", "Highlight: a → b"], []),
+                return_value=(
+                    "resume text",
+                    ["Set role title", "Highlight: a → b"],
+                    [],
+                ),
             ),
             "verify_page_count": mock.patch.object(
                 MOD, "verify_page_count", return_value=True
@@ -290,7 +298,9 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             mocks["verify_page_count"].assert_called_once()
             self.assertTrue(results["resume_within_page_limit"])
         with self.subTest("README + cover letter uploaded as Google Docs"):
-            names = {c.args[3] for c in mocks["upload_docx_as_google_doc"].call_args_list}
+            names = {
+                c.args[3] for c in mocks["upload_docx_as_google_doc"].call_args_list
+            }
             self.assertEqual({MOD.README_NAME, MOD.COVER_LETTER_NAME}, names)
         with self.subTest("JD uploaded as a file"):
             self.assertEqual(1, mocks["upload_file"].call_count)

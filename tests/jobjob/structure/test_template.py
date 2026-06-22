@@ -42,11 +42,13 @@ class TestTemplateSet(ThisTestCase):
     def test_default_template_uses_default_name(self) -> None:
         self.assertEqual("b", self.make_set().default_template().name)
 
-    def test_default_template_falls_back_to_first_when_default_name_not_found(self) -> None:
-        templates = (
-            MOD.ResumeTemplate(name="only", archetype="O", doc_id="D"),
-        )
-        result = MOD.TemplateSet(templates=templates, default="missing").default_template()
+    def test_default_template_falls_back_to_first_when_default_name_not_found(
+        self,
+    ) -> None:
+        templates = (MOD.ResumeTemplate(name="only", archetype="O", doc_id="D"),)
+        result = MOD.TemplateSet(
+            templates=templates, default="missing"
+        ).default_template()
         self.assertEqual("only", result.name)
 
     def test_default_template_falls_back_to_first(self) -> None:

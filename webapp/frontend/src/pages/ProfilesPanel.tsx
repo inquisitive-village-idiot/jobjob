@@ -21,14 +21,18 @@ export default function ProfilesPanel() {
   const [location, setLocation] = useState("");
 
   const load = () =>
-    api.get<ProfilesInfo>("/profiles").then(setInfo).catch((e) => setError(String(e)));
+    api
+      .get<ProfilesInfo>("/profiles")
+      .then(setInfo)
+      .catch((e) => setError(String(e)));
 
   useEffect(() => {
     load();
   }, []);
 
   const entries: ProfileEntry[] =
-    info?.entries ?? (info?.profiles ?? []).map((n) => ({
+    info?.entries ??
+    (info?.profiles ?? []).map((n) => ({
       name: n,
       active: n === info?.active,
       read_only: false,
@@ -64,8 +68,7 @@ export default function ProfilesPanel() {
       return next;
     });
 
-  const create = () =>
-    run(() => api.post<ProfilesInfo>("/profiles", { name }));
+  const create = () => run(() => api.post<ProfilesInfo>("/profiles", { name }));
   const duplicate = () =>
     run(() => api.post<ProfilesInfo>("/profiles/duplicate", { source, name }));
   const register = () =>
@@ -83,7 +86,10 @@ export default function ProfilesPanel() {
           <ActionButton on={() => setAction("create")} active={action === "create"}>
             New
           </ActionButton>
-          <ActionButton on={() => setAction("duplicate")} active={action === "duplicate"}>
+          <ActionButton
+            on={() => setAction("duplicate")}
+            active={action === "duplicate"}
+          >
             Duplicate
           </ActionButton>
           <ActionButton on={() => setAction("register")} active={action === "register"}>
@@ -93,9 +99,9 @@ export default function ProfilesPanel() {
       </div>
 
       <p className="text-xs text-gray-500 mb-3">
-        Each profile holds its own content, reference docs, and applicant identity.
-        The <span className="font-medium">example</span> profile is read-only —
-        duplicate it to make an editable copy.
+        Each profile holds its own content, reference docs, and applicant identity. The{" "}
+        <span className="font-medium">example</span> profile is read-only — duplicate it
+        to make an editable copy.
       </p>
 
       <ul className="divide-y divide-gray-100">
@@ -174,14 +180,20 @@ export default function ProfilesPanel() {
                 action === "create"
                   ? create
                   : action === "duplicate"
-                  ? duplicate
-                  : register
+                    ? duplicate
+                    : register
               }
               disabled={busy || !name || (action === "register" && !location)}
               className="px-3 py-1 rounded bg-blue-600 text-white text-xs font-medium
                 hover:bg-blue-700 disabled:opacity-40"
             >
-              {busy ? "Working…" : action === "create" ? "Create" : action === "duplicate" ? "Duplicate" : "Register"}
+              {busy
+                ? "Working…"
+                : action === "create"
+                  ? "Create"
+                  : action === "duplicate"
+                    ? "Duplicate"
+                    : "Register"}
             </button>
             <button
               onClick={reset}

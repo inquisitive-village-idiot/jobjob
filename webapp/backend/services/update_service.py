@@ -32,6 +32,7 @@ def _now_iso() -> str:
 
 # ── Install-method detection ────────────────────────────────────────────────────
 
+
 def detect_install_method() -> str:
     """Return how jobjob is installed: ``pipx``, ``pip``, or ``source``.
 
@@ -51,6 +52,7 @@ def detect_install_method() -> str:
 
 
 # ── Version comparison ──────────────────────────────────────────────────────────
+
 
 def _naive_gt(a: str, b: str) -> bool:
     """Compare dotted numeric versions without the ``packaging`` dependency."""
@@ -77,6 +79,7 @@ def is_newer(latest: str, current: str) -> bool:
 
 # ── PyPI fetch + cache ──────────────────────────────────────────────────────────
 
+
 def _fetch_pypi(_opener=urllib.request.urlopen) -> dict:
     """Return the parsed PyPI JSON metadata for the package (raises on failure)."""
     request = urllib.request.Request(
@@ -93,7 +96,9 @@ def _fetch_pypi(_opener=urllib.request.urlopen) -> dict:
 def _release_date(data: dict, version: str) -> "str | None":
     """Return the earliest upload time for ``version`` from PyPI metadata, or None."""
     files = data.get("releases", {}).get(version) or []
-    times = [f.get("upload_time_iso_8601") for f in files if f.get("upload_time_iso_8601")]
+    times = [
+        f.get("upload_time_iso_8601") for f in files if f.get("upload_time_iso_8601")
+    ]
     return min(times) if times else None
 
 
@@ -115,7 +120,9 @@ def _save_cache(data: dict, *, logger: logging.Logger | None = None) -> None:
         _logger.warning("Could not write update cache: %s", exc)
 
 
-def check_for_updates(_opener=urllib.request.urlopen, *, logger: logging.Logger | None = None) -> dict:
+def check_for_updates(
+    _opener=urllib.request.urlopen, *, logger: logging.Logger | None = None
+) -> dict:
     """Query PyPI, refresh the cache, and return it.
 
     Network/parse failures are caught and recorded as ``check_error`` while preserving
@@ -144,6 +151,7 @@ def check_for_updates(_opener=urllib.request.urlopen, *, logger: logging.Logger 
 
 
 # ── Public status + upgrade ─────────────────────────────────────────────────────
+
 
 def get_status() -> dict:
     """Return the current update status from the cache (no network)."""
@@ -187,7 +195,11 @@ def apply_update(_runner=subprocess.run) -> dict:
     try:
         proc = _runner(cmd, capture_output=True, text=True, timeout=_UPGRADE_TIMEOUT)
     except (subprocess.SubprocessError, OSError) as exc:
-        return {"ok": False, "method": method, "message": f"Upgrade failed to start: {exc}"}
+        return {
+            "ok": False,
+            "method": method,
+            "message": f"Upgrade failed to start: {exc}",
+        }
 
     ok = proc.returncode == 0
     return {

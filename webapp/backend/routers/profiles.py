@@ -103,9 +103,7 @@ def set_active_profile(body: ProfileSwitch, request: Request) -> dict:
     """
     name = body.name.strip().lower()
     if name not in _profiles(request):
-        raise HTTPException(
-            status_code=400, detail=f"Unknown profile: {body.name}"
-        )
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {body.name}")
     # Persist to the app config, then update the live env (load_dotenv will not
     # override an already-set var) before reloading.
     write_config(

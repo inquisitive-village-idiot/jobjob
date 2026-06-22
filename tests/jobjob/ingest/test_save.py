@@ -10,11 +10,11 @@ from jobjob.structure.skill import Skill
 
 _HIGHLIGHTS = (
     Highlight(context="a", text="First thing.", keywords=("x",), topic="Creativity"),
-    Highlight(context="b", text="Second thing.", keywords=("y", "z"), topic="Leadership"),
+    Highlight(
+        context="b", text="Second thing.", keywords=("y", "z"), topic="Leadership"
+    ),
 )
-_SKILLS = (
-    Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),
-)
+_SKILLS = (Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),)
 
 
 class TestSaveHighlights:
@@ -42,9 +42,7 @@ class TestSaveHighlights:
 
     def test_replace_preserves_tool_config(self, tmp_path):
         path = tmp_path / "highlights.toml"
-        path.write_text(
-            "[tool.highlights]\ndefault_number = 9\n", encoding="utf-8"
-        )
+        path.write_text("[tool.highlights]\ndefault_number = 9\n", encoding="utf-8")
         save_highlights(path, _HIGHLIGHTS, mode="replace")
         assert load_highlights(path).default_number == 9
 

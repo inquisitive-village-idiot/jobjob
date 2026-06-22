@@ -148,7 +148,9 @@ def sheet_lock(
     try:
         sheet_id = _sheet_id_for(service, spreadsheet_id, sheet_name)
         if sheet_id is None:
-            _logger.warning("Sheet %r not found; proceeding without a lock.", sheet_name)
+            _logger.warning(
+                "Sheet %r not found; proceeding without a lock.", sheet_name
+            )
         else:
             requests: list = [
                 {"deleteProtectedRange": {"protectedRangeId": i}}

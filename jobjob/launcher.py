@@ -29,7 +29,7 @@ PROFILES_SUBDIR = "profiles"
 
 
 def _package_root() -> Path:
-    """Return the dir that holds the ``jobjob`` package plus bundled ``webapp``/``static``.
+    """Return the dir holding ``jobjob`` plus the bundled ``webapp``/``static``.
 
     In a dev checkout this is the repo root; in an installed wheel it is the directory
     the package data was unpacked into (``site-packages``).
@@ -111,8 +111,9 @@ def scaffold(home: Path) -> Path:
         env_path.write_text(_env_text(home), encoding="utf-8")
 
     # The local profile starts BLANK (skeleton), not seeded from the Tila Mer example —
-    # the bundled read-only ``example`` profile is there to switch to or duplicate. Users
-    # pre-fill the blank profile via the Static Content page or by importing a résumé.
+    # the bundled read-only ``example`` profile is there to switch to or
+    # duplicate. Users pre-fill the blank profile via the Static Content page or
+    # by importing a résumé.
     from jobjob.loader.skeleton import create_blank_profile
 
     local = _local_profile_dir(home)
