@@ -22,29 +22,55 @@ isolated, lazily-imported, and injectable so callers/tests never hit the network
 """
 
 import logging
+import os
 import re
 from collections.abc import Callable
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urlparse
 
-# Pre-compiled patterns for slugifying filenames and validating the URL scheme.
+if TYPE_CHECKING:
+    import httpx
+
+# Pre-compiled patterns for slugifying filenames.
 _SLUG_STRIP_RE = re.compile(r"[^\w\s-]", re.UNICODE)
 _SLUG_DASH_RE = re.compile(r"[\s_-]+")
-_HTTP_SCHEME_RE = re.compile(r"^https?://", re.IGNORECASE)
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read a non-negative int from the environment, falling back to ``default``.
+
+    A blank or unparseable value falls back rather than crashing module import.
+    """
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        return int(raw) if raw else default
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read a float from the environment, falling back to ``default``."""
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        return float(raw) if raw else default
+    except ValueError:
+        return default
+
 
 # Below this many characters of *extracted* text we assume extraction failed: a
 # JS-rendered or auth-gated board returned an empty skeleton to a plain GET.
-MIN_SNAPSHOT_CHARS = 200
+# Env-overridable so a deployment can tune the heuristic without a code change.
+MIN_SNAPSHOT_CHARS = _env_int("JOBJOB_JD_MIN_SNAPSHOT_CHARS", 200)
 
 # Pasted text is vouched for by the user, so only guard against blank/accidental
 # submissions rather than applying the skeleton heuristic.
-MIN_PASTE_CHARS = 40
+MIN_PASTE_CHARS = _env_int("JOBJOB_JD_MIN_PASTE_CHARS", 40)
 
 # A generous default; a slow board should fail loudly rather than hang a request.
-DEFAULT_TIMEOUT = 20.0
+DEFAULT_TIMEOUT = _env_float("JOBJOB_JD_FETCH_TIMEOUT", 20.0)
 
 
 @cache
@@ -73,6 +99,33 @@ class JDIngestError(ValueError):
     Carries a user-facing message; the webapp surfaces it as a 422 so the user can
     fall back to PDF upload or paste-text.
     """
+
+
+def safe_url(url: str) -> "httpx.URL":
+    """Parse and validate ``url`` into an ``httpx.URL`` (http/https only).
+
+    Uses ``httpx.URL`` (imported lazily) to encode and validate rather than a regex,
+    so callers never re-derive or re-overwrite the raw string.
+
+    Arguments:
+        url: The candidate job-posting URL.
+    Returns:
+        The parsed, validated URL.
+    Raises:
+        JDIngestError: If the URL is blank, unparseable, or not http(s).
+    """
+    import httpx
+
+    cleaned = (url or "").strip()
+    if not cleaned:
+        raise JDIngestError("No URL provided.")
+    try:
+        parsed = httpx.URL(cleaned)
+    except (TypeError, ValueError) as exc:
+        raise JDIngestError("URL is not valid.") from exc
+    if parsed.scheme not in ("http", "https"):
+        raise JDIngestError("URL must start with http:// or https://.")
+    return parsed
 
 
 def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> str:
@@ -124,6 +177,15 @@ def _slugify(value: str, max_len: int = 60) -> str:
     return value[:max_len].strip("-") or "posting"
 
 
+def _get_slug_source(source_url: Optional[str], title: Optional[str]) -> str:
+    """Pick the basis for the filename slug: an explicit title, else the URL host."""
+    if title:
+        return title
+    if source_url:
+        return urlparse(source_url).netloc or "posting"
+    return "posting"
+
+
 def _snapshot_path(jobs_dir: Path, slug: str, _now: datetime | None = None) -> Path:
     """Build a unique, timestamped snapshot path under ``jobs_dir``.
 
@@ -162,11 +224,9 @@ def write_snapshot(
     """
     _logger = logger or logging.getLogger(__name__)
     jobs_dir = Path(jobs_dir)
-    jobs_dir.mkdir(parents=True, exist_ok=True)
+    jobs_dir.mkdir(exist_ok=True)
 
-    slug_source = (
-        title or (urlparse(source_url).netloc if source_url else "") or "posting"
-    )
+    slug_source = _get_slug_source(source_url, title)
     now = datetime.now()
     path = _snapshot_path(jobs_dir, _slugify(slug_source), _now=now)
 
@@ -206,25 +266,23 @@ def snapshot_from_url(
             text was extracted to parse.
     """
     _logger = logger or logging.getLogger(__name__)
-    url = (url or "").strip()
-    if not url:
-        raise JDIngestError("No URL provided.")
-    if not _HTTP_SCHEME_RE.match(url):
-        raise JDIngestError("URL must start with http:// or https://.")
+    clean_url = str(safe_url(url))
 
     try:
-        html = _fetch_html(url)
+        html = _fetch_html(clean_url)
     except Exception as exc:  # noqa: BLE001 — any transport/HTTP error → loud, clean.
         raise JDIngestError(f"Could not fetch the URL: {exc}") from exc
 
     text = _extract(html)
     if len(text) < min_chars:
         _logger.warning(
-            "Extraction yielded %d chars from %s; refusing to parse.", len(text), url
+            "Extraction yielded %d chars from %s; refusing to parse.",
+            len(text),
+            clean_url,
         )
         raise JDIngestError(_EXTRACTION_FAILED_MESSAGE)
 
-    return write_snapshot(text, jobs_dir, source_url=url, logger=logger)
+    return write_snapshot(text, jobs_dir, source_url=clean_url, logger=logger)
 
 
 def snapshot_from_text(

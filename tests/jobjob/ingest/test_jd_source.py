@@ -92,6 +92,55 @@ class TestSnapshotFromUrl(TestCase):
         return tempfile.mkdtemp(prefix="jd_source_test_")
 
 
+class TestSafeUrl(TestCase):
+    """URL validation via httpx.URL rather than a regex."""
+
+    def test_accepts_http_and_https(self) -> None:
+        for url in ("http://example.com/x", "https://jobs.example.com/acme"):
+            with self.subTest(url=url):
+                self.assertEqual(url, str(MOD.safe_url(url)))
+
+    def test_strips_surrounding_whitespace(self) -> None:
+        self.assertEqual(
+            "https://example.com/x", str(MOD.safe_url("  https://example.com/x  "))
+        )
+
+    def test_rejects_blank(self) -> None:
+        with self.assertRaises(MOD.JDIngestError):
+            MOD.safe_url("   ")
+
+    def test_rejects_non_http_scheme(self) -> None:
+        with self.assertRaises(MOD.JDIngestError):
+            MOD.safe_url("ftp://example.com/x")
+
+
+class TestEnvDefaults(TestCase):
+    """Module thresholds read from the environment with sane fallbacks."""
+
+    def test_env_int_parses_and_falls_back(self) -> None:
+        import os
+
+        os.environ["JOBJOB_TEST_INT"] = "150"
+        self.addCleanup(os.environ.pop, "JOBJOB_TEST_INT", None)
+        self.assertEqual(150, MOD._env_int("JOBJOB_TEST_INT", 200))
+        self.assertEqual(200, MOD._env_int("JOBJOB_UNSET_INT", 200))
+
+    def test_env_int_bad_value_falls_back(self) -> None:
+        import os
+
+        os.environ["JOBJOB_TEST_INT"] = "not-a-number"
+        self.addCleanup(os.environ.pop, "JOBJOB_TEST_INT", None)
+        self.assertEqual(200, MOD._env_int("JOBJOB_TEST_INT", 200))
+
+    def test_env_float_parses_and_falls_back(self) -> None:
+        import os
+
+        os.environ["JOBJOB_TEST_FLOAT"] = "5.5"
+        self.addCleanup(os.environ.pop, "JOBJOB_TEST_FLOAT", None)
+        self.assertEqual(5.5, MOD._env_float("JOBJOB_TEST_FLOAT", 20.0))
+        self.assertEqual(20.0, MOD._env_float("JOBJOB_UNSET_FLOAT", 20.0))
+
+
 class TestSnapshotFromText(TestCase):
     """Pasted text → snapshot."""
 
