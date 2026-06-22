@@ -1,20 +1,35 @@
 name: Release
 
-# Trusted publishing (OIDC) — no API tokens. Branch → GitHub environment → index,
+# Trusted publishing (OIDC) — no API tokens. Ref → GitHub environment → index,
 # matching the PyPI/TestPyPI trusted publishers configured for this repo:
-#   main          → environment: production  → PyPI
-#   develop       → environment: development  → TestPyPI   (version: <base>.dev<run>)
-#   release/**    → environment: staging      → TestPyPI   (version: <base>rc<run>)
-#   hotfix/**     → environment: staging      → TestPyPI   (version: <base>rc<run>)
+#   tag (semver)  → environment: production  → PyPI       (version: <base> from __about__)
+#   develop       → environment: development → TestPyPI   (version: <base>.dev<run>)
+#   release/**    → environment: staging     → TestPyPI   (version: <base>rc<run>)
+#   hotfix/**     → environment: staging     → TestPyPI   (version: <base>rc<run>)
+#
+# Production publishing fires on a SEMVER TAG, not a `main` push, so docs-/CI-only
+# changes can reach `main` without a near-identical wheel upload (backlog #7). The
+# tag still runs the full build+test gate; the `gate` job then (a) confirms the tag
+# is semver via a precise regex — independent of the coarse trigger glob, and
+# tolerant of an optional `v` prefix so a future convention switch still works while
+# a non-semver tag like `verify-this-tag` never publishes — and (b) requires that a
+# packaged path actually changed since the previous release tag.
 #
 # IMPORTANT: each PyPI/TestPyPI trusted publisher must reference workflow `release.yml`
-# and the matching environment name. Dev/staging get unique pre-release versions so
-# repeated pushes don't collide on TestPyPI; main publishes the release version in
-# jobjob/__about__.py (bump it per release).
+# and the matching environment name (trusted publishing matches on workflow + environment,
+# not on the trigger event, so tag-vs-branch makes no difference to OIDC). Dev/staging get
+# unique pre-release versions so repeated pushes don't collide on TestPyPI; a tag publishes
+# the release version in jobjob/__about__.py (bump it per release; the tag name must match).
 
 on:
   push:
-    branches: [main, develop, "release/**", "hotfix/**"]
+    branches: [develop, "release/**", "hotfix/**"]
+    tags:
+      # Coarse glob (GitHub ref filters are glob, not regex, and have no `+`): must
+      # start with a digit (optionally `v`) and have two dots. The `gate` job applies
+      # the precise semver regex.
+      - "[0-9]*.[0-9]*.[0-9]*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
 
 jobs:
   build:
@@ -35,11 +50,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e . pytest pytest-cov coverage httpx
           pytest -q
-      - name: Set version from branch
+      - name: Set version from ref
         run: |
           BASE=$(sed -n 's/.*"\(.*\)".*/\1/p' jobjob/__about__.py)
           case "$GITHUB_REF" in
-            refs/heads/main)    VER="$BASE" ;;
+            refs/tags/*)        VER="$BASE" ;;
             refs/heads/develop) VER="${BASE}.dev${GITHUB_RUN_NUMBER}" ;;
             *)                  VER="${BASE}rc${GITHUB_RUN_NUMBER}" ;;
           esac
@@ -54,9 +69,54 @@ jobs:
           name: dist
           path: dist/
 
-  pypi:
+  # Decide whether a tag push should reach PyPI: it must be semver AND change a
+  # packaged path. Only runs for tag pushes; on branch pushes it is skipped, which
+  # skips the dependent `pypi` job too (no production publish off a branch).
+  gate:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: decide
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          # Precise semver gate (optional leading v), independent of the trigger glob.
+          # Rejects e.g. "verify-this-tag"; accepts "2.1.1", "v2.1.1", "2.1.1rc1".
+          if ! printf '%s' "$TAG" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+([.+-].*|(a|b|rc)[0-9]+)?$'; then
+            echo "Tag '$TAG' is not semver; skipping publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Previous release tag (exclude the current) as the diff base.
+          PREV=$(git tag --list --sort=-v:refname \
+                   | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+                   | grep -vx "$TAG" | head -n1)
+          if [ -z "$PREV" ]; then
+            echo "No previous release tag; treating as a packaged change."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$PREV..$TAG")
+          echo "Changed since $PREV:"
+          echo "$CHANGED"
+          # Anything that actually affects the wheel.
+          if printf '%s\n' "$CHANGED" \
+               | grep -Eq '^(jobjob/|webapp/|static/|pyproject\.toml$)'; then
+            echo "Packaged paths changed; publishing."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Docs-/CI-only change since $PREV; skipping publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  pypi:
+    needs: [build, gate]
+    if: needs.gate.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment: production
     permissions:
