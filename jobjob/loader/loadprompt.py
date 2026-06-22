@@ -3,7 +3,8 @@
 
 import dataclasses as dcs
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Optional, Protocol, TypeVar
+from string import Template
+from typing import Any, ClassVar, Dict, Mapping, Optional, Protocol, TypeVar
 
 from jobjob.loader.loadstatic import load_pdf_text
 from jobjob.loader.location import get_prompt_path
@@ -15,6 +16,31 @@ class DataclassProtocol(Protocol):
 
 
 T = TypeVar("T", bound=DataclassProtocol)
+
+
+def render_prompt(
+    prompt_stem: str,
+    values: Mapping[str, Any],
+    prompt_path: Optional[Path] = None,
+) -> str:
+    """Render a prompt template by ``$``-substitution, honoring profile overrides.
+
+    Templates use ``string.Template`` syntax (``$name`` / ``${name}``; a literal ``$``
+    is ``$$``). This is brace-safe — prompts can contain literal ``{...}`` JSON examples
+    without escaping. Unknown placeholders are left intact (``safe_substitute``) so an
+    over-eager user edit degrades gracefully instead of crashing generation.
+
+    Arguments:
+        prompt_stem: Stem of the template; resolved via the active profile's
+            ``prompt/`` dir, falling back to the bundled default.
+        values: Substitution mapping (values are stringified).
+        prompt_path: Optional explicit template path (bypasses stem resolution).
+    Returns:
+        The rendered prompt string.
+    """
+    prompt_path = prompt_path or get_prompt_path(prompt_stem)
+    text = prompt_path.read_text(encoding="utf-8")
+    return Template(text).safe_substitute(values)
 
 
 def build_field_def(klass: T) -> str:
@@ -35,7 +61,7 @@ def format_dataclass_prompt(
 ) -> str:
     """Format a prompt template with ``text_content`` and the dataclass field docs.
 
-    The named template must contain ``{field_def}`` and ``{text_content}``. For a
+    The named template must contain ``${field_def}`` and ``${text_content}``. For a
     vision call (no extracted text), pass a placeholder for ``text_content`` (e.g.
     "(See the attached PDF document.)").
 
@@ -47,9 +73,10 @@ def format_dataclass_prompt(
     Returns:
         The formatted prompt string.
     """
-    prompt_path = prompt_path or get_prompt_path(prompt_stem)
-    return prompt_path.read_text(encoding="utf-8").format(
-        text_content=text_content, field_def=build_field_def(klass)
+    return render_prompt(
+        prompt_stem,
+        {"text_content": text_content, "field_def": build_field_def(klass)},
+        prompt_path=prompt_path,
     )
 
 

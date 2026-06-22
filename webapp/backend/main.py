@@ -28,6 +28,7 @@ from routers import (
     config,
     jobs,
     profiles,
+    prompts,
     resume_import,
     setup,
     static_content,
@@ -192,6 +193,7 @@ app.include_router(config.router, prefix="/api/config", tags=["config"])
 app.include_router(profiles.router, prefix="/api/profiles", tags=["profiles"])
 app.include_router(tracking.router, prefix="/api/tracking", tags=["tracking"])
 app.include_router(static_content.router, prefix="/api/static", tags=["static"])
+app.include_router(prompts.router, prefix="/api/prompts", tags=["prompts"])
 app.include_router(
     resume_import.router, prefix="/api/resume-import", tags=["resume-import"]
 )

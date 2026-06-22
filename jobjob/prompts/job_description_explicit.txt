@@ -14,6 +14,6 @@ Return a JSON object with exactly these fields:
 - summary: 2-3 sentence summary of the role
 
 Job Description:
-{text_content}
+${text_content}
 
 Return ONLY valid JSON, no other text.

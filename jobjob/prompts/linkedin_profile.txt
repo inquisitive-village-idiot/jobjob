@@ -1,8 +1,8 @@
 Extract structured information about this LinkedIn profile.
 Return a JSON object with exactly these fields:
-{field_def}
+${field_def}
 
 Profile text:
-{text_content}
+${text_content}
 
 Return ONLY valid JSON, no other text.

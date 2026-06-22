@@ -1,0 +1,34 @@
+Analyze the job requirements and categorize skills based on my documented experience (in your context).
+
+JOB INFORMATION:
+Company: ${company_name}
+Role: ${role_title}
+
+KEY REQUIREMENTS:
+${key_requirements}
+
+TECHNICAL SKILLS MENTIONED:
+${technical_skills}
+
+TASK:
+Using the resume, STAR examples, highlights, and background in your context, categorize skills as:
+
+- "critical_gaps": Skills essential for the role that I lack documented evidence for
+- "critical_supported": Essential skills with explicit evidence in my documentation
+- "important_supported": Nice-to-have skills with documented evidence
+- "strong_supporting": Additional relevant skills from my background
+
+Return JSON with keys critical_gaps, critical_supported, important_supported, strong_supporting. Each critical_gaps item has skill/why_critical/mitigation/severity; supported items have skill/evidence; strong_supporting items have skill/relevance.
+
+RULES:
+1. Only mark a skill as supported if there is EXPLICIT evidence in the documentation
+2. Be conservative - if uncertain, put it in critical_gaps
+3. Extract specific skills, not vague categories (e.g., "Python" not "programming")
+4. Include 3-8 items per category (fewer is fine if not applicable)
+5. For critical_gaps, always include a realistic mitigation strategy
+6. For critical_gaps, rate severity as one of:
+   - "blocking": a hard threshold requirement with no adjacent experience; likely disqualifying on its own
+   - "stretch": genuinely required, but adjacent/transferable experience makes it credible to ramp up
+   - "aspirational": forward-looking or nice-to-have phrased as a requirement (e.g. emerging-tech familiarity)
+
+Return ONLY valid JSON.

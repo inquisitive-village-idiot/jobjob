@@ -25,6 +25,7 @@ from jobjob.gapi.docs import (
     paragraph_text,
     replace_paragraph_text_requests,
 )
+from jobjob.loader.loadprompt import render_prompt
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.job_decription import JobDescription
 from jobjob.structure.template import (
@@ -46,34 +47,21 @@ def _build_objective_prompt(
     job: JobDescription, current_objective: str, industry: Optional[str] = None
 ) -> str:
     # When the profile declares its field, anchor "describe the company accurately"
-    # to that domain; otherwise keep a neutral rule with no baked-in example.
-    if industry and industry.strip():
-        accuracy_rule = (
-            "2. Describe the company accurately for its actual industry "
-            f"({industry.strip()}); do not mislabel it as a different kind of "
-            "company\n"
-        )
-    else:
-        accuracy_rule = (
-            "2. Describe the company accurately; do not mislabel the kind of "
-            "company it is\n"
-        )
-    return (
-        "Rewrite the OBJECTIVE statement of a resume for a specific role.\n\n"
-        f"TARGET ROLE: {job.role_title} at {job.company_name}\n\n"
-        f"KEY JOB REQUIREMENTS:\n{json.dumps(list(job.key_requirements), indent=2)}\n\n"
-        f"CURRENT OBJECTIVE:\n{current_objective}\n\n"
-        "RULES:\n"
-        "1. Rewrite the objective for THIS role and company: name the company and use "
-        "a natural form of the role title — expand or drop internal "
-        "abbreviations/jargon (e.g. org-unit codes) that an outside reader would not "
-        "use\n"
-        f"{accuracy_rule}"
-        "3. Keep it to 1-2 sentences, and preserve any existing relocation sentence "
-        "verbatim\n"
-        "4. Do not invent facts; only use the current objective and job information "
-        "provided\n\n"
-        'Return ONLY valid JSON: {"objective": "the rewritten objective text"}'
+    # to that domain; otherwise leave the clause empty (neutral rule, no example).
+    industry_clause = (
+        f" for its actual industry ({industry.strip()})"
+        if industry and industry.strip()
+        else ""
+    )
+    return render_prompt(
+        "resume_objective",
+        {
+            "role_title": job.role_title,
+            "company_name": job.company_name,
+            "key_requirements": json.dumps(list(job.key_requirements), indent=2),
+            "current_objective": current_objective,
+            "industry_clause": industry_clause,
+        },
     )
 
 
