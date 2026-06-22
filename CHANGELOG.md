@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.1.1] - 2026-06-22
+
+- [PATCH] Enforce formatting and linting in CI and pre-commit (black, isort, ruff for Python; prettier, eslint for the frontend) — no behavior change
+- [PATCH] Tidy job-posting URL/paste ingestion: validate URLs with `httpx.URL`, make the fetch/length thresholds environment-overridable, and avoid creating unexpected directory trees
+- [PATCH] Publish to PyPI on a release tag (with path gating) instead of on every push to `main`, so documentation- or tooling-only changes no longer require a version bump
+
 ## [2.1.0] - 2026-06-22
 
 - [MINOR] Add an optional per-profile Industry / Domain setting (Settings → Profile) that is injected into the resume-objective prompt so the target company is described accurately for your field; neutral default when unset
