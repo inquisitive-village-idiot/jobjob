@@ -11,6 +11,7 @@ default ``pytest`` run skips it — it runs only in the dedicated CI job or via
 ``webapp/frontend/dist``; a missing browser/launcher skips rather than errors.
 """
 
+import importlib.util
 import os
 import shutil
 import signal
@@ -25,6 +26,12 @@ import pytest
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FRONTEND_DIST = _REPO_ROOT / "webapp" / "frontend" / "dist"
 _HEALTH_TIMEOUT = 45  # seconds to wait for the server to answer /api/health
+
+# The e2e test modules import Selenium at module level. When it isn't installed (the
+# default, driver-free test run), skip COLLECTING them entirely — otherwise the import
+# would error during collection, before the ``e2e`` marker can deselect them.
+if importlib.util.find_spec("selenium") is None:
+    collect_ignore_glob = ["test_*.py"]
 
 
 def pytest_collection_modifyitems(items):
