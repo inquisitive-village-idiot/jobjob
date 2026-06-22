@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.2.1] - 2026-06-22
+
+- [PATCH] Restore the app favicon and web manifest (they were referenced but not bundled, so the browser tab had no icon and every page load 404'd them)
+- [PATCH] Clarify in the dashboard that application status and notes require a local applications mirror (`APPLICATIONS_LOCAL_DIR`)
+
 ## [2.2.0] - 2026-06-22
 
 - [MINOR] Customize the AI prompts per profile from a new Prompts page: edit the résumé-objective, cover-letter, skills-analysis, and document-parsing prompts, with reset-to-default and a reference of the available `${variables}`
