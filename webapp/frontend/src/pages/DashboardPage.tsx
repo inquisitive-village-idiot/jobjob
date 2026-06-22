@@ -268,7 +268,7 @@ function StatusCell({
     return (
       <span
         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${STATUS_STYLES[status]}`}
-        title="Status is read-only without a local applications mirror"
+        title="Status and notes need a local applications mirror — set APPLICATIONS_LOCAL_DIR in Settings to enable them."
       >
         {statusLabel(status)}
       </span>
