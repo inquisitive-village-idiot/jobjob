@@ -51,3 +51,20 @@ def test_navigate_to_prompts_page(driver, live_app):
     # The catalog lists the generation prompts; "Cover letter" is one of them.
     body = driver.find_element(By.TAG_NAME, "body").text
     assert "Cover letter" in body
+
+
+def test_settings_cog_opens_config(driver, live_app):
+    """The header cog button navigates to the configuration page."""
+    driver.get(live_app + "/")
+    cog = _wait(driver).until(
+        EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, "header button[aria-label='Settings']")
+        )
+    )
+    cog.click()
+    _wait(driver).until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//h1[normalize-space()='Configuration']")
+        )
+    )
+    assert driver.current_url.endswith("#config")

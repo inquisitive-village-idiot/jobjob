@@ -49,7 +49,7 @@ export default function AccountMenu({
   const active = info?.active ?? "—";
 
   return (
-    <div className="ml-auto relative" ref={ref}>
+    <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium
