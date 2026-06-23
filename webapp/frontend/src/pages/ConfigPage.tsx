@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { ConfigSchema, ProfileEntry, ProfilesInfo } from "../types";
 import {
-  FloatingOutline,
   SectionHeader,
+  scrollToSection,
   useScrollSpy,
 } from "../components/PageOutline";
 import type { OutlineItem } from "../components/PageOutline";
@@ -87,34 +87,57 @@ export default function ConfigPage() {
     [schema]
   );
 
-  const tabBar = (
-    <div className="border-b border-gray-200 mb-1">
-      <nav className="-mb-px flex gap-4 flex-wrap">
-        <button
-          onClick={() => setTab("app")}
-          className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
-            tab === "app"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          App
-        </button>
-        {orderedProfiles(profiles).map((p) => (
+  // Indented scroll-spy anchors for the active tab's subsections (config-schema groups).
+  const subAnchors = (
+    <ul className="mt-0.5 mb-1 space-y-0.5">
+      {outline.map((it) => (
+        <li key={it.id}>
           <button
-            key={p.name}
-            onClick={() => setTab(p.name)}
-            className={`pb-2 px-1 text-sm font-medium capitalize border-b-2 transition-colors ${
-              tab === p.name
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            onClick={() => scrollToSection(it.id)}
+            title={it.label}
+            className={`block w-full text-left pl-5 pr-2 py-1 text-sm rounded border-l-2
+              transition-colors truncate ${
+                activeId === it.id
+                  ? "border-blue-600 text-blue-600 font-medium bg-blue-50"
+                  : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+              }`}
           >
-            {p.active ? `${p.name} (active)` : p.name}
+            {it.label}
           </button>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const tabClass = (active: boolean) =>
+    `block w-full text-left px-3 py-1.5 text-sm rounded font-medium transition-colors ${
+      active ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"
+    }`;
+
+  // Left sidebar: the config tabs (App, then profiles active-first); the active tab
+  // expands to its subsections as scroll-spy anchors.
+  const sidebar = (
+    <nav className="w-52 shrink-0" aria-label="Configuration sections">
+      <ul className="sticky top-16 space-y-0.5 max-h-[85vh] overflow-y-auto pr-1">
+        <li>
+          <button onClick={() => setTab("app")} className={tabClass(tab === "app")}>
+            App
+          </button>
+          {tab === "app" && subAnchors}
+        </li>
+        {orderedProfiles(profiles).map((p) => (
+          <li key={p.name}>
+            <button
+              onClick={() => setTab(p.name)}
+              className={`capitalize ${tabClass(tab === p.name)}`}
+            >
+              {p.active ? `${p.name} (active)` : p.name}
+            </button>
+            {tab === p.name && subAnchors}
+          </li>
         ))}
-      </nav>
-    </div>
+      </ul>
+    </nav>
   );
 
   const hint = !isProfile
@@ -125,10 +148,12 @@ export default function ConfigPage() {
 
   if (!schema) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        {tabBar}
-        <div className="text-gray-500 mt-4">
-          {error ? <span className="text-red-600">{error}</span> : "Loading…"}
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex gap-6">
+          {sidebar}
+          <div className="flex-1 min-w-0 text-gray-500">
+            {error ? <span className="text-red-600">{error}</span> : "Loading…"}
+          </div>
         </div>
       </div>
     );
@@ -180,7 +205,7 @@ export default function ConfigPage() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Configuration</h1>
@@ -219,77 +244,83 @@ export default function ConfigPage() {
       <UpdatePanel />
       <ProfilesPanel />
 
-      {tabBar}
-      <p className="text-xs text-gray-500 mt-2 mb-6">{hint}</p>
-
-      <div className="relative">
-        <FloatingOutline items={outline} activeId={activeId} />
-        <div className="space-y-10">
-          {groups.map((group) => (
-            <section key={group} id={`config-${slug(group)}`} className="scroll-mt-16">
-              <SectionHeader>{group}</SectionHeader>
-              <div className="space-y-4">
-                {Object.entries(schema)
-                  .filter(([, f]) => f.group === group)
-                  .map(([key, field]) => (
-                    <div key={key}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {field.label}
-                        {field.required && <span className="ml-1 text-red-500">*</span>}
-                      </label>
-                      {field.description && (
-                        <p className="text-xs text-gray-500 mb-1">
-                          {field.description}
-                        </p>
-                      )}
-                      {field.is_secret ? (
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${
-                              field.is_set
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {field.is_set ? "Set" : "Not set"}
-                          </span>
-                          <span className="text-xs text-gray-400 italic">
-                            Secrets can only be set by editing config/.env directly.
-                          </span>
-                        </div>
-                      ) : field.options ? (
-                        <select
-                          value={edits[key] ?? field.value ?? ""}
-                          onChange={(e) => handleChange(key, e.target.value)}
-                          disabled={fieldsDisabled}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded
+      <div className="flex gap-6">
+        {sidebar}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-500 mb-6">{hint}</p>
+          <div className="space-y-10">
+            {groups.map((group) => (
+              <section
+                key={group}
+                id={`config-${slug(group)}`}
+                className="scroll-mt-16"
+              >
+                <SectionHeader>{group}</SectionHeader>
+                <div className="space-y-4">
+                  {Object.entries(schema)
+                    .filter(([, f]) => f.group === group)
+                    .map(([key, field]) => (
+                      <div key={key}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {field.label}
+                          {field.required && (
+                            <span className="ml-1 text-red-500">*</span>
+                          )}
+                        </label>
+                        {field.description && (
+                          <p className="text-xs text-gray-500 mb-1">
+                            {field.description}
+                          </p>
+                        )}
+                        {field.is_secret ? (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${
+                                field.is_set
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {field.is_set ? "Set" : "Not set"}
+                            </span>
+                            <span className="text-xs text-gray-400 italic">
+                              Secrets can only be set by editing config/.env directly.
+                            </span>
+                          </div>
+                        ) : field.options ? (
+                          <select
+                            value={edits[key] ?? field.value ?? ""}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                            disabled={fieldsDisabled}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded
                             focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono bg-white
                             disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                        >
-                          {!field.required && <option value="">Default</option>}
-                          {field.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          value={edits[key] ?? field.value ?? ""}
-                          onChange={(e) => handleChange(key, e.target.value)}
-                          disabled={fieldsDisabled}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded
+                          >
+                            {!field.required && <option value="">Default</option>}
+                            {field.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={edits[key] ?? field.value ?? ""}
+                            onChange={(e) => handleChange(key, e.target.value)}
+                            disabled={fieldsDisabled}
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded
                             focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono
                             disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                          placeholder={field.required ? "Required" : ""}
-                        />
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </section>
-          ))}
+                            placeholder={field.required ? "Required" : ""}
+                          />
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </section>
+            ))}
+          </div>
         </div>
       </div>
     </div>

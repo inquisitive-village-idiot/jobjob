@@ -7,7 +7,7 @@ export interface OutlineItem {
   indent?: boolean;
 }
 
-const scrollTo = (id: string) =>
+export const scrollToSection = (id: string) =>
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 // Scroll-spy: returns the id of the first observed section currently in view.
@@ -56,7 +56,7 @@ export function SectionHeader({ children }: { children: ReactNode }) {
 export function FloatingOutline({
   items,
   activeId,
-  onSelect = scrollTo,
+  onSelect = scrollToSection,
 }: {
   items: OutlineItem[];
   activeId: string;
