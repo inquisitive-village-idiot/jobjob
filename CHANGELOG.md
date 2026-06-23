@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.4.0] - 2026-06-23
+
+- [MINOR] Reorganize input/output settings per component: Applications (apply) and Enrichment (enrich) each have their own input directory and output, with the configuration grouped accordingly
+- [MINOR] Resolve settings by priority — CLI flag, then environment variable, then config file, then built-in default — so an environment variable overrides the config file
+- [PATCH] Rename the related config keys (`DATA_DIR`→`APPLICATIONS_INPUT_DIR`, `APPLICATIONS_LOCAL_DIR`→`APPLICATIONS_OUTPUT_DIR`, `APPLICATIONS_FOLDER_ID`→`APPLICATIONS_OUTPUT_DRIVE_ID`, `LINKEDIN_SHEET_ID`→`ENRICHMENT_OUTPUT_SHEET_ID`); the old names keep working and are auto-migrated in `config/.env` on launch — no action required
+- [PATCH] Run versioned launch-time migrations (profile-layout and config-key rename) from a new internal migrations module
+
 ## [2.3.0] - 2026-06-23
 
 - [MINOR] Redesign the Configuration page with a left sidebar: the App and per-profile tabs live in the sidebar, and the active tab expands to its subsections as scroll-spy anchors
