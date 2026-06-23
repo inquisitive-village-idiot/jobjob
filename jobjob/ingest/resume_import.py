@@ -22,6 +22,8 @@ from jobjob.structure.skill import Skill
 
 BACKGROUND_MODES = ("conservative", "fuller")
 SAVE_MODES = ("replace", "append")
+# Applicant-identity fields the extractor recognizes (resume header → profile config).
+IDENTITY_FIELDS = ("name", "email", "phone", "linkedin")
 
 # Pre-compiled pattern for slugifying labels/contexts into snake_case identifiers.
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
@@ -49,6 +51,9 @@ class ResumeImportDraft:
         highlights: Reusable accomplishment blocks (with inferred topic + keywords).
         skills: Reusable skill entries.
         background: A professional-background narrative for ``reference/background``.
+        identity: Applicant contact details read from the resume header (name/email/
+            phone/linkedin); a key is present only when non-empty. Used to prefill the
+            applicant identity during setup.
     """
 
     objective: str
@@ -56,6 +61,7 @@ class ResumeImportDraft:
     highlights: tuple[Highlight, ...]
     skills: tuple[Skill, ...]
     background: str
+    identity: dict[str, str] = dcs.field(default_factory=dict)
 
 
 def _slugify(value: str, fallback: str = "item") -> str:
@@ -175,6 +181,21 @@ def build_prompt(
     )
 
 
+def _identity_from_dict(value: Any) -> dict[str, str]:
+    """Coerce a model-supplied identity mapping into clean {field: value} pairs.
+
+    Keeps only the recognized IDENTITY_FIELDS with non-empty, stripped values.
+    """
+    if not isinstance(value, dict):
+        return {}
+    out: dict[str, str] = {}
+    for field in IDENTITY_FIELDS:
+        text = str(value.get(field) or "").strip()
+        if text:
+            out[field] = text
+    return out
+
+
 def _draft_from_mapping(data: dict) -> ResumeImportDraft:
     """Build a ResumeImportDraft from the model's parsed JSON mapping."""
     seen_h: set[str] = set()
@@ -198,6 +219,7 @@ def _draft_from_mapping(data: dict) -> ResumeImportDraft:
         highlights=highlights,
         skills=skills,
         background=str(data.get("background") or "").strip(),
+        identity=_identity_from_dict(data.get("identity")),
     )
 
 
@@ -251,6 +273,7 @@ def extract_resume(
 def draft_to_dict(draft: ResumeImportDraft) -> dict:
     """Serialize a draft to a JSON-able dict for the webapp review UI."""
     return {
+        "identity": dict(draft.identity),
         "objective": draft.objective,
         "sections": list(draft.sections),
         "background": draft.background,
