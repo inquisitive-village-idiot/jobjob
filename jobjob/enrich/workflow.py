@@ -64,7 +64,8 @@ def enrich_profile(
 
     if not spreadsheet_id:
         raise ValueError(
-            "A spreadsheet id is required (set LINKEDIN_SHEET_ID or --dry-run)."
+            "A spreadsheet id is required "
+            "(set ENRICHMENT_OUTPUT_SHEET_ID or --dry-run)."
         )
 
     creds = _credentials_loader()

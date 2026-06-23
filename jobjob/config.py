@@ -16,6 +16,7 @@ NOTE: the google credential/token env-var names are owned by ``jobjob.loader.aut
 """
 
 import dataclasses as dcs
+import logging
 import os
 from pathlib import Path
 from typing import Optional
@@ -46,12 +47,34 @@ ENV_MODEL = "CLAUDE_MODEL"
 ENV_CACHE_ENABLED = "CLAUDE_CACHE_ENABLED"
 ENV_CACHE_DIR = "CACHE_DIR"
 ENV_RESUME_TEMPLATE_ID = "RESUME_TEMPLATE_ID"
-ENV_APPLICATIONS_FOLDER_ID = "APPLICATIONS_FOLDER_ID"
-ENV_APPLICATIONS_LOCAL_DIR = "APPLICATIONS_LOCAL_DIR"
+
+# Per-component input/output keys. Each component (Applications = apply, Enrichment =
+# enrich) has its own INPUT (local working dir) and OUTPUT (where results land).
+ENV_APPLICATIONS_INPUT_DIR = "APPLICATIONS_INPUT_DIR"
+ENV_APPLICATIONS_OUTPUT_DIR = "APPLICATIONS_OUTPUT_DIR"
+ENV_APPLICATIONS_OUTPUT_DRIVE_ID = "APPLICATIONS_OUTPUT_DRIVE_ID"
+ENV_ENRICHMENT_INPUT_DIR = "ENRICHMENT_INPUT_DIR"
+ENV_ENRICHMENT_OUTPUT_SHEET_ID = "ENRICHMENT_OUTPUT_SHEET_ID"
+
+# Deprecated pre-2.4 names, still read as a fallback (see RENAMED_KEYS and
+# _env_first). Kept readable through the 2.x line; removed at a future major.
 ENV_DATA_DIR = "DATA_DIR"
+ENV_APPLICATIONS_LOCAL_DIR = "APPLICATIONS_LOCAL_DIR"
+ENV_APPLICATIONS_FOLDER_ID = "APPLICATIONS_FOLDER_ID"
 ENV_LINKEDIN_SHEET_ID = "LINKEDIN_SHEET_ID"
 
-DEFAULT_DATA_DIR = Path("data")
+# Old → new renames. The migration rewrites the old keys to the new ones in
+# ``config/.env`` (best-effort cleanup); the load-time fallback in ``_env_first``
+# is what actually keeps old configs — including env-var-only setups the file
+# rewrite can't reach — working until the keys are removed.
+RENAMED_KEYS: dict[str, str] = {
+    ENV_DATA_DIR: ENV_APPLICATIONS_INPUT_DIR,
+    ENV_APPLICATIONS_LOCAL_DIR: ENV_APPLICATIONS_OUTPUT_DIR,
+    ENV_APPLICATIONS_FOLDER_ID: ENV_APPLICATIONS_OUTPUT_DRIVE_ID,
+    ENV_LINKEDIN_SHEET_ID: ENV_ENRICHMENT_OUTPUT_SHEET_ID,
+}
+
+DEFAULT_INPUT_DIR = Path("data")
 ENV_APPLICANT_NAME = "APPLICANT_NAME"
 ENV_APPLICANT_PHONE = "APPLICANT_PHONE"
 ENV_APPLICANT_EMAIL = "APPLICANT_EMAIL"
@@ -78,6 +101,13 @@ APP_KEYS = frozenset(
         ENV_CACHE_DIR,
         ENV_GOOGLE_CREDENTIALS_FILE,
         ENV_GOOGLE_TOKEN_FILE,
+        # Per-component input/output keys.
+        ENV_APPLICATIONS_INPUT_DIR,
+        ENV_APPLICATIONS_OUTPUT_DIR,
+        ENV_APPLICATIONS_OUTPUT_DRIVE_ID,
+        ENV_ENRICHMENT_INPUT_DIR,
+        ENV_ENRICHMENT_OUTPUT_SHEET_ID,
+        # Deprecated aliases — still accepted so existing configs keep validating.
         ENV_DATA_DIR,
         ENV_APPLICATIONS_LOCAL_DIR,
         ENV_APPLICATIONS_FOLDER_ID,
@@ -111,38 +141,41 @@ _TRUE_VALUES = ("true", "1", "yes")
 
 @dcs.dataclass(frozen=True)
 class GoogleSettings:
-    """Google Drive/Docs runtime settings.
+    """Google Drive/Docs credential + template settings.
 
     Attributes:
         credentials_file: OAuth client-secrets JSON path.
         token_file: Pickled-token path.
         template_id: Resume-template Google Doc id.
-        applications_folder_id: Applications-root folder id.
-        applications_local_dir: Local path of the synced Google Drive applications
-            output directory (e.g. a Google Drive for Desktop mirror). When set, the
-            completed-applications list is read from here instead of the Drive API.
     """
 
     credentials_file: Optional[Path] = None
     token_file: Optional[Path] = None
     template_id: Optional[str] = None
-    applications_folder_id: Optional[str] = None
-    applications_local_dir: Optional[Path] = None
 
 
 @dcs.dataclass(frozen=True)
 class Settings:
     """Aggregated runtime settings (built once at the entry point).
 
+    Inputs/outputs are modeled per component (Applications = apply, Enrichment =
+    enrich). Inputs are local-only for now.
+
     Attributes:
         applicant: Applicant identity.
         model: Claude model id.
         anthropic_api_key: Anthropic API key.
         cache_enabled: Default response-cache toggle.
-        google: Google Drive/Docs settings.
-        linkedin_sheet_id: Spreadsheet id for the contacts sheet (enrich).
-        data_dir: Root holding ``jobs/``, ``profiles/`` and ``completed/`` — where a
-            processed JD is moved on completion.
+        google: Google credential + resume-template settings.
+        applications_input_dir: Local root holding ``jobs/``, ``profiles/`` and
+            ``completed/`` for the apply flow — where a processed JD moves on
+            completion.
+        applications_output_dir: Local synced Google Drive applications mirror; when
+            set, the completed-applications list is read from here instead of Drive.
+        applications_output_drive_id: Drive applications-root folder id (output).
+        enrichment_input_dir: Local input root for the enrich flow; defaults to
+            ``applications_input_dir`` when its own key is unset.
+        enrichment_output_sheet_id: Spreadsheet id for the contacts sheet (enrich).
         industry: Optional domain/industry context for the active profile, injected
             into the resume-objective prompt; None means no domain hint is added.
     """
@@ -152,11 +185,65 @@ class Settings:
     anthropic_api_key: Optional[str] = None
     cache_enabled: bool = True
     google: GoogleSettings = dcs.field(default_factory=GoogleSettings)
-    linkedin_sheet_id: Optional[str] = None
-    data_dir: Path = DEFAULT_DATA_DIR
+    applications_input_dir: Path = DEFAULT_INPUT_DIR
+    applications_output_dir: Optional[Path] = None
+    applications_output_drive_id: Optional[str] = None
+    enrichment_input_dir: Path = DEFAULT_INPUT_DIR
+    enrichment_output_sheet_id: Optional[str] = None
     profile_name: Optional[str] = None
     profile_dir: Optional[Path] = None
     industry: Optional[str] = None
+
+
+# Deprecated keys we've already warned about this process — keep the log to once each.
+_DEPRECATION_WARNED: set[str] = set()
+
+
+def _warn_deprecated(old_key: str, new_key: str) -> None:
+    """Log a one-time deprecation warning when a deprecated config key is used."""
+    if old_key not in _DEPRECATION_WARNED:
+        _DEPRECATION_WARNED.add(old_key)
+        logging.getLogger("jobjob.config").warning(
+            "Config key %s is deprecated — rename it to %s. The old name still "
+            "works for now but will be removed in a future major release.",
+            old_key,
+            new_key,
+        )
+
+
+def _env_first(
+    new_key: str,
+    old_key: Optional[str] = None,
+    *,
+    overrides: Optional[dict[str, str]] = None,
+) -> Optional[str]:
+    """Resolve a setting across its new and deprecated names, honoring source priority.
+
+    Precedence, highest first: environment variable (new name, then deprecated) →
+    config-file value (new name, then deprecated). ``overrides`` is a snapshot of
+    ``os.environ`` taken BEFORE any ``.env`` file was sourced, so a value set directly
+    in the environment outranks the config file even across the rename (env > file).
+    When ``overrides`` is None the two layers collapse to ``os.environ`` (new before
+    deprecated). Using a deprecated name logs a one-time warning.
+
+    This is the compatibility mechanism for the Batch C rename: it covers values in
+    ``config/.env`` AND values provided directly as environment variables
+    (shell/launchd/Docker/CI), which a file migration can't reach.
+    """
+    layers: list[dict[str, str]] = []
+    if overrides is not None:
+        layers.append(overrides)  # real env vars (pre-dotenv) — top precedence
+    layers.append(os.environ)  # env + config-file values merged by load_dotenv
+    for layer in layers:
+        for key in (new_key, old_key):
+            if key is None:
+                continue
+            value = layer.get(key)
+            if value is not None and value.strip():
+                if key == old_key:
+                    _warn_deprecated(old_key, new_key)
+                return value
+    return os.environ.get(new_key)
 
 
 def _path(value: Optional[str]) -> Optional[Path]:
@@ -164,6 +251,13 @@ def _path(value: Optional[str]) -> Optional[Path]:
     if value:
         value = value.strip().strip("\"'").strip()
     return Path(value).expanduser() if value else None
+
+
+def _text(value: Optional[str]) -> Optional[str]:
+    """Return a trimmed, unquoted string, or None when empty (for id-style values)."""
+    if value:
+        value = value.strip().strip("\"'").strip()
+    return value or None
 
 
 def _bool(value: Optional[str], default: bool = True) -> bool:
@@ -218,6 +312,11 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         ValueError: If a configured active profile dir is missing, or the two
             configs violate the zero-overlap rule.
     """
+    # Snapshot real environment variables before sourcing any .env file so a value set
+    # directly in the environment outranks the config file (priority: CLI > env > file
+    # > default), even across the deprecated→new key rename. CLI overrides are applied
+    # above this, at each command's entry point (e.g. ``args.sheet_id or settings.…``).
+    env_overrides = dict(os.environ)
     load_dotenv(app_config, encoding="utf-8")
     profile_dir = resolve_active_profile_dir()
     profile_config: Optional[Path] = None
@@ -243,6 +342,21 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         email=os.environ.get(ENV_APPLICANT_EMAIL),
         linkedin=os.environ.get(ENV_APPLICANT_LINKEDIN),
     )
+    # Applications input: new key → deprecated DATA_DIR → default. Enrichment input:
+    # its own key, else it inherits the fully-resolved applications input (so a
+    # config that only set the old DATA_DIR keeps both flows pointed there, exactly
+    # as before). See the precedence table in docs/setup.md.
+    applications_input_dir = (
+        _path(
+            _env_first(
+                ENV_APPLICATIONS_INPUT_DIR, ENV_DATA_DIR, overrides=env_overrides
+            )
+        )
+        or DEFAULT_INPUT_DIR
+    )
+    enrichment_input_dir = (
+        _path(os.environ.get(ENV_ENRICHMENT_INPUT_DIR)) or applications_input_dir
+    )
     return Settings(
         applicant=applicant,
         model=os.environ.get(ENV_MODEL) or DEFAULT_MODEL,
@@ -252,11 +366,30 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
             credentials_file=_path(os.environ.get(ENV_GOOGLE_CREDENTIALS_FILE)),
             token_file=_path(os.environ.get(ENV_GOOGLE_TOKEN_FILE)),
             template_id=os.environ.get(ENV_RESUME_TEMPLATE_ID),
-            applications_folder_id=os.environ.get(ENV_APPLICATIONS_FOLDER_ID),
-            applications_local_dir=_path(os.environ.get(ENV_APPLICATIONS_LOCAL_DIR)),
         ),
-        linkedin_sheet_id=os.environ.get(ENV_LINKEDIN_SHEET_ID),
-        data_dir=_path(os.environ.get(ENV_DATA_DIR)) or DEFAULT_DATA_DIR,
+        applications_input_dir=applications_input_dir,
+        applications_output_dir=_path(
+            _env_first(
+                ENV_APPLICATIONS_OUTPUT_DIR,
+                ENV_APPLICATIONS_LOCAL_DIR,
+                overrides=env_overrides,
+            )
+        ),
+        applications_output_drive_id=_text(
+            _env_first(
+                ENV_APPLICATIONS_OUTPUT_DRIVE_ID,
+                ENV_APPLICATIONS_FOLDER_ID,
+                overrides=env_overrides,
+            )
+        ),
+        enrichment_input_dir=enrichment_input_dir,
+        enrichment_output_sheet_id=_text(
+            _env_first(
+                ENV_ENRICHMENT_OUTPUT_SHEET_ID,
+                ENV_LINKEDIN_SHEET_ID,
+                overrides=env_overrides,
+            )
+        ),
         profile_name=active_profile_name(),
         profile_dir=profile_dir,
         industry=(os.environ.get(ENV_INDUSTRY) or "").strip() or None,

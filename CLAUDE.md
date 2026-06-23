@@ -39,7 +39,7 @@ Output per application:
 - Google Doc: `Resume` (copy of template, updated in place)
 - Google Doc: `CoverLetter`
 - Resume PDF uploaded to Drive
-- All stored in `YYYY-MM-DD - Company Name - Role Title` directory under `APPLICATIONS_FOLDER_ID`
+- All stored in `YYYY-MM-DD - Company Name - Role Title` directory under `APPLICATIONS_OUTPUT_DRIVE_ID`
 
 ## Caching Architecture
 
@@ -114,11 +114,17 @@ committed):
 | `ANTHROPIC_API_KEY` | Anthropic API key | Yes |
 | `CLAUDE_MODEL` | Model (default: `claude-sonnet-4-6`) | No |
 | `GOOGLE_CREDENTIALS_FILE` / `GOOGLE_TOKEN_FILE` | OAuth credentials / token | Drive only |
-| `APPLICATIONS_FOLDER_ID` / `APPLICATIONS_LOCAL_DIR` | Drive output folder / local mirror | No |
-| `LINKEDIN_SHEET_ID` | Contacts sheet (enrich) | enrich only |
-| `DATA_DIR` | Input/output root (default: `data`) | No |
+| `APPLICATIONS_INPUT_DIR` | Apply input/working root (default: `data`) | No |
+| `APPLICATIONS_OUTPUT_DIR` / `APPLICATIONS_OUTPUT_DRIVE_ID` | Local mirror / Drive output folder | No |
+| `ENRICHMENT_INPUT_DIR` | Enrich input root (blank ⇒ applications input) | No |
+| `ENRICHMENT_OUTPUT_SHEET_ID` | Contacts sheet (enrich) | enrich only |
 | `CACHE_DIR` / `CLAUDE_CACHE_ENABLED` | Local response cache | No |
 | `JOBJOB_PROFILE_<NAME>` / `JOBJOB_ACTIVE_PROFILE` | Profile registry + active | Yes |
+
+Deprecated aliases still read (rename to the above; auto-migrated in `config/.env`):
+`DATA_DIR`→`APPLICATIONS_INPUT_DIR`, `APPLICATIONS_LOCAL_DIR`→`APPLICATIONS_OUTPUT_DIR`,
+`APPLICATIONS_FOLDER_ID`→`APPLICATIONS_OUTPUT_DRIVE_ID`,
+`LINKEDIN_SHEET_ID`→`ENRICHMENT_OUTPUT_SHEET_ID`.
 
 **Profile config** — `<profile-repo>/config/.profile` (committed): `RESUME_TEMPLATE_ID`,
 `APPLICANT_NAME` / `_PHONE` / `_EMAIL` / `_LINKEDIN`, `INDUSTRY` (optional domain hint

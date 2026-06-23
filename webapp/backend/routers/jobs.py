@@ -219,7 +219,7 @@ def _make_apply_run(
             skip_drive=skip_drive,
             use_cache=use_cache,
             template_name=template,
-            parent_id=settings.google.applications_folder_id,
+            parent_id=settings.applications_output_drive_id,
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
             industry=settings.industry,
@@ -262,7 +262,7 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
     run = _make_apply_run(
         jd_path,
         skip_drive=body.skip_drive,
-        move_data_dir=Path(s["data_dir"]),
+        move_data_dir=Path(s["applications_input_dir"]),
         template=body.template,
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
@@ -290,7 +290,7 @@ def _launch_snapshot_apply(
     run = _make_apply_run(
         snapshot,
         skip_drive=skip_drive,
-        move_data_dir=Path(settings["data_dir"]),
+        move_data_dir=Path(settings["applications_input_dir"]),
         template=template,
         no_cache=no_cache,
         clear_cache=clear_cache,
@@ -317,7 +317,7 @@ def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
     if budget_error:
         raise HTTPException(status_code=402, detail=budget_error)
 
-    jobs_dir = Path(s["data_dir"]) / "jobs"
+    jobs_dir = Path(s["applications_input_dir"]) / "jobs"
     try:
         snapshot = snapshot_from_url(body.url, jobs_dir)
     except JDIngestError as exc:
@@ -350,7 +350,7 @@ def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
     if budget_error:
         raise HTTPException(status_code=402, detail=budget_error)
 
-    jobs_dir = Path(s["data_dir"]) / "jobs"
+    jobs_dir = Path(s["applications_input_dir"]) / "jobs"
     try:
         snapshot = snapshot_from_text(body.text, jobs_dir)
     except JDIngestError as exc:
@@ -426,7 +426,9 @@ def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
         raise HTTPException(status_code=402, detail=budget_error)
 
     found = _find_rerun_jd(
-        Path(s["data_dir"]), s.get("applications_local_dir"), body.folder_name
+        Path(s["applications_input_dir"]),
+        s.get("applications_output_dir"),
+        body.folder_name,
     )
     jd_path = safe_path(found) if found is not None else None
 
@@ -461,7 +463,7 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
     if not profile_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {profile_path}")
 
-    data_dir = Path(s["data_dir"])
+    data_dir = Path(s["applications_input_dir"])
 
     def _run() -> dict:
         from jobjob.ailib.client.anthropic import AnthropicAdapter
@@ -481,7 +483,7 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
         summary = enrich_inputs(
             profile_path,
             query_service=client,
-            spreadsheet_id=settings.linkedin_sheet_id,
+            spreadsheet_id=settings.enrichment_output_sheet_id,
             dry_run=body.dry_run,
             data_dir=data_dir,
             logger=logging.getLogger("jobjob.enrich"),
@@ -507,7 +509,7 @@ def launch_apply_all(request: Request) -> dict:
     """Start apply jobs for every JD in the queue, sequentially (returns
     ``{job_id, count}``)."""
     s = _app_settings(request)
-    data_dir = Path(s["data_dir"])
+    data_dir = Path(s["applications_input_dir"])
     items = [i for i in list_queue(data_dir) if i["subfolder"] == "jobs"]
 
     if not items:
@@ -542,7 +544,7 @@ def launch_apply_all(request: Request) -> dict:
             applicant=settings.applicant,
             skip_drive=False,
             use_cache=settings.cache_enabled,
-            parent_id=settings.google.applications_folder_id,
+            parent_id=settings.applications_output_drive_id,
             data_dir=data_dir,
             industry=settings.industry,
             logger=_logger,
@@ -563,7 +565,7 @@ def launch_enrich_all(request: Request) -> dict:
     """Start enrich jobs for every profile in the queue, sequentially (returns
     ``{job_id, count}``)."""
     s = _app_settings(request)
-    data_dir = Path(s["data_dir"])
+    data_dir = Path(s["applications_input_dir"])
     items = [i for i in list_queue(data_dir) if i["subfolder"] == "profiles"]
 
     if not items:
@@ -595,7 +597,7 @@ def launch_enrich_all(request: Request) -> dict:
             enrich_inputs,
             (data_dir, data_dir / "profiles"),
             query_service=client,
-            spreadsheet_id=settings.linkedin_sheet_id,
+            spreadsheet_id=settings.enrichment_output_sheet_id,
             data_dir=data_dir,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
@@ -622,7 +624,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
     so ``GET /scheduled`` can surface it for the Queue page.
     """
     s = _app_settings(request)
-    data_dir = Path(s["data_dir"])
+    data_dir = Path(s["applications_input_dir"])
 
     valid_paths: list[Path] = []
     for raw in body.paths:
@@ -706,7 +708,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                 summary = enrich_inputs(
                     p,
                     query_service=client,
-                    spreadsheet_id=settings.linkedin_sheet_id,
+                    spreadsheet_id=settings.enrichment_output_sheet_id,
                     data_dir=data_dir,
                     logger=_logger,
                     _credentials_loader=creds_loader,
@@ -720,7 +722,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                     applicant=settings.applicant,
                     skip_drive=False,
                     use_cache=settings.cache_enabled,
-                    parent_id=settings.google.applications_folder_id,
+                    parent_id=settings.applications_output_drive_id,
                     data_dir=data_dir,
                     logger=_logger,
                     _credentials_loader=creds_loader,

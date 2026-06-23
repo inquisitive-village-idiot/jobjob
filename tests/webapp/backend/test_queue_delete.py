@@ -16,7 +16,7 @@ def client(tmp_path):
     security.configure_sandbox([tmp_path])
     app = FastAPI()
     app.include_router(tracking.router, prefix="/api/tracking")
-    app.state.settings = {"data_dir": tmp_path}
+    app.state.settings = {"applications_input_dir": tmp_path}
     return TestClient(app), tmp_path
 
 

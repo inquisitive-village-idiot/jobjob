@@ -30,7 +30,7 @@ def mirror(tmp_path):
 def client(mirror):
     app = FastAPI()
     app.include_router(router, prefix="/api/tracking")
-    app.state.settings = {"applications_local_dir": str(mirror)}
+    app.state.settings = {"applications_output_dir": str(mirror)}
     return TestClient(app)
 
 
@@ -73,7 +73,7 @@ class TestSetApplicationStatus:
     def test_mirror_unconfigured_400(self, mirror):
         app = FastAPI()
         app.include_router(router, prefix="/api/tracking")
-        app.state.settings = {"applications_local_dir": None}
+        app.state.settings = {"applications_output_dir": None}
         resp = _patch(TestClient(app), _FOLDER, "APPLIED")
         assert resp.status_code == 400
 

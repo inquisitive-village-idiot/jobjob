@@ -192,7 +192,7 @@ If you want jobjob to save output into a specific Google Drive folder:
    The part after `/folders/` is the folder ID.
 3. Paste it in `config/.env`:
    ```
-   APPLICATIONS_FOLDER_ID="1ABC123defGHI456jklMNO789"
+   APPLICATIONS_OUTPUT_DRIVE_ID="1ABC123defGHI456jklMNO789"
    ```
 
 ---

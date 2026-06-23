@@ -17,7 +17,8 @@ def _settings(**kwargs) -> Settings:
         "applicant": Applicant(name="J. Doe"),
         "anthropic_api_key": "test-key",
         "cache_enabled": True,
-        "google": GoogleSettings(template_id="TPL", applications_folder_id="FOLDER"),
+        "google": GoogleSettings(template_id="TPL"),
+        "applications_output_drive_id": "FOLDER",
     }
     defaults.update(kwargs)
     return Settings(**defaults)

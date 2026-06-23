@@ -126,8 +126,8 @@ def reload_state() -> None:
         roots.append(Path(settings.google.credentials_file).parent)
     # Synced Drive applications mirror — read-only source for re-running a
     # completed application's JD when it isn't in data/completed/jobs/.
-    if settings.google.applications_local_dir:
-        roots.append(Path(settings.google.applications_local_dir))
+    if settings.applications_output_dir:
+        roots.append(Path(settings.applications_output_dir))
     # Active profile repo — content/reference reads and (via the editor) writes.
     if settings.profile_dir:
         roots.append(Path(settings.profile_dir))
@@ -146,18 +146,18 @@ def reload_state() -> None:
     active = app.state.profiles.get((settings.profile_name or "").lower())
     app.state.profile_read_only = bool(active and active.read_only)
     app.state.reload_state = reload_state
-    data_dir = (
-        settings.data_dir
-        if settings.data_dir.is_absolute()
-        else (_REPO_ROOT / settings.data_dir)
-    )
+
+    def _abs(p: Path) -> Path:
+        return p if p.is_absolute() else (_REPO_ROOT / p)
+
     app.state.settings = {
-        "data_dir": data_dir,
-        "applications_folder_id": settings.google.applications_folder_id,
-        "applications_local_dir": settings.google.applications_local_dir,
+        "applications_input_dir": _abs(settings.applications_input_dir),
+        "applications_output_dir": settings.applications_output_dir,
+        "applications_output_drive_id": settings.applications_output_drive_id,
+        "enrichment_input_dir": _abs(settings.enrichment_input_dir),
+        "enrichment_output_sheet_id": settings.enrichment_output_sheet_id,
         "credentials_file": settings.google.credentials_file,
         "token_file": settings.google.token_file,
-        "linkedin_sheet_id": settings.linkedin_sheet_id,
         "profile_name": settings.profile_name,
         "per_run_budget": 2.0,
         "daily_budget": 20.0,

@@ -44,7 +44,7 @@ def _env_text(home: Path) -> str:
     profile_key = f"JOBJOB_PROFILE_{LOCAL_PROFILE_NAME.upper()}"
     lines = [
         "# jobjob app config — machine-local. The setup wizard fills the rest.",
-        f"DATA_DIR={home / 'data'}",
+        f"APPLICATIONS_INPUT_DIR={home / 'data'}",
         f"CACHE_DIR={cache_dir}",
         f"GOOGLE_CREDENTIALS_FILE={config_dir / 'credentials.json'}",
         f"GOOGLE_TOKEN_FILE={config_dir / 'token.pickle'}",
@@ -60,34 +60,6 @@ def _local_profile_dir(home: Path) -> Path:
     return home / PROFILES_SUBDIR / LOCAL_PROFILE_NAME
 
 
-def _migrate_legacy_profile(home: Path) -> None:
-    """Move a pre-unification ``<home>/profile`` to ``<home>/profiles/local`` in place.
-
-    Older installs scaffolded a single ``profile/`` dir (seeded from the Tila Mer
-    example). Unifying on ``profiles/<name>/`` keeps the layout consistent. The move
-    preserves whatever the user has edited; the ``.env`` registry path is rewritten to
-    match. Idempotent and a no-op when there's nothing to migrate.
-    """
-    legacy = home / "profile"
-    target = _local_profile_dir(home)
-    if not legacy.is_dir() or target.exists():
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    legacy.rename(target)
-
-    env_path = home / "config" / ".env"
-    if env_path.is_file():
-        key = f"JOBJOB_PROFILE_{LOCAL_PROFILE_NAME.upper()}"
-        new_lines = []
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            stripped = line.strip()
-            if stripped.startswith(f"{key}=") and not stripped.startswith("#"):
-                new_lines.append(f"{key}={target}")
-            else:
-                new_lines.append(line)
-        env_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-
-
 def scaffold(home: Path) -> Path:
     """Create (idempotently) the working dir, app config, and local profile.
 
@@ -100,9 +72,12 @@ def scaffold(home: Path) -> Path:
     (home / "config").mkdir(exist_ok=True)
     (home / "data").mkdir(exist_ok=True)
 
-    # Migrate any legacy single-``profile/`` layout before writing/reading the registry
-    # path, so a fresh ``.env`` and an existing install converge on ``profiles/local``.
-    _migrate_legacy_profile(home)
+    # Run versioned migrations (legacy profile layout, deprecated env-key rename)
+    # before writing/reading the registry path, so a fresh ``.env`` and an existing
+    # install converge on the current layout and key names.
+    from jobjob.migrate import run_migrations
+
+    run_migrations(home)
 
     env_path = home / "config" / ".env"
     if not env_path.exists():
