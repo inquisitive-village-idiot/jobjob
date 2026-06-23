@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.2.2] - 2026-06-22
+
+- [PATCH] Add a settings cog button in the header for quicker access to the configuration page (the account-menu Settings item remains)
+- [PATCH] Restyle the configuration App/Profile switcher as underline tabs, matching the Static Content page
+- [PATCH] Add a site footer with a copyright line and a "Report an issue" link
+- [PATCH] Edit the configuration of any profile from per-profile tabs (not only the active one); the bundled example profile stays read-only, and the Profiles list shows separate Example/read-only pills with a left-aligned Switch action
+
 ## [2.2.1] - 2026-06-22
 
 - [PATCH] Restore the app favicon and web manifest (they were referenced but not bundled, so the browser tab had no icon and every page load 404'd them)
