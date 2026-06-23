@@ -22,6 +22,16 @@ def client(tmp_path, monkeypatch):
     prof_cfg = repo / "config" / ".profile"
     prof_cfg.write_text('APPLICANT_NAME="Ada"\nRESUME_TEMPLATE_ID="T"\n')
 
+    # A second editable profile with its own committed config.
+    ic_repo = tmp_path / "ic"
+    (ic_repo / "config").mkdir(parents=True)
+    (ic_repo / "config" / ".profile").write_text('APPLICANT_NAME="Ivy"\n')
+
+    # The bundled read-only example.
+    example = tmp_path / "example"
+    (example / "config").mkdir(parents=True)
+    (example / "config" / ".profile").write_text('APPLICANT_NAME="Tila"\n')
+
     app = FastAPI()
     app.include_router(config_router.router, prefix="/api/config")
     app.include_router(profiles_router.router, prefix="/api/profiles")
@@ -30,7 +40,8 @@ def client(tmp_path, monkeypatch):
     app.state.profile_name = "demo"
     app.state.profiles = {
         "demo": Profile("demo", repo, read_only=False, owned=True),
-        "ic": Profile("ic", tmp_path / "ic", read_only=False, owned=False),
+        "ic": Profile("ic", ic_repo, read_only=False, owned=False),
+        "example": Profile("example", example, read_only=True, owned=False),
     }
 
     def _reload():
@@ -65,12 +76,48 @@ class TestScopedConfig:
     def test_unknown_scope_400(self, client):
         assert client.get("/api/config", params={"scope": "bogus"}).status_code == 400
 
+    def test_read_profile_by_name(self, client):
+        """A non-active profile's config is readable by name."""
+        body = client.get(
+            "/api/config", params={"scope": "profile", "name": "ic"}
+        ).json()
+        assert body["APPLICANT_NAME"]["value"] == "Ivy"
+
+    def test_write_profile_by_name(self, client):
+        """A non-active editable profile is writable by name."""
+        r = client.put(
+            "/api/config",
+            params={"scope": "profile", "name": "ic"},
+            json={"updates": {"APPLICANT_NAME": "Iris"}},
+        )
+        assert r.status_code == 200
+        assert r.json()["APPLICANT_NAME"]["value"] == "Iris"
+        again = client.get("/api/config", params={"scope": "profile", "name": "ic"})
+        assert again.json()["APPLICANT_NAME"]["value"] == "Iris"
+
+    def test_read_only_profile_write_rejected(self, client):
+        """The bundled example profile rejects writes with 403."""
+        r = client.put(
+            "/api/config",
+            params={"scope": "profile", "name": "example"},
+            json={"updates": {"APPLICANT_NAME": "X"}},
+        )
+        assert r.status_code == 403
+
+    def test_unknown_profile_name_400(self, client):
+        assert (
+            client.get(
+                "/api/config", params={"scope": "profile", "name": "ghost"}
+            ).status_code
+            == 400
+        )
+
 
 class TestProfiles:
     def test_list(self, client):
         body = client.get("/api/profiles").json()
         assert body["active"] == "demo"
-        assert sorted(body["profiles"]) == ["demo", "ic"]
+        assert sorted(body["profiles"]) == ["demo", "example", "ic"]
 
     def test_switch_known(self, client):
         r = client.put("/api/profiles/active", json={"name": "ic"})
