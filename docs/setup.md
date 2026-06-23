@@ -55,12 +55,31 @@ appear in both):
 | `CACHE_DIR` | Local response-cache directory (default: `~/.cache/jobjob`) | No |
 | `GOOGLE_CREDENTIALS_FILE` | Path to Google OAuth client-secrets JSON (default: `~/.config/jobjob/credentials.json`) | Drive/Sheets |
 | `GOOGLE_TOKEN_FILE` | Path to pickled OAuth token (default: `~/.config/jobjob/token.pickle`) | Drive/Sheets |
-| `APPLICATIONS_FOLDER_ID` | Applications-root Drive folder id | No |
-| `APPLICATIONS_LOCAL_DIR` | Local synced Drive mirror | No |
-| `DATA_DIR` | Input/output root (default: `data`) | No |
-| `LINKEDIN_SHEET_ID` | Contacts spreadsheet id | `enrich` only |
+| `APPLICATIONS_INPUT_DIR` | Apply input/working root holding `jobs/`, `profiles/`, `completed/` (default: `data`) | No |
+| `APPLICATIONS_OUTPUT_DIR` | Local synced Drive applications mirror | No |
+| `APPLICATIONS_OUTPUT_DRIVE_ID` | Applications-root Drive folder id (output) | No |
+| `ENRICHMENT_INPUT_DIR` | Enrich input root; blank ⇒ use `APPLICATIONS_INPUT_DIR` | No |
+| `ENRICHMENT_OUTPUT_SHEET_ID` | Contacts spreadsheet id | `enrich` only |
 | `JOBJOB_PROFILE_<NAME>` | Registry: path to a profile directory | Yes |
 | `JOBJOB_ACTIVE_PROFILE` | Name of the active profile | Yes |
+
+#### Deprecated config keys (still read)
+
+These pre-2.4 names are still honored as a fallback and auto-rewritten to the new
+names in `config/.env` on launch. Rename at your convenience; values set as real
+environment variables keep working via the same fallback.
+
+| Deprecated | New name |
+|---|---|
+| `DATA_DIR` | `APPLICATIONS_INPUT_DIR` |
+| `APPLICATIONS_LOCAL_DIR` | `APPLICATIONS_OUTPUT_DIR` |
+| `APPLICATIONS_FOLDER_ID` | `APPLICATIONS_OUTPUT_DRIVE_ID` |
+| `LINKEDIN_SHEET_ID` | `ENRICHMENT_OUTPUT_SHEET_ID` |
+
+**Input resolution precedence** — applications input: `APPLICATIONS_INPUT_DIR` →
+`DATA_DIR` (deprecated) → `data`. Enrichment input: `ENRICHMENT_INPUT_DIR` → the
+resolved applications input (so a config that only sets the old `DATA_DIR` keeps both
+flows pointed there). Outputs: each new key → its deprecated alias.
 
 ### Profile config (`<profile>/config/.profile`)
 

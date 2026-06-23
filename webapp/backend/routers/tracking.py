@@ -31,7 +31,7 @@ def _settings(request: Request) -> dict:
 def get_queue(request: Request) -> list[dict]:
     """Return unprocessed files from ``data/jobs/`` and ``data/profiles/``."""
     s = _settings(request)
-    return list_queue(s["data_dir"])
+    return list_queue(s["applications_input_dir"])
 
 
 class QueueDelete(BaseModel):
@@ -46,7 +46,7 @@ def delete_queue_item(body: QueueDelete, request: Request) -> dict:
     completed artifacts are off-limits.
     """
     s = _settings(request)
-    data_dir = Path(s["data_dir"]).resolve()
+    data_dir = Path(s["applications_input_dir"]).resolve()
     try:
         target = safe_path(body.path)
     except PermissionError as exc:
@@ -75,12 +75,12 @@ def get_completed(request: Request, refresh: bool = False) -> list[dict]:
     """
     s = _settings(request)
     return list_completed(
-        data_dir=s["data_dir"],
-        applications_folder_id=s.get("applications_folder_id"),
+        data_dir=s["applications_input_dir"],
+        applications_folder_id=s.get("applications_output_drive_id"),
         credentials_file=s.get("credentials_file"),
         token_file=s.get("token_file"),
-        applications_local_dir=s.get("applications_local_dir"),
-        linkedin_sheet_id=s.get("linkedin_sheet_id"),
+        applications_local_dir=s.get("applications_output_dir"),
+        linkedin_sheet_id=s.get("enrichment_output_sheet_id"),
         force_refresh=refresh,
     )
 
@@ -95,7 +95,7 @@ def _resolve_app_folder(request: Request, folder_name: str) -> Path:
         HTTPException: 400 if the mirror is unconfigured or the name is unsafe;
             404 if the folder does not exist.
     """
-    local_dir = _settings(request).get("applications_local_dir")
+    local_dir = _settings(request).get("applications_output_dir")
     if not local_dir:
         raise HTTPException(
             status_code=400,

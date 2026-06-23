@@ -259,7 +259,7 @@ def _application_items(
                 )
             return items
         logger.warning(
-            "APPLICATIONS_LOCAL_DIR %s not found; using the Drive API.", local
+            "APPLICATIONS_OUTPUT_DIR %s not found; using the Drive API.", local
         )
 
     # Drive fallback: list the application folders under the applications root.

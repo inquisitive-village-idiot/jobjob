@@ -42,7 +42,7 @@ class TestScaffold(TestCase):
             env = (home / "config" / ".env").read_text()
             self.assertIn("JOBJOB_ACTIVE_PROFILE=local", env)
             self.assertIn(f"JOBJOB_PROFILE_LOCAL={self._local(home)}", env)
-            self.assertIn(f"DATA_DIR={home / 'data'}", env)
+            self.assertIn(f"APPLICATIONS_INPUT_DIR={home / 'data'}", env)
 
     def test_local_profile_is_blank_skeleton_not_tila(self) -> None:
         import tempfile

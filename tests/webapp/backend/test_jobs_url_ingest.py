@@ -41,7 +41,7 @@ def client(data_dir, monkeypatch):
     app = FastAPI()
     app.include_router(jobs.router, prefix="/api/jobs")
     app.state.settings = {
-        "data_dir": data_dir,
+        "applications_input_dir": data_dir,
         "per_run_budget": 2.0,
         "daily_budget": 20.0,
     }

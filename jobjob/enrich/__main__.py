@@ -33,7 +33,9 @@ def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--sheet-id", default=None, help="Spreadsheet id (overrides LINKEDIN_SHEET_ID)."
+        "--sheet-id",
+        default=None,
+        help="Spreadsheet id (overrides ENRICHMENT_OUTPUT_SHEET_ID).",
     )
     parser.add_argument(
         "--sheet-name", default=DEFAULT_SHEET_NAME, help="Worksheet tab name."
@@ -59,11 +61,11 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
     summary = enrich_inputs(
         args.profile,
         query_service=client,
-        spreadsheet_id=args.sheet_id or settings.linkedin_sheet_id,
+        spreadsheet_id=args.sheet_id or settings.enrichment_output_sheet_id,
         sheet_name=args.sheet_name,
         use_cache=settings.cache_enabled and not args.no_cache,
         dry_run=args.dry_run,
-        data_dir=settings.data_dir,
+        data_dir=settings.enrichment_input_dir,
         logger=_logger,
         _credentials_loader=build_credentials_loader(settings),
     )

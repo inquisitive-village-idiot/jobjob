@@ -87,7 +87,7 @@ def check_folder(
     }
 
     if not applications_folder_id:
-        result["error"] = "APPLICATIONS_FOLDER_ID not configured"
+        result["error"] = "APPLICATIONS_OUTPUT_DRIVE_ID not configured"
         return result
 
     service = _build_drive(credentials_file, token_file, _logger)

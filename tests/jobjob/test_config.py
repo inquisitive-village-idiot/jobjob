@@ -67,18 +67,105 @@ class TestLoadSettings(ThisTestCase):
         settings = self.load_with_env(
             {
                 MOD.ENV_RESUME_TEMPLATE_ID: "TPL",
-                MOD.ENV_APPLICATIONS_FOLDER_ID: "FOLDER",
+                MOD.ENV_APPLICATIONS_OUTPUT_DRIVE_ID: "FOLDER",
                 MOD.ENV_GOOGLE_CREDENTIALS_FILE: "~/creds.json",
             }
         )
         self.assertEqual("TPL", settings.google.template_id)
-        self.assertEqual("FOLDER", settings.google.applications_folder_id)
+        self.assertEqual("FOLDER", settings.applications_output_drive_id)
         self.assertEqual(
             Path("~/creds.json").expanduser(), settings.google.credentials_file
         )
 
     def test_no_api_key_is_none(self) -> None:
         self.assertIsNone(self.load_with_env({}).anthropic_api_key)
+
+
+class TestIoRenameFallback(ThisTestCase):
+    """The per-component rename keeps deprecated keys working (load-time fallback)."""
+
+    def setUp(self) -> None:
+        # The deprecation log is once-per-process; reset so each test can assert it.
+        MOD._DEPRECATION_WARNED.clear()
+
+    def test_new_key_wins(self) -> None:
+        s = self.load_with_env(
+            {
+                MOD.ENV_APPLICATIONS_INPUT_DIR: "/new",
+                MOD.ENV_DATA_DIR: "/old",
+            }
+        )
+        self.assertEqual(Path("/new"), s.applications_input_dir)
+
+    def test_old_key_fallback(self) -> None:
+        s = self.load_with_env({MOD.ENV_DATA_DIR: "/old"})
+        self.assertEqual(Path("/old"), s.applications_input_dir)
+
+    def test_all_four_old_keys_fall_back(self) -> None:
+        s = self.load_with_env(
+            {
+                MOD.ENV_DATA_DIR: "/in",
+                MOD.ENV_APPLICATIONS_LOCAL_DIR: "/mirror",
+                MOD.ENV_APPLICATIONS_FOLDER_ID: "DRIVE",
+                MOD.ENV_LINKEDIN_SHEET_ID: "SHEET",
+            }
+        )
+        self.assertEqual(Path("/in"), s.applications_input_dir)
+        self.assertEqual(Path("/mirror"), s.applications_output_dir)
+        self.assertEqual("DRIVE", s.applications_output_drive_id)
+        self.assertEqual("SHEET", s.enrichment_output_sheet_id)
+
+    def test_blank_new_key_falls_back_to_old(self) -> None:
+        s = self.load_with_env(
+            {
+                MOD.ENV_APPLICATIONS_OUTPUT_DRIVE_ID: "  ",
+                MOD.ENV_APPLICATIONS_FOLDER_ID: "D",
+            }
+        )
+        self.assertEqual("D", s.applications_output_drive_id)
+
+    def test_deprecation_logged_once(self) -> None:
+        with self.assertLogs("jobjob.config", level="WARNING") as cm:
+            with mock.patch.object(MOD, "load_dotenv"):
+                with mock.patch.dict(
+                    "os.environ", {MOD.ENV_DATA_DIR: "/old"}, clear=True
+                ):
+                    MOD.load_settings()
+                    MOD.load_settings()  # second load must not warn again
+        warnings = [m for m in cm.output if "DATA_DIR" in m]
+        self.assertEqual(1, len(warnings))
+        self.assertIn("APPLICATIONS_INPUT_DIR", warnings[0])
+
+    def test_enrichment_input_defaults_to_applications_input(self) -> None:
+        s = self.load_with_env({MOD.ENV_APPLICATIONS_INPUT_DIR: "/apps"})
+        self.assertEqual(Path("/apps"), s.enrichment_input_dir)
+
+    def test_enrichment_input_inherits_resolved_old_applications_input(self) -> None:
+        # ENRICHMENT_INPUT_DIR unset, new applications key unset, only old DATA_DIR set:
+        # enrichment inherits the applications input AFTER its own old-name fallback.
+        s = self.load_with_env({MOD.ENV_DATA_DIR: "/old"})
+        self.assertEqual(Path("/old"), s.enrichment_input_dir)
+
+    def test_enrichment_input_own_key_wins(self) -> None:
+        s = self.load_with_env(
+            {
+                MOD.ENV_APPLICATIONS_INPUT_DIR: "/apps",
+                MOD.ENV_ENRICHMENT_INPUT_DIR: "/enrich",
+            }
+        )
+        self.assertEqual(Path("/enrich"), s.enrichment_input_dir)
+        self.assertEqual(Path("/apps"), s.applications_input_dir)
+
+    def test_default_input_when_unset(self) -> None:
+        s = self.load_with_env({})
+        self.assertEqual(MOD.DEFAULT_INPUT_DIR, s.applications_input_dir)
+        self.assertEqual(MOD.DEFAULT_INPUT_DIR, s.enrichment_input_dir)
+
+    def test_deprecated_aliases_still_app_scoped(self) -> None:
+        for key in MOD.RENAMED_KEYS:
+            self.assertIn(key, MOD.APP_KEYS)
+        for key in MOD.RENAMED_KEYS.values():
+            self.assertIn(key, MOD.APP_KEYS)
 
 
 class TestTwoTierLoad(TestCase):
@@ -105,7 +192,10 @@ class TestTwoTierLoad(TestCase):
             tmp = Path(d)
             app, repo = self._build(
                 tmp,
-                ['CLAUDE_MODEL="claude-opus-4-8"', 'APPLICATIONS_FOLDER_ID="FOLDER"'],
+                [
+                    'CLAUDE_MODEL="claude-opus-4-8"',
+                    'APPLICATIONS_OUTPUT_DRIVE_ID="FOLDER"',
+                ],
                 ['APPLICANT_NAME="Ada Lovelace"', 'RESUME_TEMPLATE_ID="TPL"'],
             )
             with mock.patch.dict("os.environ", {}, clear=True):
@@ -115,7 +205,7 @@ class TestTwoTierLoad(TestCase):
             self.assertEqual("Ada Lovelace", settings.applicant.name)  # from profile
             self.assertEqual("TPL", settings.google.template_id)  # from profile
             self.assertEqual("claude-opus-4-8", settings.model)  # from app
-            self.assertEqual("FOLDER", settings.google.applications_folder_id)
+            self.assertEqual("FOLDER", settings.applications_output_drive_id)
 
     def test_rejects_profile_key_in_app_config(self) -> None:
         import tempfile

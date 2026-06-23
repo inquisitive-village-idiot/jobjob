@@ -68,33 +68,47 @@ _SCHEMA: dict[str, dict[str, Any]] = {
         "description": "Fallback Google Doc id for the resume template.",
         "required": False,
     },
-    "APPLICATIONS_FOLDER_ID": {
-        "label": "Applications Folder ID",
-        "group": "Google",
-        "description": "Google Drive folder id for all applications.",
-        "required": False,
-    },
-    "APPLICATIONS_LOCAL_DIR": {
-        "label": "Applications Local Dir",
-        "group": "Google",
+    "APPLICATIONS_INPUT_DIR": {
+        "label": "Applications · Input directory",
+        "group": "Applications",
         "description": (
-            "Local path of the synced Google Drive applications folder. When set, the "
-            "completed list reads from here instead of the Drive API."
+            "Local root holding jobs/, profiles/, and completed/ for the apply flow. "
+            "Processed JDs move into <input>/completed/jobs/ on completion. "
+            "Default: data."
         ),
         "required": False,
     },
-    "DATA_DIR": {
-        "label": "Data Directory",
-        "group": "Layout",
+    "APPLICATIONS_OUTPUT_DIR": {
+        "label": "Applications · Output directory (local)",
+        "group": "Applications",
         "description": (
-            "Root holding jobs/, profiles/, and completed/. Processed JDs move into "
-            "<DATA_DIR>/completed/jobs/ on completion. Default: data."
+            "Local path of the synced Google Drive applications mirror. When set, the "
+            "completed list reads from here instead of the Drive API. Set this and/or "
+            "the output Drive folder id."
         ),
         "required": False,
     },
-    "LINKEDIN_SHEET_ID": {
-        "label": "LinkedIn Sheet ID",
-        "group": "Google",
+    "APPLICATIONS_OUTPUT_DRIVE_ID": {
+        "label": "Applications · Output Drive folder id",
+        "group": "Applications",
+        "description": (
+            "Google Drive folder id where generated applications are uploaded. Set "
+            "this and/or the local output directory."
+        ),
+        "required": False,
+    },
+    "ENRICHMENT_INPUT_DIR": {
+        "label": "Enrichment · Input directory",
+        "group": "Enrichment",
+        "description": (
+            "Local input root for the enrich (contacts) flow. Leave blank to use the "
+            "applications input directory."
+        ),
+        "required": False,
+    },
+    "ENRICHMENT_OUTPUT_SHEET_ID": {
+        "label": "Enrichment · Output Sheet id",
+        "group": "Enrichment",
         "description": "Google Sheets id for the contacts sheet (enrich).",
         "required": False,
     },

@@ -48,7 +48,7 @@ out/
 
 ### Google Drive layout
 
-A folder named `YYYY-MM-DD - Company - Role` is created under `APPLICATIONS_FOLDER_ID`
+A folder named `YYYY-MM-DD - Company - Role` is created under `APPLICATIONS_OUTPUT_DRIVE_ID`
 and contains exactly four artifacts:
 
 - `README` (Google Doc) — per-application summary
@@ -67,7 +67,7 @@ jobjob enrich <profile> [options]
 | Argument / Flag | Description |
 |---|---|
 | `profile` | Path to the LinkedIn profile screenshot PDF |
-| `--sheet-id <id>` | Spreadsheet id (overrides `LINKEDIN_SHEET_ID` in env) |
+| `--sheet-id <id>` | Spreadsheet id (overrides `ENRICHMENT_OUTPUT_SHEET_ID` in env) |
 | `--sheet-name <name>` | Worksheet tab name (default: `Contacts`) |
 | `--dry-run` | Parse the profile without writing to the sheet |
 | `--no-cache` | Disable the response cache for this run |
