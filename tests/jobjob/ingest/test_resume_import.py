@@ -16,6 +16,13 @@ from jobjob.ingest.resume_import import (
 )
 
 _MODEL_JSON = {
+    "identity": {
+        "name": "Tila Mer",
+        "email": "tila@example.com",
+        "phone": "  ",  # blank -> dropped
+        "linkedin": "linkedin.com/in/tilamer",
+        "fax": "555-1234",  # unknown field -> ignored
+    },
     "objective": "Tell true stories about cells.",
     "sections": ["Experience", "Education", ""],
     "highlights": [
@@ -83,6 +90,24 @@ class TestExtractResume:
         draft = _extract()
         assert draft.sections == ("Experience", "Education")
 
+    def test_identity_extracted_and_cleaned(self):
+        draft = _extract()
+        # Blank fields dropped, unknown fields ignored, known ones kept and stripped.
+        assert draft.identity == {
+            "name": "Tila Mer",
+            "email": "tila@example.com",
+            "linkedin": "linkedin.com/in/tilamer",
+        }
+
+    def test_identity_absent_is_empty(self):
+        draft = extract_resume(
+            Path("r.txt"),
+            object(),
+            _query=lambda *a, **k: {"objective": "x"},
+            _load_text=lambda p: "text",
+        )
+        assert draft.identity == {}
+
     def test_empty_text_raises(self):
         with pytest.raises(ValueError):
             extract_resume(
@@ -149,6 +174,7 @@ class TestFromDictHelpers:
         draft = _extract()
         out = draft_to_dict(draft)
         assert set(out) >= {
+            "identity",
             "objective",
             "sections",
             "background",
@@ -157,3 +183,4 @@ class TestFromDictHelpers:
         }
         assert out["highlights"][0]["topic"] == "Creativity"
         assert out["skills"][0]["label"] == "fact_checking"
+        assert out["identity"]["name"] == "Tila Mer"

@@ -10,6 +10,9 @@ ${text_content}
 Respond with ONLY a single JSON object (no prose, no markdown code fences) using exactly
 these top-level keys:
 
+- identity: An object with the applicant's contact details exactly as written in the
+  resume header, each an empty string when absent: name, email, phone, linkedin (the
+  LinkedIn profile URL or handle). Copy these verbatim; never invent or guess them.
 - objective: A one-to-two sentence professional objective/summary written in the
   candidate's voice, suitable as a resume objective. Empty string if the resume does not
   support one.
