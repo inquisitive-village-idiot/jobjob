@@ -108,23 +108,24 @@ export default function ProfilesPanel() {
         {entries.map((e) => (
           <li key={e.name} className="flex items-center justify-between py-2">
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => switchTo(e.name)}
+                disabled={busy || e.active}
+                title={e.active ? "Already active" : `Switch to ${e.name}`}
+                className="text-xs px-2 py-1 rounded text-blue-700 hover:bg-blue-50
+                  disabled:text-gray-400 disabled:hover:bg-transparent disabled:cursor-default"
+              >
+                Switch
+              </button>
               <span className="text-sm font-medium capitalize text-gray-800">
                 {e.name}
               </span>
               {e.active && <Badge tone="blue">Active</Badge>}
-              {e.read_only && <Badge tone="gray">Example · read-only</Badge>}
+              {e.read_only && <Badge tone="gray">Example</Badge>}
+              {e.read_only && <Badge tone="gray">read-only</Badge>}
               {e.external && <Badge tone="amber">External</Badge>}
             </div>
             <div className="flex items-center gap-1.5">
-              {!e.active && (
-                <button
-                  onClick={() => switchTo(e.name)}
-                  disabled={busy}
-                  className="text-xs px-2 py-1 rounded text-blue-700 hover:bg-blue-50 disabled:opacity-40"
-                >
-                  Switch
-                </button>
-              )}
               {!e.active && !e.read_only && (
                 <button
                   onClick={() => remove(e.name)}
