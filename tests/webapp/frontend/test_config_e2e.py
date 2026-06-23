@@ -71,3 +71,20 @@ def test_config_sidebar_expands_active_tab_subsections(driver, live_app):
     # Clicking a subsection anchor scrolls to that section's content.
     anchor.click()
     assert "Google" in sidebar.text
+
+
+def test_profile_tab_shows_location_and_dir_pills(driver, live_app):
+    """Selecting a profile shows its location and resource-dir file-count pills."""
+    _open_config(driver, live_app)
+    _config_tab(driver, "example").click()
+    panel = _wait(driver).until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//h3[normalize-space()='Location & directories']")
+        )
+    )
+    assert panel.is_displayed()
+    # The example profile ships content/ and reference/ dirs, shown as pills.
+    body = driver.find_element(By.TAG_NAME, "body").text
+    assert "content" in body and "reference" in body
+    # The "Directories" config group is editable via the schema fields/sidebar anchor.
+    assert "Directories" in _sidebar(driver).text

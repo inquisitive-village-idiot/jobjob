@@ -132,6 +132,33 @@ _SCHEMA: dict[str, dict[str, Any]] = {
         ),
         "required": False,
     },
+    "CONTENT_DIR": {
+        "label": "Content directory",
+        "group": "Directories",
+        "description": (
+            "Folder (inside this profile) holding the content TOML files. "
+            "Default: content."
+        ),
+        "required": False,
+    },
+    "REFERENCE_DIR": {
+        "label": "Reference directory",
+        "group": "Directories",
+        "description": (
+            "Folder (inside this profile) holding reference docs — background, "
+            "writing style, cover_letters/, stars/. Default: reference."
+        ),
+        "required": False,
+    },
+    "PROMPT_DIR": {
+        "label": "Prompt directory",
+        "group": "Directories",
+        "description": (
+            "Folder (inside this profile) holding prompt overrides. Unset/empty uses "
+            "the built-in prompts. Default: prompt."
+        ),
+        "required": False,
+    },
 }
 
 

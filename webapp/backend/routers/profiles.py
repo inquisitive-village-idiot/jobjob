@@ -14,11 +14,43 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from jobjob.loader.profiles import ENV_ACTIVE_PROFILE, Profile
+from jobjob.config import (
+    DEFAULT_CONTENT_DIR,
+    DEFAULT_PROMPT_DIR,
+    DEFAULT_REFERENCE_DIR,
+    ENV_CONTENT_DIR,
+    ENV_PROMPT_DIR,
+    ENV_REFERENCE_DIR,
+    PROFILE_KEYS,
+)
+from jobjob.loader.profiles import ENV_ACTIVE_PROFILE, Profile, profile_config_file
 from services import profile_service
-from services.config_service import write_config
+from services.config_service import read_config, write_config
 
 router = APIRouter()
+
+# Resource directories surfaced on a profile (env key, conventional default).
+_RESOURCE_DIRS = (
+    (ENV_CONTENT_DIR, DEFAULT_CONTENT_DIR),
+    (ENV_REFERENCE_DIR, DEFAULT_REFERENCE_DIR),
+    (ENV_PROMPT_DIR, DEFAULT_PROMPT_DIR),
+)
+
+
+def _count_files(directory: Path) -> int:
+    """Count non-hidden files under ``directory`` recursively.
+
+    Skips dotfiles and anything inside a hidden directory (e.g. ``.git``,
+    ``.DS_Store``). Returns 0 when the directory is absent.
+    """
+    if not directory.is_dir():
+        return 0
+    return sum(
+        1
+        for p in directory.rglob("*")
+        if p.is_file()
+        and not any(part.startswith(".") for part in p.relative_to(directory).parts)
+    )
 
 
 def _profiles(request: Request) -> dict[str, Profile]:
@@ -66,6 +98,41 @@ def _profiles_payload(request: Request) -> dict:
 def list_profiles(request: Request) -> dict:
     """Return the registered profile names, the active one, and per-profile metadata."""
     return _profiles_payload(request)
+
+
+@router.get("/{name}/resources")
+def profile_resources(name: str, request: Request) -> dict:
+    """Return a profile's location and its resource dirs (resolved path + file count).
+
+    The dir names come from the profile's own committed config (CONTENT_DIR/
+    REFERENCE_DIR/PROMPT_DIR), each falling back to its conventional default, so the
+    counts are correct even for a non-active profile.
+
+    Raises:
+        400: If the name is not a registered profile.
+    """
+    profile = _profiles(request).get(name.strip().lower())
+    if profile is None:
+        raise HTTPException(status_code=400, detail=f"Unknown profile: {name}")
+    cfg = read_config(profile_config_file(profile.path), keys=PROFILE_KEYS)
+    resources = []
+    for env_key, default in _RESOURCE_DIRS:
+        configured = str(cfg.get(env_key, {}).get("value") or "").strip() or default
+        path = profile.path / configured
+        resources.append(
+            {
+                "name": default,
+                "dir": configured,
+                "path": str(path),
+                "exists": path.is_dir(),
+                "count": _count_files(path),
+            }
+        )
+    return {
+        "name": profile.name,
+        "location": str(profile.path),
+        "resources": resources,
+    }
 
 
 class ProfileSwitch(BaseModel):

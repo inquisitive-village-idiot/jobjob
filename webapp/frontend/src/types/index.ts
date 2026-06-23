@@ -26,6 +26,20 @@ export interface ProfilesInfo {
   entries?: ProfileEntry[];
 }
 
+export interface ProfileResource {
+  name: string;
+  dir: string;
+  path: string;
+  exists: boolean;
+  count: number;
+}
+
+export interface ProfileResources {
+  name: string;
+  location: string;
+  resources: ProfileResource[];
+}
+
 export interface SetupStatus {
   anthropic_key: boolean;
   credentials_file: boolean;
