@@ -5,6 +5,7 @@ import ConfigPage from "./pages/ConfigPage";
 import StaticContentPage from "./pages/StaticContentPage";
 import PromptsPage from "./pages/PromptsPage";
 import AccountMenu from "./components/AccountMenu";
+import Footer from "./components/Footer";
 import SetupWizard from "./components/SetupWizard";
 import { api } from "./api/client";
 import type { SetupStatus } from "./types";
@@ -121,6 +122,8 @@ export default function App() {
         {page === "static" && <StaticContentPage />}
         {page === "prompts" && <PromptsPage />}
       </main>
+
+      <Footer />
 
       {showWizard && (
         <SetupWizard

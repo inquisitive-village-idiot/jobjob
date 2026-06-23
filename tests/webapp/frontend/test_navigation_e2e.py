@@ -68,3 +68,16 @@ def test_settings_cog_opens_config(driver, live_app):
         )
     )
     assert driver.current_url.endswith("#config")
+
+
+def test_footer_reports_issue_link(driver, live_app):
+    """The footer shows the copyright line and a Report an issue link."""
+    driver.get(live_app + "/")
+    footer = _wait(driver).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "footer"))
+    )
+    assert "inquisitive-village-idiot" in footer.text
+    link = footer.find_element(By.XPATH, ".//a[normalize-space()='Report an issue']")
+    assert link.get_attribute("href").endswith(
+        "github.com/inquisitive-village-idiot/jobjob/issues"
+    )
