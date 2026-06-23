@@ -32,88 +32,20 @@ became `profiles/<name>/`. On first launch, `jobjob-app` migrates `profile/` →
 `profiles/local/` automatically (a directory move plus a registry-path rewrite;
 idempotent, nothing lost). See the [Profiles guide](profiles.md).
 
-## Environment configuration
+## Configuration
 
-Configuration is split into two disjoint tiers (validated at load — no key may
-appear in both):
+The full configuration reference — both config tiers, the per-feature key tables, the
+resolution precedence, deprecated-key map, and where to place the Google credentials —
+lives in **[Local configuration](setup-local-config.md)**. To obtain the Google
+credentials in the first place, see **[Set up the Google project](install-google-project.md)**.
 
-- **App config** — `config/.env`, machine-local and gitignored. Copy the template:
-  ```sh
-  cp config/.env.template config/.env
-  ```
-- **Profile config** — `<profile>/config/.profile`, inside each profile directory.
-  Selected via the app config's `JOBJOB_PROFILE_*` registry + `JOBJOB_ACTIVE_PROFILE`.
-  See the [Profiles guide](profiles.md) for the full profile model.
-
-### App config (`config/.env`)
-
-| Variable | Purpose | Required |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key | Yes |
-| `CLAUDE_MODEL` | Model id (default: `claude-sonnet-4-6`) | No |
-| `CLAUDE_CACHE_ENABLED` | Response-cache toggle (default: `true`) | No |
-| `CACHE_DIR` | Local response-cache directory (default: `~/.cache/jobjob`) | No |
-| `GOOGLE_CREDENTIALS_FILE` | Path to Google OAuth client-secrets JSON (default: `~/.config/jobjob/credentials.json`) | Drive/Sheets |
-| `GOOGLE_TOKEN_FILE` | Path to pickled OAuth token (default: `~/.config/jobjob/token.pickle`) | Drive/Sheets |
-| `APPLICATIONS_INPUT_DIR` | Apply input/working root holding `jobs/`, `profiles/`, `completed/` (default: `data`) | No |
-| `APPLICATIONS_OUTPUT_DIR` | Local synced Drive applications mirror | No |
-| `APPLICATIONS_OUTPUT_DRIVE_ID` | Applications-root Drive folder id (output) | No |
-| `ENRICHMENT_INPUT_DIR` | Enrich input root; blank ⇒ use `APPLICATIONS_INPUT_DIR` | No |
-| `ENRICHMENT_OUTPUT_SHEET_ID` | Contacts spreadsheet id | `enrich` only |
-| `JOBJOB_PROFILE_<NAME>` | Registry: path to a profile directory | Yes |
-| `JOBJOB_ACTIVE_PROFILE` | Name of the active profile | Yes |
-
-#### Deprecated config keys (still read)
-
-These pre-2.4 names are still honored as a fallback and auto-rewritten to the new
-names in `config/.env` on launch. Rename at your convenience; values set as real
-environment variables keep working via the same fallback.
-
-| Deprecated | New name |
-|---|---|
-| `DATA_DIR` | `APPLICATIONS_INPUT_DIR` |
-| `APPLICATIONS_LOCAL_DIR` | `APPLICATIONS_OUTPUT_DIR` |
-| `APPLICATIONS_FOLDER_ID` | `APPLICATIONS_OUTPUT_DRIVE_ID` |
-| `LINKEDIN_SHEET_ID` | `ENRICHMENT_OUTPUT_SHEET_ID` |
-
-**Resolution precedence (highest first):** CLI flag (where a command provides one,
-e.g. `--sheet-id`) → environment variable → config file (`config/.env`) → built-in
-default. Environment variables outrank the config file even across the deprecated→new
-rename — e.g. exporting `DATA_DIR` in your shell overrides `APPLICATIONS_INPUT_DIR`
-written in `config/.env`. Within a single source, the new name wins over its
-deprecated alias.
-
-**Input resolution** — applications input: `APPLICATIONS_INPUT_DIR` → `DATA_DIR`
-(deprecated) → `data`. Enrichment input: `ENRICHMENT_INPUT_DIR` → the resolved
-applications input (so a config that only sets the old `DATA_DIR` keeps both flows
-pointed there). Outputs: each new key → its deprecated alias.
-
-### Profile config (`<profile>/config/.profile`)
-
-| Variable | Purpose | Required |
-|---|---|---|
-| `RESUME_TEMPLATE_ID` | Resume-template Google Doc id for this profile | Drive only |
-| `APPLICANT_NAME` | Your name as it appears on documents | No |
-| `APPLICANT_PHONE` | Phone number for cover-letter header | No |
-| `APPLICANT_EMAIL` | Email address for cover-letter header | No |
-| `APPLICANT_LINKEDIN` | LinkedIn URL for cover-letter header | No |
-| `INDUSTRY` | Optional domain/field (e.g. "science journalism") used to describe the target company accurately when tailoring the resume objective | No |
-
-### Google OAuth
-
-`GOOGLE_CREDENTIALS_FILE` is a client-secrets JSON downloaded from the Google Cloud
-Console for a project with the Drive API and Docs API enabled. First run opens a
-browser to complete the OAuth flow and writes a pickled token to `GOOGLE_TOKEN_FILE`.
-Subsequent runs reuse the token silently.
-
-If you add new Google API scopes, delete `GOOGLE_TOKEN_FILE` to trigger re-auth:
+Quick orientation: configuration is split into two disjoint tiers (validated at load —
+no key may appear in both): **app config** (`config/.env`, machine-local) and
+**profile config** (`<profile>/config/.profile`). Copy the app template to start:
 
 ```sh
-rm ~/.config/jobjob/token.pickle
+cp config/.env.template config/.env
 ```
-
-For step-by-step credential-acquisition instructions see
-[docs/credentials-setup.md](credentials-setup.md).
 
 ---
 

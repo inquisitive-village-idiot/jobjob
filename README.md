@@ -48,8 +48,9 @@ Configuration is split into two **disjoint** tiers:
 - **Profile config** (`<profile>/config/.profile`) — the active profile's applicant
   identity and resume template.
 
-See **[docs/setup.md](docs/setup.md)** for the full configuration reference and
-**[docs/profiles.md](docs/profiles.md)** for the profile model.
+See **[docs/setup-local-config.md](docs/setup-local-config.md)** for the full
+configuration reference and **[docs/profiles.md](docs/profiles.md)** for the profile
+model.
 
 ## Usage
 
@@ -62,15 +63,17 @@ jobjob apply path/to/job_description.pdf --skip-drive -o ./out   # local only
 jobjob enrich path/to/profile.pdf
 ```
 
-See **[docs/usage.md](docs/usage.md)** for the full flag reference and examples.
+See **[Applications](docs/usage-applications.md)** and
+**[Enrichment](docs/usage-enrichment.md)** for the full flag reference and examples.
 
 ## Documentation
 
-- [Quick-Start Guide](docs/quickstart.md) — first run, start to finish
-- [Configuration & profiles](docs/setup.md) · [Profile model](docs/profiles.md)
-- [Credentials setup](docs/credentials-setup.md) — API keys and Google OAuth
-- [Usage reference](docs/usage.md)
-- [Architecture](docs/architecture.md) — how the package is laid out
+- [Getting started](docs/quickstart.md) — overview + the install → setup → usage path
+- Installation: [accounts](docs/install-accounts.md) · [Google project](docs/install-google-project.md) · [software](docs/install-software.md) · [free option](docs/install-free-option.md)
+- Setup: [wizard](docs/setup-wizard.md) · [local configuration](docs/setup-local-config.md)
+- Usage: [applications](docs/usage-applications.md) · [enrichment](docs/usage-enrichment.md)
+- [Profile model](docs/profiles.md) · [Architecture](docs/architecture.md) — how the package is laid out
+- [Developer reference](docs/setup.md) — from-source, tests, webapp dev
 - [Local dashboard](webapp/README.md) — the `webapp/` setup
 - Published docs site: **<https://inquisitive-village-idiot.github.io/jobjob/>**
 
