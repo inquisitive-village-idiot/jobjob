@@ -44,7 +44,23 @@ Open a terminal (macOS: **Cmd+Space** → "Terminal"; Windows: Start → "Comman
 uv tool install jobjob
 ```
 
-To install `uv` first, see <https://docs.astral.sh/uv/getting-started/installation/>.
+> **Don't have `uv` yet?** `uv` is a small, free tool that installs and runs Python
+> programs. You install it by **pasting one command into the terminal** (the same window
+> you just opened) and pressing **Enter** — there's nothing to download from a website.
+> Copy the line for your system:
+>
+> - **macOS:**
+>   ```
+>   curl -LsSf https://astral.sh/uv/install.sh | sh
+>   ```
+> - **Windows** (use **PowerShell**: Start → "PowerShell"):
+>   ```
+>   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+>   ```
+>
+> When it finishes, **close the terminal window and open a new one** so it knows about
+> `uv`, then run the `uv tool install jobjob` command above. (Full instructions and other
+> systems: <https://docs.astral.sh/uv/getting-started/installation/>.)
 
 **Or — with `pipx`** (if you already have Python 3.12+):
 
