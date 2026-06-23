@@ -57,20 +57,22 @@ export default function ConfigPage() {
   );
 
   const scopeTabs = (
-    <div className="flex gap-1 mb-1">
-      {SCOPES.map((s) => (
-        <button
-          key={s.id}
-          onClick={() => setScope(s.id)}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            scope === s.id
-              ? "bg-blue-600 text-white"
-              : "text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
+    <div className="border-b border-gray-200 mb-1">
+      <nav className="-mb-px flex gap-4">
+        {SCOPES.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setScope(s.id)}
+            className={`pb-2 px-1 text-sm font-medium border-b-2 transition-colors ${
+              scope === s.id
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 
@@ -133,7 +135,7 @@ export default function ConfigPage() {
       <ProfilesPanel />
 
       {scopeTabs}
-      <p className="text-xs text-gray-500 mb-6">
+      <p className="text-xs text-gray-500 mt-2 mb-6">
         {SCOPES.find((s) => s.id === scope)?.hint}
       </p>
 
