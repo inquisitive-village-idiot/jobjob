@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 """Migration: rewrite deprecated config keys in ``<home>/config/.env`` to new names.
 
-Best-effort, NON-destructive cleanup that tidies the file to the post-2.4
-per-component input/output key names (see ``jobjob.config.RENAMED_KEYS``). This is
-NOT the compatibility mechanism — the load-time fallback in
-``jobjob.config._env_first`` is, and it also covers env-var-only setups a file rewrite
-can't reach. So a skipped or failed rewrite never breaks the app.
+Upgrades a ``<2.4.0`` app config to the ``2.4.0+`` per-component input/output key
+names: ``DATA_DIR`` → ``APPLICATIONS_INPUT_DIR``, ``APPLICATIONS_LOCAL_DIR`` →
+``APPLICATIONS_OUTPUT_DIR``, ``APPLICATIONS_FOLDER_ID`` →
+``APPLICATIONS_OUTPUT_DRIVE_ID``, ``LINKEDIN_SHEET_ID`` → ``ENRICHMENT_OUTPUT_SHEET_ID``
+(the canonical map is ``jobjob.config.RENAMED_KEYS``).
+
+Best-effort, NON-destructive cleanup that only tidies the file. It is NOT the
+compatibility mechanism — the load-time fallback in ``jobjob.config._env_first`` is,
+and it also covers env-var-only setups a file rewrite can't reach. So a skipped or
+failed rewrite never breaks the app.
 
 Rules:
 - A deprecated key is renamed only if its new name is NOT already assigned in the file
@@ -17,7 +22,13 @@ from pathlib import Path
 
 
 def _assigned_keys(lines: list[str]) -> set[str]:
-    """Return the set of KEY names assigned (``KEY=value``) in ``lines``."""
+    """Return the set of KEY names assigned (``KEY=value``) in ``lines``.
+
+    Arguments:
+        lines: The raw lines of a dotenv-format file.
+    Returns:
+        The keys that have an assignment (comments and blank lines ignored).
+    """
     keys: set[str] = set()
     for line in lines:
         stripped = line.strip()
@@ -29,7 +40,10 @@ def _assigned_keys(lines: list[str]) -> set[str]:
 def migrate_env_keys(home: Path) -> bool:
     """Rewrite deprecated keys in ``<home>/config/.env`` to their new names.
 
-    Returns True if the file was rewritten, else False.
+    Arguments:
+        home: The jobjob working directory (its ``config/.env`` is rewritten in place).
+    Returns:
+        True if the file was rewritten, else False (no file, or nothing to rename).
     """
     env_path = home / "config" / ".env"
     if not env_path.is_file():

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Migration: move a pre-unification ``<home>/profile`` to ``<home>/profiles/local``.
 
-Older installs scaffolded a single ``profile/`` dir (seeded from the Tila Mer
-example). Unifying on ``profiles/<name>/`` keeps the layout consistent. The move
-preserves whatever the user edited; the ``.env`` registry path is rewritten to match.
-Idempotent and a no-op when there is nothing to migrate.
+Upgrades a ``<2.0.0`` working dir to the ``2.0.0+`` profile layout. Older installs
+scaffolded a single ``profile/`` dir (seeded from the Tila Mer example); the 2.0.0
+unification moved it to ``profiles/<name>/``. The move preserves whatever the user
+edited; the ``.env`` registry path is rewritten to match. Idempotent and a no-op when
+there is nothing to migrate.
 
 Moved here from ``jobjob.launcher`` as the first entry in the versioned migration set.
 """
@@ -23,7 +24,11 @@ def _local_profile_dir(home: Path) -> Path:
 def migrate_legacy_profile(home: Path) -> bool:
     """Move ``<home>/profile`` → ``<home>/profiles/local`` and fix the registry path.
 
-    Returns True if a migration was performed, else False.
+    Arguments:
+        home: The jobjob working directory to migrate in place.
+    Returns:
+        True if a migration was performed, else False (no legacy dir, or the target
+        already exists).
     """
     legacy = home / "profile"
     target = _local_profile_dir(home)
