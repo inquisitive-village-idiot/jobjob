@@ -61,6 +61,13 @@ ENV_APPLICANT_LINKEDIN = "APPLICANT_LINKEDIN"
 # company accurately; left out of the prompt entirely when unset.
 ENV_INDUSTRY = "INDUSTRY"
 
+# Per-profile resource directory names (relative to the profile repo). Optional;
+# each falls back to its conventional default so existing profiles keep working.
+# Read by jobjob.loader.location when resolving the active profile's resources.
+ENV_CONTENT_DIR = "CONTENT_DIR"
+ENV_REFERENCE_DIR = "REFERENCE_DIR"
+ENV_PROMPT_DIR = "PROMPT_DIR"
+
 # Config tiers — disjoint by construction; enforced by _validate_scopes.
 # APP: one jobjob instance (secrets, local paths, output IDs, registry).
 APP_KEYS = frozenset(
@@ -77,7 +84,8 @@ APP_KEYS = frozenset(
         ENV_LINKEDIN_SHEET_ID,
     }
 )
-# PROFILE: the active content set (identity + resume template). No local paths.
+# PROFILE: the active content set (identity + resume template + resource dir names).
+# No local paths (the resource dirs are names relative to the profile repo).
 PROFILE_KEYS = frozenset(
     {
         ENV_APPLICANT_NAME,
@@ -86,8 +94,17 @@ PROFILE_KEYS = frozenset(
         ENV_APPLICANT_LINKEDIN,
         ENV_RESUME_TEMPLATE_ID,
         ENV_INDUSTRY,
+        ENV_CONTENT_DIR,
+        ENV_REFERENCE_DIR,
+        ENV_PROMPT_DIR,
     }
 )
+
+# Conventional defaults for the per-profile resource dirs (used by the loaders and
+# the config UI so an unset key behaves exactly as before).
+DEFAULT_CONTENT_DIR = "content"
+DEFAULT_REFERENCE_DIR = "reference"
+DEFAULT_PROMPT_DIR = "prompt"
 
 _TRUE_VALUES = ("true", "1", "yes")
 

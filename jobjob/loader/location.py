@@ -13,10 +13,30 @@ NOTE: resource getters are intentionally NOT cached — resolution depends on th
     independent and stay cached.
 """
 
+import os
 from functools import cache
 from pathlib import Path
 
 from jobjob.loader.profiles import resolve_active_profile_dir
+
+# Per-profile resource dir names (env key → conventional default). A profile may
+# rename its resource subdirs via these keys; unset means the conventional name, so
+# existing profiles keep working. The names are duplicated here (not imported from
+# jobjob.config) to keep this module import-light and free of a config cycle.
+_CONTENT_DIR_KEY = "CONTENT_DIR"
+_REFERENCE_DIR_KEY = "REFERENCE_DIR"
+_PROMPT_DIR_KEY = "PROMPT_DIR"
+
+
+def _profile_subdir(env_key: str, default: str) -> str:
+    """Return the configured resource-dir name for ``env_key``, or ``default``.
+
+    Reads ``os.environ`` (populated by the active profile's config), tolerating
+    surrounding quotes/whitespace; an empty value falls back to ``default``.
+    """
+    value = (os.environ.get(env_key) or "").strip().strip("\"'").strip()
+    return value or default
+
 
 # Template Functions
 # ======================================================================
@@ -61,15 +81,19 @@ def _get_static_path(name: str, stem: str) -> Path:
     return _path_in(_get_static_dir(name), stem)
 
 
-def _resolve_dir(name: str) -> Path:
-    """Return ``<active-profile>/<name>`` if it exists, else ``static/<name>``.
+def _resolve_dir(name: str, subdir: str | None = None) -> Path:
+    """Return ``<active-profile>/<subdir>`` if it exists, else ``static/<name>``.
+
+    ``subdir`` is the profile's (possibly renamed) directory for this resource; it
+    defaults to ``name``. The static fallback always uses the canonical ``name`` (the
+    bundled example uses conventional dir names).
 
     Raises:
         FileNotFoundError if neither the profile dir nor the static default exists.
     """
     profile_dir = resolve_active_profile_dir()
     if profile_dir is not None:
-        candidate = profile_dir / name
+        candidate = profile_dir / (subdir or name)
         if candidate.is_dir():
             return candidate
     return _get_static_dir(name)
@@ -86,7 +110,7 @@ def get_content_dir() -> Path:
     Raises:
         FileNotFoundError if neither exists.
     """
-    return _resolve_dir("content")
+    return _resolve_dir("content", _profile_subdir(_CONTENT_DIR_KEY, "content"))
 
 
 def get_content_path(stem: str) -> Path:
@@ -131,8 +155,10 @@ def get_prompt_dir() -> Path:
     """Return the prompt dir: the active profile's ``prompt/`` if present, else
     the bundled ``jobjob/prompts``."""
     profile_dir = resolve_active_profile_dir()
-    if profile_dir is not None and (profile_dir / "prompt").is_dir():
-        return profile_dir / "prompt"
+    if profile_dir is not None:
+        prompt_dir = profile_dir / _profile_subdir(_PROMPT_DIR_KEY, "prompt")
+        if prompt_dir.is_dir():
+            return prompt_dir
     return _package_prompt_dir()
 
 
@@ -147,7 +173,7 @@ def get_prompt_path(stem: str) -> Path:
     """
     profile_dir = resolve_active_profile_dir()
     if profile_dir is not None:
-        prompt_dir = profile_dir / "prompt"
+        prompt_dir = profile_dir / _profile_subdir(_PROMPT_DIR_KEY, "prompt")
         if prompt_dir.is_dir():
             try:
                 return _path_in(prompt_dir, stem)
@@ -167,7 +193,7 @@ def get_reference_dir() -> Path:
     Raises:
         FileNotFoundError if neither exists.
     """
-    return _resolve_dir("reference")
+    return _resolve_dir("reference", _profile_subdir(_REFERENCE_DIR_KEY, "reference"))
 
 
 # Root, etc

@@ -2,6 +2,7 @@
 """Tests for the profiles lifecycle API (create/duplicate/register/delete/switch)."""
 
 import os
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -90,6 +91,51 @@ class TestSwitchAndDelete:
 
     def test_cannot_delete_example(self, client):
         assert client.delete("/api/profiles/example").status_code == 400
+
+
+class TestResources:
+    def test_lists_resource_dirs_with_counts(self, client):
+        client.post("/api/profiles", json={"name": "alpha"})
+        body = client.get("/api/profiles/alpha/resources").json()
+        assert body["name"] == "alpha"
+        assert body["location"]
+        names = {r["name"]: r for r in body["resources"]}
+        assert set(names) == {"content", "reference", "prompt"}
+        assert names["content"]["dir"] == "content"
+
+    def test_respects_renamed_dir_from_profile_config(self, client):
+        client.post("/api/profiles", json={"name": "alpha"})
+        loc = Path(client.get("/api/profiles/alpha/resources").json()["location"])
+        # Point the profile's content dir at a renamed folder with two files.
+        (loc / "creds").mkdir()
+        (loc / "creds" / "a.toml").write_text("x")
+        (loc / "creds" / "b.toml").write_text("y")
+        (loc / "config").mkdir(exist_ok=True)
+        (loc / "config" / ".profile").write_text('CONTENT_DIR="creds"\n')
+        names = {
+            r["name"]: r
+            for r in client.get("/api/profiles/alpha/resources").json()["resources"]
+        }
+        assert names["content"]["dir"] == "creds"
+        assert names["content"]["count"] == 2
+
+    def test_count_skips_hidden_files(self, client):
+        client.post("/api/profiles", json={"name": "alpha"})
+
+        def ref_count() -> int:
+            resources = client.get("/api/profiles/alpha/resources").json()["resources"]
+            return next(r["count"] for r in resources if r["name"] == "reference")
+
+        loc = Path(client.get("/api/profiles/alpha/resources").json()["location"])
+        ref = loc / "reference"
+        ref.mkdir(exist_ok=True)
+        before = ref_count()
+        (ref / ".DS_Store").write_text("junk")  # hidden -> not counted
+        (ref / "visible.md").write_text("hi")  # +1
+        assert ref_count() == before + 1
+
+    def test_unknown_profile_400(self, client):
+        assert client.get("/api/profiles/ghost/resources").status_code == 400
 
 
 # __END__

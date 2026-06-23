@@ -56,5 +56,42 @@ class TestProfileResolution(TestCase):
                     str(default).endswith("jobjob/prompts/linkedin_profile.txt")
                 )
 
+    def test_configured_content_dir_is_used(self) -> None:
+        with TemporaryDirectory() as d:
+            repo = Path(d)
+            (repo / "credentials").mkdir()  # renamed content dir
+            (repo / "credentials" / "highlights.toml").write_text("[tool.highlights]\n")
+            env = {**_profile_env(repo), "CONTENT_DIR": "credentials"}
+            with mock.patch.dict("os.environ", env, clear=True):
+                self.assertEqual(repo / "credentials", MOD.get_content_dir())
+
+    def test_configured_reference_dir_is_used(self) -> None:
+        with TemporaryDirectory() as d:
+            repo = Path(d)
+            (repo / "refs").mkdir()  # renamed reference dir
+            env = {**_profile_env(repo), "REFERENCE_DIR": "refs"}
+            with mock.patch.dict("os.environ", env, clear=True):
+                self.assertEqual(repo / "refs", MOD.get_reference_dir())
+
+    def test_configured_prompt_dir_is_used(self) -> None:
+        with TemporaryDirectory() as d:
+            repo = Path(d)
+            (repo / "prompts_custom").mkdir()
+            override = repo / "prompts_custom" / "job_description.txt"
+            override.write_text("custom")
+            env = {**_profile_env(repo), "PROMPT_DIR": "prompts_custom"}
+            with mock.patch.dict("os.environ", env, clear=True):
+                self.assertEqual(repo / "prompts_custom", MOD.get_prompt_dir())
+                self.assertEqual(override, MOD.get_prompt_path("job_description"))
+
+    def test_blank_dir_key_falls_back_to_default(self) -> None:
+        with TemporaryDirectory() as d:
+            repo = Path(d)
+            (repo / "content").mkdir()
+            (repo / "content" / "highlights.toml").write_text("[tool.highlights]\n")
+            env = {**_profile_env(repo), "CONTENT_DIR": "   "}  # blank -> default
+            with mock.patch.dict("os.environ", env, clear=True):
+                self.assertEqual(repo / "content", MOD.get_content_dir())
+
 
 # __END__

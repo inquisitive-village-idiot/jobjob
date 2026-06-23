@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { ConfigSchema, ProfileEntry, ProfilesInfo } from "../types";
+import type {
+  ConfigSchema,
+  ProfileEntry,
+  ProfileResources,
+  ProfilesInfo,
+} from "../types";
 import {
   SectionHeader,
   scrollToSection,
@@ -17,6 +22,52 @@ const PROFILE_HINT =
   "This profile — committed to its resources repo (config/.profile).";
 const READ_ONLY_HINT =
   "This is the bundled example profile and is read-only — duplicate it to make an editable copy.";
+
+// Read-only display of a profile's on-disk location and the file counts of its
+// resource directories (content/reference/prompt). The dir names themselves are
+// edited via the "Directories" config fields (under the whole-profile Edit toggle).
+function ProfileResourcesPanel({ name }: { name: string }) {
+  const [data, setData] = useState<ProfileResources | null>(null);
+
+  useEffect(() => {
+    setData(null);
+    api
+      .get<ProfileResources>(`/profiles/${encodeURIComponent(name)}/resources`)
+      .then(setData)
+      .catch(() => setData(null));
+  }, [name]);
+
+  if (!data) return null;
+  return (
+    <div className="mb-6 border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">
+        Location &amp; directories
+      </h3>
+      <p className="text-xs text-gray-500 mb-3 break-all font-mono">{data.location}</p>
+      <div className="flex flex-wrap gap-2">
+        {data.resources.map((r) => (
+          <span
+            key={r.name}
+            title={r.path}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs
+              border ${
+                r.exists
+                  ? "bg-gray-50 text-gray-700 border-gray-200"
+                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+              }`}
+          >
+            <span className="font-medium">{r.dir}</span>
+            {r.exists ? (
+              <span className="text-gray-400">{r.count}</span>
+            ) : (
+              <span className="text-yellow-600">missing</span>
+            )}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // App config first, then profiles with the active one first, the rest alphabetical.
 function orderedProfiles(profiles: ProfileEntry[]): ProfileEntry[] {
@@ -248,6 +299,7 @@ export default function ConfigPage() {
         {sidebar}
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-500 mb-6">{hint}</p>
+          {isProfile && <ProfileResourcesPanel name={tab} />}
           <div className="space-y-10">
             {groups.map((group) => (
               <section
