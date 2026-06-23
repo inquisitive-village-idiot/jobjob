@@ -49,3 +49,25 @@ def test_example_profile_is_read_only(driver, live_app):
     )
     assert edit.get_attribute("disabled") is not None
     assert "read-only" in driver.find_element(By.TAG_NAME, "body").text
+
+
+def _sidebar(driver):
+    return driver.find_element(
+        By.CSS_SELECTOR, "nav[aria-label='Configuration sections']"
+    )
+
+
+def test_config_sidebar_expands_active_tab_subsections(driver, live_app):
+    """The left sidebar expands the active tab into its config-schema subsections."""
+    _open_config(driver, live_app)
+    sidebar = _sidebar(driver)
+    # App is active by default; its schema groups (e.g. Google) show as anchors.
+    anchor = _wait(driver).until(
+        lambda d: _sidebar(d).find_element(
+            By.XPATH, ".//button[normalize-space()='Google']"
+        )
+    )
+    assert anchor.is_displayed()
+    # Clicking a subsection anchor scrolls to that section's content.
+    anchor.click()
+    assert "Google" in sidebar.text
