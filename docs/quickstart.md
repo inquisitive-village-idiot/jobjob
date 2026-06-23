@@ -36,7 +36,7 @@ You do **not** need Git, Node, or a code checkout — everything is bundled.
 
 ## Step 1 — Install jobjob
 
-Open a terminal (macOS: **Cmd+Space** → "Terminal"; Windows: Start → "Command Prompt").
+Open a terminal (macOS: **Cmd+Space** → "Terminal"; Windows: Start → "PowerShell").
 
 **Easiest — with `uv`** (it installs Python for you if needed):
 
@@ -135,8 +135,9 @@ files directly. See the [Profiles guide](profiles.md).)
 
 ## Step 5 — Run your first application
 
-1. Put a job-description PDF in **`~/Documents/jobjob/data/jobs/`** (or use the app's
-   upload, if available).
+1. **Add a job posting.** In the app, use **Add JD** to paste the posting text, fetch it
+   from a URL, or upload a PDF. (You can also drop a PDF straight into
+   **`~/Documents/jobjob/data/jobs/`**.)
 2. In the **Queue** tab, find the posting and click **Apply**.
 3. Watch the progress; when it finishes it appears on the **Dashboard**.
 

@@ -7,6 +7,14 @@ want to save output to Google Drive/Docs).
 Both are one-time setups. Once done you will not need to repeat them unless you revoke
 access or switch computers.
 
+> **Using the app (most people)?** The in-app **Setup wizard** is the easiest way to
+> enter these — it opens automatically on first launch (see [Quick-Start](quickstart.md),
+> Step 3). You paste the Anthropic key and **upload** the Google `credentials.json` right
+> in your browser; no file editing or terminal commands needed. You still follow the
+> account-creation and Google Cloud steps below to *obtain* the key and `credentials.json`
+> — but the steps that edit `config/.env` or copy files by hand are the **manual /
+> command-line alternative**, marked below, and you can skip them.
+
 ---
 
 ## Part 1 — Anthropic API key
@@ -46,6 +54,10 @@ Before you can make API calls, Anthropic requires a payment method on file.
 
 ### 1.4 Add the key to jobjob
 
+> **Wizard users: skip this step.** Paste the key into the Setup wizard's **Anthropic
+> API key** field instead (Quick-Start Step 3). The step below is the manual alternative
+> for command-line users.
+
 Open `config/.env` in a text editor and paste your key:
 
 ```
@@ -66,6 +78,12 @@ This setup involves three things:
 1. Creating a **Google Cloud project** (a container for your app's credentials)
 2. Enabling the **Drive and Docs APIs**
 3. Downloading a **credentials file** that jobjob uses to ask for your permission
+
+> **Wizard users:** §2.1–2.5 below are required no matter how you run jobjob — they
+> produce the `credentials.json` file. Once you have that file, you're done with the
+> manual steps: in the Setup wizard, **upload `credentials.json`** and click **Connect
+> Google** (Quick-Start Step 3). That replaces §2.6–2.8 (copying the file and editing
+> `config/.env`), which remain here for command-line users.
 
 ### 2.1 Go to the Google Cloud Console
 
@@ -170,6 +188,10 @@ GOOGLE_TOKEN_FILE="~/.config/jobjob/token.pickle"
 
 ### 2.8 First-time authorization
 
+> **Wizard users:** click **Connect Google** in the Setup wizard — it opens the same
+> browser approval described here. The CLI flow below is the equivalent for command-line
+> users.
+
 The next time you run `jobjob apply` **without** `--skip-drive`, a browser window will
 open and ask you to:
 
@@ -194,6 +216,8 @@ If you want jobjob to save output into a specific Google Drive folder:
    ```
    APPLICATIONS_OUTPUT_DRIVE_ID="1ABC123defGHI456jklMNO789"
    ```
+   (In the app you can set this under **Settings → Applications** instead of editing
+   the file.)
 
 ---
 
