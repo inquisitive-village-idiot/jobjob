@@ -199,32 +199,51 @@ class Settings:
 _DEPRECATION_WARNED: set[str] = set()
 
 
-def _env_first(new_key: str, old_key: Optional[str] = None) -> Optional[str]:
-    """Return the env value for ``new_key``, falling back to a deprecated ``old_key``.
+def _warn_deprecated(old_key: str, new_key: str) -> None:
+    """Log a one-time deprecation warning when a deprecated config key is used."""
+    if old_key not in _DEPRECATION_WARNED:
+        _DEPRECATION_WARNED.add(old_key)
+        logging.getLogger("jobjob.config").warning(
+            "Config key %s is deprecated — rename it to %s. The old name still "
+            "works for now but will be removed in a future major release.",
+            old_key,
+            new_key,
+        )
 
-    The new key wins whenever it is set to a non-empty value. Otherwise, if the
-    deprecated ``old_key`` carries a value, it is used and a one-time deprecation
-    warning is logged. This is the compatibility mechanism for the Batch C rename:
-    it covers values set in ``config/.env`` AND values provided directly as
-    environment variables (shell/launchd/Docker/CI), which a file migration can't.
+
+def _env_first(
+    new_key: str,
+    old_key: Optional[str] = None,
+    *,
+    overrides: Optional[dict[str, str]] = None,
+) -> Optional[str]:
+    """Resolve a setting across its new and deprecated names, honoring source priority.
+
+    Precedence, highest first: environment variable (new name, then deprecated) →
+    config-file value (new name, then deprecated). ``overrides`` is a snapshot of
+    ``os.environ`` taken BEFORE any ``.env`` file was sourced, so a value set directly
+    in the environment outranks the config file even across the rename (env > file).
+    When ``overrides`` is None the two layers collapse to ``os.environ`` (new before
+    deprecated). Using a deprecated name logs a one-time warning.
+
+    This is the compatibility mechanism for the Batch C rename: it covers values in
+    ``config/.env`` AND values provided directly as environment variables
+    (shell/launchd/Docker/CI), which a file migration can't reach.
     """
-    value = os.environ.get(new_key)
-    if value is not None and value.strip():
-        return value
-    if old_key is not None:
-        legacy = os.environ.get(old_key)
-        if legacy is not None and legacy.strip():
-            if old_key not in _DEPRECATION_WARNED:
-                _DEPRECATION_WARNED.add(old_key)
-                logging.getLogger("jobjob.config").warning(
-                    "Config key %s is deprecated — rename it to %s. The old name "
-                    "still works for now but will be removed in a future major "
-                    "release.",
-                    old_key,
-                    new_key,
-                )
-            return legacy
-    return value
+    layers: list[dict[str, str]] = []
+    if overrides is not None:
+        layers.append(overrides)  # real env vars (pre-dotenv) — top precedence
+    layers.append(os.environ)  # env + config-file values merged by load_dotenv
+    for layer in layers:
+        for key in (new_key, old_key):
+            if key is None:
+                continue
+            value = layer.get(key)
+            if value is not None and value.strip():
+                if key == old_key:
+                    _warn_deprecated(old_key, new_key)
+                return value
+    return os.environ.get(new_key)
 
 
 def _path(value: Optional[str]) -> Optional[Path]:
@@ -293,6 +312,11 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         ValueError: If a configured active profile dir is missing, or the two
             configs violate the zero-overlap rule.
     """
+    # Snapshot real environment variables before sourcing any .env file so a value set
+    # directly in the environment outranks the config file (priority: CLI > env > file
+    # > default), even across the deprecated→new key rename. CLI overrides are applied
+    # above this, at each command's entry point (e.g. ``args.sheet_id or settings.…``).
+    env_overrides = dict(os.environ)
     load_dotenv(app_config, encoding="utf-8")
     profile_dir = resolve_active_profile_dir()
     profile_config: Optional[Path] = None
@@ -323,7 +347,12 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
     # config that only set the old DATA_DIR keeps both flows pointed there, exactly
     # as before). See the precedence table in docs/setup.md.
     applications_input_dir = (
-        _path(_env_first(ENV_APPLICATIONS_INPUT_DIR, ENV_DATA_DIR)) or DEFAULT_INPUT_DIR
+        _path(
+            _env_first(
+                ENV_APPLICATIONS_INPUT_DIR, ENV_DATA_DIR, overrides=env_overrides
+            )
+        )
+        or DEFAULT_INPUT_DIR
     )
     enrichment_input_dir = (
         _path(os.environ.get(ENV_ENRICHMENT_INPUT_DIR)) or applications_input_dir
@@ -340,14 +369,26 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         ),
         applications_input_dir=applications_input_dir,
         applications_output_dir=_path(
-            _env_first(ENV_APPLICATIONS_OUTPUT_DIR, ENV_APPLICATIONS_LOCAL_DIR)
+            _env_first(
+                ENV_APPLICATIONS_OUTPUT_DIR,
+                ENV_APPLICATIONS_LOCAL_DIR,
+                overrides=env_overrides,
+            )
         ),
         applications_output_drive_id=_text(
-            _env_first(ENV_APPLICATIONS_OUTPUT_DRIVE_ID, ENV_APPLICATIONS_FOLDER_ID)
+            _env_first(
+                ENV_APPLICATIONS_OUTPUT_DRIVE_ID,
+                ENV_APPLICATIONS_FOLDER_ID,
+                overrides=env_overrides,
+            )
         ),
         enrichment_input_dir=enrichment_input_dir,
         enrichment_output_sheet_id=_text(
-            _env_first(ENV_ENRICHMENT_OUTPUT_SHEET_ID, ENV_LINKEDIN_SHEET_ID)
+            _env_first(
+                ENV_ENRICHMENT_OUTPUT_SHEET_ID,
+                ENV_LINKEDIN_SHEET_ID,
+                overrides=env_overrides,
+            )
         ),
         profile_name=active_profile_name(),
         profile_dir=profile_dir,

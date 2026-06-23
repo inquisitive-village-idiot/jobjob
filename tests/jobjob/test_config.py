@@ -207,6 +207,60 @@ class TestTwoTierLoad(TestCase):
             self.assertEqual("claude-opus-4-8", settings.model)  # from app
             self.assertEqual("FOLDER", settings.applications_output_drive_id)
 
+    def test_env_var_outranks_config_file(self) -> None:
+        # Priority: env > config file. A real env var wins over the .env file even
+        # for the same key.
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, _ = self._build(
+                tmp,
+                ['APPLICATIONS_INPUT_DIR="/from-file"'],
+                ['APPLICANT_NAME="A"'],
+            )
+            with mock.patch.dict(
+                "os.environ", {"APPLICATIONS_INPUT_DIR": "/from-env"}, clear=True
+            ):
+                settings = MOD.load_settings(app_config=app)
+            self.assertEqual(Path("/from-env"), settings.applications_input_dir)
+
+    def test_env_var_deprecated_name_outranks_config_file_new_name(self) -> None:
+        # A deprecated name set as a real env var (a contextual override) still
+        # outranks the new name sitting in the config file: env > file dominates the
+        # name-version preference. The deprecation warning fires.
+        import tempfile
+
+        MOD._DEPRECATION_WARNED.clear()
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, _ = self._build(
+                tmp,
+                ['APPLICATIONS_INPUT_DIR="/from-file-new"'],
+                ['APPLICANT_NAME="A"'],
+            )
+            with mock.patch.dict(
+                "os.environ", {"DATA_DIR": "/from-env-old"}, clear=True
+            ):
+                settings = MOD.load_settings(app_config=app)
+            self.assertEqual(Path("/from-env-old"), settings.applications_input_dir)
+
+    def test_config_file_new_name_outranks_deprecated_file_name(self) -> None:
+        # Within the config file (no env override), the new name wins over the old.
+        import tempfile
+
+        MOD._DEPRECATION_WARNED.clear()
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            app, _ = self._build(
+                tmp,
+                ['APPLICATIONS_INPUT_DIR="/new"', 'DATA_DIR="/old"'],
+                ['APPLICANT_NAME="A"'],
+            )
+            with mock.patch.dict("os.environ", {}, clear=True):
+                settings = MOD.load_settings(app_config=app)
+            self.assertEqual(Path("/new"), settings.applications_input_dir)
+
     def test_rejects_profile_key_in_app_config(self) -> None:
         import tempfile
 
