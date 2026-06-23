@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.3.0] - 2026-06-23
+
+- [MINOR] Redesign the Configuration page with a left sidebar: the App and per-profile tabs live in the sidebar, and the active tab expands to its subsections as scroll-spy anchors
+- [MINOR] Extend the setup wizard with a Profile step: register an existing profile folder, or bootstrap a new one from a résumé (prefills your contact details and imports highlights/skills)
+- [MINOR] Read applicant contact details (name/email/phone/LinkedIn) from a résumé during import
+- [MINOR] Configure each profile's resource directory names (content/reference/prompt) from the new Directories settings group; the loaders fall back to the conventional names so existing profiles are unaffected
+- [MINOR] Show a profile's on-disk location and a file-count pill for each resource directory on the Configuration page
+
 ## [2.2.2] - 2026-06-22
 
 - [PATCH] Add a settings cog button in the header for quicker access to the configuration page (the account-menu Settings item remains)
