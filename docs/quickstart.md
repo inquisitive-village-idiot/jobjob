@@ -11,8 +11,10 @@ setup). After that, each application takes a couple of minutes.
 ## What this tool does
 
 JobJob runs entirely on your machine as a small local website you open in your browser.
-Under the hood it calls the Claude AI (by Anthropic); you pay Anthropic a few cents per
-application.
+Under the hood it calls the Claude AI (by Anthropic) through its pay-as-you-go API —
+about **$0.20–0.50 per application**, billed to your Anthropic account. There is no free
+Anthropic tier (the free Claude.ai chat plan has no API access); for an experimental free
+alternative, see the [free option](install-free-option.md).
 
 1. **Application Builder**
 
@@ -29,13 +31,13 @@ application.
 
 ## What you will need
 
-| What                        | Why                                                       |
-| --------------------------- | --------------------------------------------------------- |
-| macOS or Windows 10/11      | Runs the tool                                             |
-| Python 3.12+ **or** `uv`    | jobjob is a Python program (`uv` installs Python for you) |
-| An Anthropic API key        | Powers the AI (the wizard links you to it)                |
-| A Google account (optional) | Save outputs to Google Drive/Docs                         |
-| A job-description PDF       | The posting you are applying to                           |
+| What                           | Why                                                       |
+| ------------------------------ | --------------------------------------------------------- |
+| macOS, Windows 10/11, or Linux | Runs the tool                                             |
+| Python 3.12+ **or** `uv`       | jobjob is a Python program (`uv` installs Python for you) |
+| An Anthropic API key           | Powers the AI (the wizard links you to it)                |
+| A Google account (optional)    | Save outputs to Google Drive/Docs                         |
+| A job-description PDF          | The posting you are applying to                           |
 
 You do **not** need Git, Node, or a code checkout — everything is bundled.
 
@@ -53,8 +55,15 @@ then pick one of the options below.
 
 ### Easiest if you need python — `uv`
 
-First, install `uv`, see <https://docs.astral.sh/uv/getting-started/installation/>,
-which can install python for you if needed.
+First, install `uv` by pasting one command into the terminal (nothing to download from a
+website):
+
+- **macOS / Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+
+`uv` can install Python for you if needed (see the
+[installer docs](https://docs.astral.sh/uv/getting-started/installation/)). Then close
+and reopen the terminal.
 
 Then install JobJob
 
@@ -101,8 +110,9 @@ app. To stop it, press **Ctrl+C** in the terminal.
 
 The first time, a **Setup** window opens automatically and walks you through:
 
-1. **Anthropic API key** — paste your key (the window links to where to get one). It is
-   stored only on your computer.
+1. **Anthropic API key** — paste your key (get one at
+   <https://console.anthropic.com/settings/keys>, and add a payment method under
+   **Settings → Billing**). It is stored only on your computer.
 2. **Google (optional)** — provide the path for the `credentials.json` you get from
    Google, then click **Connect Google** and approve in the tab that opens. Skip this
    for local-only output.
