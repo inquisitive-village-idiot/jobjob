@@ -50,10 +50,12 @@ function entriesOf(info: ProfilesInfo): ProfileEntry[] {
   );
 }
 
-// App config first, then profiles with the active one first, the rest alphabetical.
+// Tab order: the active profile first, the read-only bundled example last, and every
+// other profile alphabetical in between. (Active wins if the example itself is active.)
 function orderedProfiles(profiles: ProfileEntry[]): ProfileEntry[] {
   return [...profiles].sort((a, b) => {
     if (a.active !== b.active) return a.active ? -1 : 1;
+    if (a.read_only !== b.read_only) return a.read_only ? 1 : -1;
     return a.name.localeCompare(b.name);
   });
 }
