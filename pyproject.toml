@@ -35,6 +35,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+# Assisted browser auto-fill (`jobjob autofill`). After installing, run
+# `playwright install chromium` once to fetch the browser.
+autofill = [
+    "playwright>=1.40",
+]
+
 [dependency-groups]
 dev = [
     "pre-commit>=3.0.4",
