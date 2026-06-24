@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  Workday-like application fixture for the auto-fill adapter e2e test. The
+  data-automation-id values mirror jobjob/autofill/adapters/workday.py exactly. This
+  is NOT a copy of any real tenant; it exercises the adapter's DOM interaction
+  (field fill, repeating Work Experience entries via the Add button) offline.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Workday application (fixture)</title>
+  </head>
+  <body>
+    <section aria-label="My Information">
+      <h2>My Information</h2>
+      <label>First name
+        <input type="text" data-automation-id="legalNameSection_firstName" />
+      </label>
+      <label>Last name
+        <input type="text" data-automation-id="legalNameSection_lastName" />
+      </label>
+      <label>Email
+        <input type="email" data-automation-id="email" />
+      </label>
+      <label>Phone
+        <input type="tel" data-automation-id="phone-number" />
+      </label>
+    </section>
+
+    <section aria-label="Work Experience">
+      <h2>Work Experience</h2>
+      <div id="work-entries">
+        <fieldset data-automation-id="workExperienceEntry" class="work-entry">
+          <label>Job title
+            <input type="text" data-automation-id="jobTitle" />
+          </label>
+          <label>Company
+            <input type="text" data-automation-id="company" />
+          </label>
+          <label>Location
+            <input type="text" data-automation-id="location" />
+          </label>
+          <label>I currently work here
+            <input type="checkbox" data-automation-id="currentlyWorkHere" />
+          </label>
+          <label>From
+            <input type="text" data-automation-id="startDate" />
+          </label>
+          <label>To
+            <input type="text" data-automation-id="endDate" />
+          </label>
+          <label>Role description
+            <textarea data-automation-id="description"></textarea>
+          </label>
+        </fieldset>
+      </div>
+      <button type="button" data-automation-id="workExperienceAdd">Add Another</button>
+    </section>
+
+    <script>
+      // Append a cleared clone of the first entry, matching Workday's repeating rows.
+      document
+        .querySelector('[data-automation-id="workExperienceAdd"]')
+        .addEventListener("click", function () {
+          var entries = document.querySelectorAll(
+            '[data-automation-id="workExperienceEntry"]'
+          );
+          var clone = entries[0].cloneNode(true);
+          clone.querySelectorAll("input, textarea").forEach(function (el) {
+            if (el.type === "checkbox") {
+              el.checked = false;
+            } else {
+              el.value = "";
+            }
+          });
+          document.getElementById("work-entries").appendChild(clone);
+        });
+    </script>
+  </body>
+</html>
