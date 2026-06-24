@@ -266,7 +266,7 @@ function GoogleStep({
         Connect Google to save resumes and cover letters to Drive/Docs. Optional — skip
         for local-only output.{" "}
         <a
-          href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/credentials-setup.md"
+          href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/install-google-project.md"
           target="_blank"
           rel="noreferrer"
           className="text-blue-600 hover:underline"

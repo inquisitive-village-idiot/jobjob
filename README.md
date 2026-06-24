@@ -62,15 +62,16 @@ jobjob apply path/to/job_description.pdf --skip-drive -o ./out   # local only
 jobjob enrich path/to/profile.pdf
 ```
 
-See **[docs/usage.md](docs/usage.md)** for the full flag reference and examples.
+See **[Applications](docs/usage-applications.md)** and
+**[Enrichment](docs/usage-enrichment.md)** for the full flag reference and examples.
 
 ## Documentation
 
-- [Quick-Start Guide](docs/quickstart.md) — first run, start to finish
-- [Configuration & profiles](docs/setup.md) · [Profile model](docs/profiles.md)
-- [Credentials setup](docs/credentials-setup.md) — API keys and Google OAuth
-- [Usage reference](docs/usage.md)
-- [Architecture](docs/architecture.md) — how the package is laid out
+- **[Getting started](docs/quickstart.md)** — zero to your first application (start here)
+- [Setup & configuration](docs/setup.md) — the wizard + the full config reference
+- Usage: [applications](docs/usage-applications.md) · [enrichment](docs/usage-enrichment.md)
+- Optional: [Google Drive/Docs setup](docs/install-google-project.md) · [free option](docs/install-free-option.md) (experimental)
+- [Profile model](docs/profiles.md) · [Architecture](docs/architecture.md) · [Developer reference](docs/developer.md)
 - [Local dashboard](webapp/README.md) — the `webapp/` setup
 - Published docs site: **<https://inquisitive-village-idiot.github.io/jobjob/>**
 

@@ -1,7 +1,7 @@
 # Minimal makefile for Sphinx documentation
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = source
+SOURCEDIR     = .
 BUILDDIR      = build
 
 help:

@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 # Make the ``jobjob`` package importable for autodoc, whether or not it is installed
-# (anchored on this file: <root>/docs/source/conf.py -> <root>).
-_ROOT = Path(__file__).resolve().parents[2]
+# (anchored on this file: <root>/docs/conf.py -> <root>).
+_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
 # -- Project information ------------------------------------------------------
@@ -32,8 +32,17 @@ extensions = [
     "sphinx_rtd_theme",
 ]
 
+# Source dir is ``docs/`` itself; exclude the build output and non-page files so they
+# aren't treated as documents.
 templates_path = ["_templates"]
-exclude_patterns = ["**/tests"]
+exclude_patterns = [
+    "build",
+    "build/**",
+    "Makefile",
+    "README.md",
+    "**/tests",
+    "quickstart-draft.md",
+]
 
 # Markdown (MyST) alongside reStructuredText.
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
@@ -64,5 +73,5 @@ html_context = {
     "github_user": "inquisitive-village-idiot",
     "github_repo": "jobjob",
     "github_version": "main",
-    "conf_py_path": "/docs/source/",
+    "conf_py_path": "/docs/",
 }
