@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Thin Anthropic adapter: one call onto ``messages.create``.
 
-NOTE: model and api key are passed in (from config), not read from env here.
+NOTE: model, api key, and base URL are passed in (from config), not read from env
+here.
 TODO: normalize ``AIResult.usage`` to a provider-agnostic shape if/when a second
     provider is added (TokenUsage.add currently tolerates any object via getattr).
 """
@@ -20,6 +21,7 @@ class AnthropicAdapter:
         self,
         model: str,
         api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         _client: Optional[anthropic.Anthropic] = None,
     ) -> None:
         """Initialize the adapter.
@@ -27,6 +29,9 @@ class AnthropicAdapter:
         Arguments:
             model: Claude model id.
             api_key: Anthropic API key. Used only when no client is injected.
+            base_url: Optional Anthropic API base-URL override. Point it at a
+                Claude-compatible proxy (e.g. one forwarding to a free Gemini key) to
+                run without a paid Anthropic key. None uses the SDK default.
             _client: Injected ``anthropic.Anthropic`` instance (for testing).
         Raises:
             ValueError: If no client is injected and no API key is available.
@@ -35,7 +40,7 @@ class AnthropicAdapter:
         if _client is not None:
             self._client = _client
         elif api_key:
-            self._client = anthropic.Anthropic(api_key=api_key)
+            self._client = anthropic.Anthropic(api_key=api_key, base_url=base_url)
         else:
             raise ValueError("Anthropic API key is required (no client injected).")
 

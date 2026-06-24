@@ -96,7 +96,11 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
         clear_cache()
 
     client = AIClient(
-        AnthropicAdapter(model=settings.model, api_key=settings.anthropic_api_key)
+        AnthropicAdapter(
+            model=settings.model,
+            api_key=settings.anthropic_api_key,
+            base_url=settings.anthropic_base_url,
+        )
     )
 
     # Re-process mode: single file — update the files in the JD's own directory
