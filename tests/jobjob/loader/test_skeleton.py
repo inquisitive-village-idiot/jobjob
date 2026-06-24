@@ -7,7 +7,12 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 from jobjob.loader import skeleton
-from jobjob.loader.loadcontent import load_highlights, load_skills, load_templates
+from jobjob.loader.loadcontent import (
+    load_experience,
+    load_highlights,
+    load_skills,
+    load_templates,
+)
 
 
 class TestCreateBlankProfile(TestCase):
@@ -21,6 +26,7 @@ class TestCreateBlankProfile(TestCase):
                 "content/highlights.toml",
                 "content/skills.toml",
                 "content/templates.toml",
+                "content/experience.toml",
                 "reference/background.md",
                 "reference/writing_style.md",
                 "config/.profile",
@@ -36,6 +42,9 @@ class TestCreateBlankProfile(TestCase):
                 (), load_highlights(dest / "content" / "highlights.toml").highlights
             )
             self.assertEqual((), load_skills(dest / "content" / "skills.toml").skills)
+            self.assertEqual(
+                (), load_experience(dest / "content" / "experience.toml").roles
+            )
             templates = load_templates(dest / "content" / "templates.toml")
             # A default template + the two standard sections exist, but no content.
             self.assertTrue(len(templates.templates) >= 1)

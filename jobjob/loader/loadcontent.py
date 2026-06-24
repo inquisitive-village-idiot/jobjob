@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 
 from jobjob.loader.location import get_content_path
+from jobjob.structure.experience import ExperienceSet, Role, make_experience_set
 from jobjob.structure.highlight import Highlight, HighlightSet, make_highlight_set
 from jobjob.structure.skill import Skill, SkillSet, make_skill_set
 from jobjob.structure.template import (
@@ -137,6 +138,40 @@ def load_templates(
         for entry in table.get("section", [])
     ]
     return make_template_set(templates, default=table.get("default"), sections=sections)
+
+
+def load_experience(path: Optional[Path] = None) -> ExperienceSet:
+    """Load the structured work history from ``content/experience.toml``.
+
+    NOTE: experience is an optional content file (it postdates the other content,
+        and a fresh/imported profile may not have it yet), so a missing file
+        returns an empty set rather than raising — unlike highlights/skills.
+
+    Arguments:
+        path: Override path to the TOML file. Defaults to the static content path.
+    Returns:
+        A populated ExperienceSet (empty when no file is present).
+    """
+    if path is None:
+        try:
+            path = get_content_path("experience")
+        except (FileNotFoundError, ValueError):
+            return make_experience_set([])  # EARLY EXIT: optional file absent.
+
+    table = _load_toml_table(path, "experience")
+    roles = [
+        Role(
+            company=entry["company"],
+            title=entry["title"],
+            location=entry.get("location", ""),
+            start=entry.get("start", ""),
+            end=entry.get("end", ""),
+            current=entry.get("current", False),
+            description=entry.get("description", "").strip(),
+        )
+        for entry in table.get("role", [])
+    ]
+    return make_experience_set(roles)
 
 
 # __END__

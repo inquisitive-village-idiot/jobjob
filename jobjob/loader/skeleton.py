@@ -71,6 +71,26 @@ description = "Your resume template. Set doc_id (RESUME_TEMPLATE_ID) to a Google
 keywords = []
 """
 
+_EXPERIENCE_TOML = """\
+# Your work history. Each [[tool.experience.role]] is one ATS "Work Experience"
+# entry. Several roles at the same employer are separate entries (that's how an ATS
+# wants them); list them adjacent and a résumé groups them under one company.
+# Add your own below, or import a résumé to pre-fill them (Static Content → Import).
+[tool.experience]
+
+# [[tool.experience.role]]
+# company = "Acme Corp"
+# title = "Senior Engineer"
+# location = "Remote"
+# start = "2021-03"          # YYYY-MM or YYYY
+# end = ""                   # blank when current
+# current = true
+# description = '''
+# - One specific, quantified accomplishment.
+# - Another.
+# '''
+"""
+
 _BACKGROUND_MD = """\
 # Background
 
@@ -100,7 +120,7 @@ RESUME_TEMPLATE_ID=""
 def create_blank_profile(dest: Path) -> Path:
     """Write a blank-but-valid profile tree at ``dest`` and return it.
 
-    Creates ``content/{highlights,skills,templates}.toml``,
+    Creates ``content/{highlights,skills,templates,experience}.toml``,
     ``reference/{background.md,writing_style.md,cover_letters/,stars/}``, and
     ``config/.profile``. Parent dirs are created as needed; existing files are left
     untouched (idempotent), so re-running never clobbers user edits.
@@ -126,6 +146,7 @@ def create_blank_profile(dest: Path) -> Path:
         content / "highlights.toml": _HIGHLIGHTS_TOML,
         content / "skills.toml": _SKILLS_TOML,
         content / "templates.toml": _TEMPLATES_TOML,
+        content / "experience.toml": _EXPERIENCE_TOML,
         reference / "background.md": _BACKGROUND_MD,
         reference / "writing_style.md": _WRITING_STYLE_MD,
         config / ".profile": _PROFILE_CONFIG,
