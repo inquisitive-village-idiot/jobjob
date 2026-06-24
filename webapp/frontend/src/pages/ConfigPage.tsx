@@ -323,11 +323,7 @@ export default function ConfigPage() {
     </nav>
   );
 
-  // Profiles open read-only (a clean summary); the editable inputs appear on Edit.
-  const profileViewMode = isProfileConfig && !editing;
-
-  // The config form (schema-driven groups + fields), shared by App and Profile. In a
-  // profile's read-only view it renders values as plain text instead of inputs.
+  // The config form (schema-driven groups + fields), shared by App and Profile-edit.
   const configForm = schema ? (
     <div className="space-y-10">
       {visibleGroups.map((group) => (
@@ -342,7 +338,7 @@ export default function ConfigPage() {
                     {field.label}
                     {field.required && <span className="ml-1 text-red-500">*</span>}
                   </label>
-                  {field.description && !profileViewMode && (
+                  {field.description && (
                     <p className="text-xs text-gray-500 mb-1">{field.description}</p>
                   )}
                   {field.is_secret ? (
@@ -360,8 +356,6 @@ export default function ConfigPage() {
                         Secrets can only be set by editing config/.env directly.
                       </span>
                     </div>
-                  ) : profileViewMode ? (
-                    <ReadOnlyValue field={field} />
                   ) : field.options ? (
                     <select
                       value={edits[key] ?? field.value ?? ""}
@@ -401,6 +395,25 @@ export default function ConfigPage() {
       {error ? <span className="text-red-600">{error}</span> : "Loading…"}
     </div>
   );
+
+  // Profile read-only view: one bordered card per group, values shown as pills —
+  // the same box style as the Location & directories panel.
+  const profileSummary = schema ? (
+    <div className="space-y-4">
+      {visibleGroups.map((group) => (
+        <div key={group} className="border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">{group}</h3>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(schema)
+              .filter(([, f]) => f.group === group)
+              .map(([key, field]) => (
+                <SummaryPill key={key} field={field} />
+              ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   const appSection = (
     <>
@@ -511,8 +524,14 @@ export default function ConfigPage() {
               )}
             </div>
           </div>
-          {!editing && <ProfileResourcesPanel name={profileTab} />}
-          {configForm}
+          {editing ? (
+            configForm
+          ) : (
+            <>
+              <ProfileResourcesPanel name={profileTab} />
+              {profileSummary}
+            </>
+          )}
         </>
       )}
     </>
@@ -683,19 +702,36 @@ function AddProfileForm({
   );
 }
 
-// Read-only display of a config field's value: the set value, else the documented
-// default shown muted as "<default> (default)", else "Not set".
-function ReadOnlyValue({ field }: { field: ConfigField }) {
-  if (field.value) {
-    return <span className="text-sm font-mono text-gray-900">{field.value}</span>;
+// A read-only field shown as a pill (label + value), matching the directory pills in
+// ProfileResourcesPanel. Value is the set value, else the documented default shown
+// muted as "<default> (default)", else "Not set".
+function SummaryPill({ field }: { field: ConfigField }) {
+  let value: string;
+  let muted: boolean;
+  if (field.is_secret) {
+    value = field.is_set ? "Set" : "Not set";
+    muted = !field.is_set;
+  } else if (field.value) {
+    value = field.value;
+    muted = false;
+  } else {
+    const fallback = placeholderFor(field);
+    value = fallback && fallback !== "Required" ? `${fallback} (default)` : "Not set";
+    muted = true;
   }
-  const fallback = placeholderFor(field);
-  if (fallback && fallback !== "Required") {
-    return (
-      <span className="text-sm font-mono text-gray-400">{fallback} (default)</span>
-    );
-  }
-  return <span className="text-sm text-gray-400 italic">Not set</span>;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs
+        border bg-gray-50 border-gray-200 max-w-full"
+    >
+      <span className="font-medium text-gray-700 whitespace-nowrap">{field.label}</span>
+      <span
+        className={`font-mono break-all ${muted ? "text-gray-400" : "text-gray-900"}`}
+      >
+        {value}
+      </span>
+    </span>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
