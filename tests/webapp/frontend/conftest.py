@@ -7,8 +7,8 @@ from a scaffolded temp working dir); each test gets a fresh browser.
 
 Everything under this directory is auto-marked ``e2e`` (see the collection hook), so the
 default ``pytest`` run skips it — it runs only in the dedicated CI job or via
-``pytest -m e2e``. Requires Chrome (Selenium Manager fetches the driver) and a built
-``webapp/frontend/dist``; a missing browser/launcher skips rather than errors.
+``pytest -m e2e``. Requires a Playwright browser (``playwright install chromium``) and a
+built ``webapp/frontend/dist``; a missing browser/launcher skips rather than errors.
 """
 
 import importlib.util
@@ -27,10 +27,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 _FRONTEND_DIST = _REPO_ROOT / "webapp" / "frontend" / "dist"
 _HEALTH_TIMEOUT = 45  # seconds to wait for the server to answer /api/health
 
-# The e2e test modules import Selenium at module level. When it isn't installed (the
-# default, driver-free test run), skip COLLECTING them entirely — otherwise the import
+# The e2e test modules import Playwright at module level. When it isn't installed (the
+# default, browser-free test run), skip COLLECTING them entirely — otherwise the import
 # would error during collection, before the ``e2e`` marker can deselect them.
-if importlib.util.find_spec("selenium") is None:
+if importlib.util.find_spec("playwright") is None:
     collect_ignore_glob = ["test_*.py"]
 
 
@@ -120,23 +120,25 @@ def live_app(tmp_path_factory) -> str:
 
 
 @pytest.fixture
-def driver(live_app):
-    """Yield a fresh headless-Chrome WebDriver (skips if Chrome is unavailable)."""
-    pytest.importorskip("selenium")
-    from selenium.common.exceptions import WebDriverException
-    from selenium.webdriver import Chrome, ChromeOptions
+def page(live_app):
+    """Yield a fresh headless-Chromium Playwright page (skips if no browser)."""
+    pytest.importorskip("playwright")
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import sync_playwright
 
-    options = ChromeOptions()
-    for arg in ("--headless=new", "--no-sandbox", "--disable-dev-shm-usage"):
-        options.add_argument(arg)
-    options.add_argument("--window-size=1280,900")
-
-    try:
-        drv = Chrome(options=options)
-    except WebDriverException as exc:  # no browser/driver on this host
-        pytest.skip(f"Chrome WebDriver unavailable: {exc}")
-    drv.implicitly_wait(5)  # auto-wait for elements as the SPA mounts
-    try:
-        yield drv
-    finally:
-        drv.quit()
+    with sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"],
+            )
+        except PlaywrightError as exc:  # browser not installed on this host
+            pytest.skip(f"Playwright Chromium unavailable: {exc}")
+        context = browser.new_context(viewport={"width": 1280, "height": 900})
+        pg = context.new_page()
+        pg.set_default_timeout(10_000)  # auto-wait budget as the SPA mounts
+        try:
+            yield pg
+        finally:
+            context.close()
+            browser.close()

@@ -54,7 +54,7 @@ test = [
     "coverage>=7.2.0",
     "fastapi>=0.136.3",
     "httpx>=0.28.1",
-    "selenium>=4.20",
+    "playwright>=1.40",
 ]
 docs = [
     "sphinx>=7.0.0",
@@ -106,9 +106,9 @@ ipy-kernel = "python -m ipykernel install --user --name=my_new_environment --dis
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-# Browser e2e tests (marker ``e2e``) are excluded by default: they need Chrome and a
-# launched app, so they run only in the dedicated CI job / when explicitly selected
-# (``pytest -m e2e``). The default run stays fast and driver-free.
+# Browser e2e tests (marker ``e2e``) are excluded by default: they need a Playwright
+# browser and a launched app, so they run only in the dedicated CI job / when explicitly
+# selected (``pytest -m e2e``). The default run stays fast and browser-free.
 addopts = [
     "-ra -vvv",
     "--cov=jobjob",
@@ -117,7 +117,7 @@ addopts = [
     "not e2e",
 ]
 markers = [
-    "e2e: browser end-to-end test (Selenium; needs Chrome and a running app)",
+    "e2e: browser end-to-end test (Playwright; needs a browser and a running app)",
 ]
 pythonpath = ["."]
 testpaths = ["tests"]
