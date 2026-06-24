@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [2.5.0] - 2026-06-23
+
+- [MINOR] Restructure Settings into App, Profiles, and About sections; each profile is a tab (active first, example last) with a ＋ tab to add one by creating a blank profile, duplicating another, or registering an existing folder
+- [MINOR] Profiles open as a clean read-only summary and switch to editable fields with Edit; a newly added profile loads its content immediately, without having to make it active first
+- [MINOR] Move the app update controls into a new About section, alongside a "Report an issue" link
+- [PATCH] Place the profile Edit toggle next to its fields (it was previously in the page header and easy to miss)
+- [PATCH] Show the Response Cache setting as a true/false choice instead of a free-text box, and show each setting's default value in place of an empty box
+- [PATCH] Add a close button and an Esc shortcut to the first-run setup wizard so it can be dismissed without completing it
+
 ## [2.4.0] - 2026-06-23
 
 - [MINOR] Reorganize input/output settings per component: Applications (apply) and Enrichment (enrich) each have their own input directory and output, with the configuration grouped accordingly
