@@ -92,6 +92,19 @@ Lines are `KEY="value"` — keep the quotes, no spaces around `=`.
 | `RESUME_TEMPLATE_ID` | Résumé-template Google Doc id for this profile | Drive only |
 | `INDUSTRY` | Optional domain (e.g. "science journalism") used to describe the target company accurately | No |
 
+### Where profile content lives
+
+A profile is a directory (default `<jobjob folder>/profiles/<name>/`). Alongside its
+`config/.profile`, it holds the documents jobjob tailors from:
+
+- `content/*.toml` — `highlights.toml`, `skills.toml`, `templates.toml` (your
+  credential blocks, skills, and résumé archetypes).
+- `reference/` — free-text context the AI reads: `background.*`, `writing_style.*`,
+  `cover_letters/`, `stars/`.
+
+Edit these in the browser from the **Static Content** tab, or register a profile that
+points at an existing folder. See [Profiles](profiles.md).
+
 ### Precedence & deprecated keys
 
 Highest first: **CLI flag → environment variable → config file → built-in default.** An

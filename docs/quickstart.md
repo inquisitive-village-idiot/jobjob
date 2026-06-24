@@ -1,16 +1,20 @@
 # Getting started
 
-**jobjob** reads a job posting (PDF, URL, or pasted text) and writes a tailored résumé
-summary and cover letter from your background — saved on your computer and, optionally,
-to Google Drive as editable Docs. It runs as a small local website you open in your
-browser.
+**jobjob** runs entirely on your machine as a small local website you open in your
+browser. It does two things:
+
+1. **Application Builder** — give it a job posting (PDF, URL, or pasted text). It reads
+   the posting, picks the most relevant parts of your background, and writes a tailored
+   cover letter and résumé summary — saved on your computer and, optionally, to Google
+   Drive as editable Docs.
+2. **Contact Enrichment** — give it a PDF or screenshot of a LinkedIn profile. It parses
+   out the details and writes them to a Google spreadsheet.
 
 These steps work on **Windows, macOS, and Linux**. Plan on 30–60 minutes the first time
 (mostly the one-time account setup); after that, each application takes a couple of
 minutes.
 
-Follow the three steps below in order. Optional and advanced topics are linked at the
-end.
+Follow the steps below in order. Optional and advanced topics are linked at the end.
 
 ---
 
