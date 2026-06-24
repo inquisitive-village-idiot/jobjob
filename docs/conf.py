@@ -5,15 +5,15 @@
 import sys
 from pathlib import Path
 
-# Make the ``jobjob`` package importable for autodoc, whether or not it is installed
-# (anchored on this file: <root>/docs/source/conf.py -> <root>).
-_ROOT = Path(__file__).resolve().parents[2]
+# Make the ``jobjob`` package importable for autodoc, whether or not it is installed.
+# Anchored on this file: <root>/docs/conf.py -> <root>.
+_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
 # -- Project information ------------------------------------------------------
 project = "jobjob"
-author = "Tila Mer"
-copyright = "2026, Tila Mer"
+author = "jobjob contributors"
+copyright = "2026, jobjob contributors"
 
 try:
     from jobjob.__about__ import __version__ as release
@@ -28,23 +28,18 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "myst_parser",
+    "sphinx.ext.intersphinx",
     "sphinx_rtd_theme",
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["**/tests"]
+exclude_patterns = ["build", "build/**", "Makefile", "make.bat", "requirements.txt"]
 
-# Markdown (MyST) alongside reStructuredText.
-source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
-myst_heading_anchors = 3
+# This documentation set is authored entirely in reStructuredText.
+source_suffix = {".rst": "restructuredtext"}
 
-# The guide pages are single-sourced from docs/*.md, which use GitHub-relative links
-# (e.g. setup.md) that resolve on GitHub but not as Sphinx cross-references. Don't let
-# those turn into build warnings.
-suppress_warnings = ["myst.xref_missing"]
-
-# Don't fail the build if an optional/heavy dependency can't be imported during autodoc.
+# Don't fail the build if an optional/heavy dependency can't be imported during
+# autodoc; mock anything that the docs CI image may lack.
 autodoc_mock_imports = []
 autodoc_default_options = {"members": True, "show-inheritance": True}
 autosummary_generate = True
@@ -56,13 +51,16 @@ napoleon_include_init_with_doc = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 
+intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
 # -- HTML output -------------------------------------------------------------
 html_theme = "sphinx_rtd_theme"
 html_static_path = []
+html_title = "jobjob documentation"
 html_context = {
     "display_github": True,
     "github_user": "inquisitive-village-idiot",
     "github_repo": "jobjob",
     "github_version": "main",
-    "conf_py_path": "/docs/source/",
+    "conf_py_path": "/docs/",
 }

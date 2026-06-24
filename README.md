@@ -12,8 +12,9 @@ context prefix — to parse the role, select credential highlights, tailor the r
 draft a cover letter, and produce a skills gap analysis. It writes local artifacts and
 (optionally) uploads to Google Drive.
 
-> **New here?** Start with the [Quick-Start Guide](docs/quickstart.md) — it walks
-> through every step, no terminal experience assumed. Full docs:
+> **New here?** Start with the
+> [User Guide](https://inquisitive-village-idiot.github.io/jobjob/guide/index.html) — it
+> walks through every step, no terminal experience assumed. Full docs:
 > **<https://inquisitive-village-idiot.github.io/jobjob/>**
 
 ## Install
@@ -48,8 +49,10 @@ Configuration is split into two **disjoint** tiers:
 - **Profile config** (`<profile>/config/.profile`) — the active profile's applicant
   identity and resume template.
 
-See **[docs/setup.md](docs/setup.md)** for the full configuration reference and
-**[docs/profiles.md](docs/profiles.md)** for the profile model.
+See the
+**[configuration reference](https://inquisitive-village-idiot.github.io/jobjob/guide/configuration.html)**
+and the
+**[profile model](https://inquisitive-village-idiot.github.io/jobjob/guide/profiles.html)**.
 
 ## Usage
 
@@ -62,17 +65,22 @@ jobjob apply path/to/job_description.pdf --skip-drive -o ./out   # local only
 jobjob enrich path/to/profile.pdf
 ```
 
-See **[docs/usage.md](docs/usage.md)** for the full flag reference and examples.
+See **[Applications](https://inquisitive-village-idiot.github.io/jobjob/guide/usage-applications.html)**
+and **[Enrichment](https://inquisitive-village-idiot.github.io/jobjob/guide/usage-enrichment.html)**
+for the full flag reference and examples.
 
 ## Documentation
 
-- [Quick-Start Guide](docs/quickstart.md) — first run, start to finish
-- [Configuration & profiles](docs/setup.md) · [Profile model](docs/profiles.md)
-- [Credentials setup](docs/credentials-setup.md) — API keys and Google OAuth
-- [Usage reference](docs/usage.md)
-- [Architecture](docs/architecture.md) — how the package is laid out
+All guides live on the published docs site:
+**<https://inquisitive-village-idiot.github.io/jobjob/>**
+
+- [User Guide](https://inquisitive-village-idiot.github.io/jobjob/guide/index.html) — first run, start to finish
+- [Credentials](https://inquisitive-village-idiot.github.io/jobjob/guide/credentials.html) — API keys and Google OAuth
+- [Configuration](https://inquisitive-village-idiot.github.io/jobjob/guide/configuration.html) · [Profiles](https://inquisitive-village-idiot.github.io/jobjob/guide/profiles.html)
+- [Library Reference](https://inquisitive-village-idiot.github.io/jobjob/library/index.html) — architecture + Python API
+- [REST API Reference](https://inquisitive-village-idiot.github.io/jobjob/restapi/index.html) — the local dashboard's HTTP API
 - [Local dashboard](webapp/README.md) — the `webapp/` setup
-- Published docs site: **<https://inquisitive-village-idiot.github.io/jobjob/>**
+- The docs source is under [`docs/`](docs/) (Sphinx + reStructuredText)
 
 ## Development
 
