@@ -86,10 +86,13 @@ def test_example_profile_is_read_only(driver, live_app):
     _profile_tab(driver, "example").click()
 
     # The whole-profile Edit toggle is present (beside the fields) but disabled.
-    edit = _wait(driver).until(
-        lambda d: d.find_element(By.XPATH, "//button[normalize-space()='Edit']")
+    # Re-find each poll so an async re-render can't hand back a stale reference.
+    _wait(driver).until(
+        lambda d: any(
+            b.get_attribute("disabled") is not None
+            for b in d.find_elements(By.XPATH, "//button[normalize-space()='Edit']")
+        )
     )
-    _wait(driver).until(lambda d: edit.get_attribute("disabled") is not None)
     assert "read-only" in driver.find_element(By.TAG_NAME, "body").text
 
 
@@ -112,12 +115,13 @@ def test_profile_tab_shows_location_and_dir_pills(driver, live_app):
     _open_config(driver, live_app)
     _open_profiles(driver)
     _profile_tab(driver, "example").click()
-    panel = _wait(driver).until(
-        EC.presence_of_element_located(
+    # visibility_of_element_located re-locates each poll, so it survives the async
+    # re-render that loads the resources panel (avoids a stale-element race).
+    _wait(driver).until(
+        EC.visibility_of_element_located(
             (By.XPATH, "//h3[normalize-space()='Location & directories']")
         )
     )
-    assert panel.is_displayed()
     # The example profile ships content/ and reference/ dirs, shown as pills.
     body = driver.find_element(By.TAG_NAME, "body").text
     assert "content" in body and "reference" in body
@@ -133,12 +137,11 @@ def test_add_profile_tab_opens_form(driver, live_app):
         "//button[@aria-label='Add a profile']",
     ).click()
     # The register action and the name field are part of the add form.
-    register = _wait(driver).until(
-        EC.presence_of_element_located(
+    _wait(driver).until(
+        EC.visibility_of_element_located(
             (By.XPATH, "//button[normalize-space()='Register folder']")
         )
     )
-    assert register.is_displayed()
     assert "New profile name" in driver.find_element(By.TAG_NAME, "body").text
 
 
