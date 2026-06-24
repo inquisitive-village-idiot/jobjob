@@ -35,7 +35,14 @@ extensions = [
 # Source dir is ``docs/`` itself; exclude the build output and non-page files so they
 # aren't treated as documents.
 templates_path = ["_templates"]
-exclude_patterns = ["build", "build/**", "Makefile", "README.md", "**/tests"]
+exclude_patterns = [
+    "build",
+    "build/**",
+    "Makefile",
+    "README.md",
+    "**/tests",
+    "quickstart-draft.md",
+]
 
 # Markdown (MyST) alongside reStructuredText.
 source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
