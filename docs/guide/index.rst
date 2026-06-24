@@ -30,6 +30,7 @@ Follow the pages in order.
 - :doc:`usage-enrichment` — import LinkedIn contacts into a Google Sheet.
 - :doc:`google-project` — create the Google project needed for Drive/Docs output.
 - :doc:`github-repo` — keep your profile content in a Git/GitHub repository.
+- :doc:`free-option` — run on a free Google AI backend instead of a paid key.
 
 .. toctree::
    :hidden:
@@ -43,3 +44,4 @@ Follow the pages in order.
    usage-enrichment
    google-project
    github-repo
+   free-option

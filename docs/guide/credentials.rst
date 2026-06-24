@@ -16,9 +16,9 @@ roughly **$0.20–0.50 per application**, billed to a card on your Anthropic acc
 
 .. note::
 
-   **A paid key is required.** There is no free Anthropic tier, and the free Claude.ai
-   *chat* plan does **not** include API access. jobjob currently supports the Anthropic
-   API only.
+   **A paid key is the supported path.** There is no free Anthropic tier, and the free
+   Claude.ai *chat* plan does **not** include API access. For a free (experimental)
+   alternative that routes through a Google AI proxy, see :doc:`free-option`.
 
 #. Sign up at https://console.anthropic.com/ and verify your email.
 #. Add a payment method under **Settings → Billing**

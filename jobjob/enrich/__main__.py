@@ -56,7 +56,11 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
     settings = load_settings()
 
     client = AIClient(
-        AnthropicAdapter(model=settings.model, api_key=settings.anthropic_api_key)
+        AnthropicAdapter(
+            model=settings.model,
+            api_key=settings.anthropic_api_key,
+            base_url=settings.anthropic_base_url,
+        )
     )
     summary = enrich_inputs(
         args.profile,

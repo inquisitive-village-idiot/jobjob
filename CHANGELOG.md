@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+- [MINOR] Add an `ANTHROPIC_BASE_URL` config option that points jobjob at a Claude-compatible proxy (e.g. one forwarding to a free Google AI / Gemini key), so it can run on a free experimental backend without a paid Anthropic key; documented in the new "Free option" guide
+
 ## [2.5.0] - 2026-06-23
 
 - [MINOR] Restructure Settings into App, Profiles, and About sections; each profile is a tab (active first, example last) with a ＋ tab to add one by creating a blank profile, duplicating another, or registering an existing folder
