@@ -4,9 +4,9 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.6.0] - 2026-06-24
 
-- [MINOR] Add an `ANTHROPIC_BASE_URL` config option that points jobjob at a Claude-compatible proxy (e.g. one forwarding to a free Google AI / Gemini key), so it can run on a free experimental backend without a paid Anthropic key; documented in the new "Free option" guide
+- [MINOR] Add an `ANTHROPIC_BASE_URL` config option that points jobjob at a Claude-compatible proxy (e.g. one forwarding to a free Google AI / Gemini key), so it can run on a free experimental backend without a paid Anthropic key; settable on the Config page (AI section) or in `config/.env`, and documented in the new "Free option" guide
 
 ## [2.5.0] - 2026-06-23
 
