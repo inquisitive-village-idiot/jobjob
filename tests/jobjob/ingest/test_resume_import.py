@@ -12,6 +12,7 @@ from jobjob.ingest.resume_import import (
     draft_to_dict,
     extract_resume,
     highlight_from_dict,
+    role_from_dict,
     skill_from_dict,
 )
 
@@ -42,6 +43,26 @@ _MODEL_JSON = {
     "skills": [
         {"label": "Fact Checking", "text": "Fact-Checking", "keywords": ["accuracy"]},
         {"text": ""},  # dropped
+    ],
+    "experience": [
+        {  # current role; description as a bullet list
+            "company": "The Lattice Review",
+            "title": "Senior Science Correspondent",
+            "location": "Remote",
+            "start": "2021-04",
+            "end": "",
+            "current": True,
+            "description": ["Lead the print science desk.", "Built a data workflow."],
+        },
+        {  # same employer, earlier role -> kept separate (the promotion case)
+            "company": "The Lattice Review",
+            "title": "Science Correspondent",
+            "start": "2018-06",
+            "end": "2021-04",
+            "current": "no",  # string flag -> coerced to False
+            "description": "- Covered materials science.",
+        },
+        {"location": "Boston"},  # no company/title -> dropped
     ],
     "background": "Tila Mer is a print science correspondent.",
 }
@@ -89,6 +110,39 @@ class TestExtractResume:
     def test_sections_filtered(self):
         draft = _extract()
         assert draft.sections == ("Experience", "Education")
+
+    def test_experience_extracted_and_filtered(self):
+        draft = _extract()
+        # The entry with neither company nor title is dropped.
+        assert len(draft.experience) == 2
+        assert [r.title for r in draft.experience] == [
+            "Senior Science Correspondent",
+            "Science Correspondent",
+        ]
+
+    def test_experience_keeps_same_employer_roles_separate(self):
+        # Both roles share an employer but stay as two adjacent entries, so the
+        # ExperienceSet grouping reads them as one company block of two roles.
+        from jobjob.structure.experience import make_experience_set
+
+        draft = _extract()
+        blocks = [
+            (b.company, len(b.roles))
+            for b in make_experience_set(draft.experience).grouped()
+        ]
+        assert blocks == [("The Lattice Review", 2)]
+
+    def test_experience_description_and_current_coerced(self):
+        draft = _extract()
+        current, prior = draft.experience
+        # list-of-bullets -> one "- " line each; bullets() strips the markers
+        assert current.bullets() == (
+            "Lead the print science desk.",
+            "Built a data workflow.",
+        )
+        assert current.current is True
+        # string flag "no" coerces to False
+        assert prior.current is False
 
     def test_identity_extracted_and_cleaned(self):
         draft = _extract()
@@ -170,6 +224,20 @@ class TestFromDictHelpers:
         s = skill_from_dict({"text": "Data Analysis"})
         assert s.label == "data_analysis"
 
+    def test_role_from_dict_coerces_fields(self):
+        role = role_from_dict(
+            {
+                "company": "  Acme  ",
+                "title": "Engineer",
+                "current": "present",  # string -> True
+                "description": ["Shipped things", "  ", "Mentored peers"],
+            }
+        )
+        assert role.company == "Acme"
+        assert role.current is True
+        # blank bullet dropped; markers added then stripped by bullets()
+        assert role.bullets() == ("Shipped things", "Mentored peers")
+
     def test_draft_to_dict_roundtrips_shape(self):
         draft = _extract()
         out = draft_to_dict(draft)
@@ -180,7 +248,10 @@ class TestFromDictHelpers:
             "background",
             "highlights",
             "skills",
+            "experience",
         }
         assert out["highlights"][0]["topic"] == "Creativity"
         assert out["skills"][0]["label"] == "fact_checking"
         assert out["identity"]["name"] == "Tila Mer"
+        assert out["experience"][0]["company"] == "The Lattice Review"
+        assert out["experience"][0]["current"] is True

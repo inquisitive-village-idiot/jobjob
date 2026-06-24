@@ -17,6 +17,7 @@ from jobjob.ailib.query import query_ai_service
 from jobjob.loader.loadprompt import render_prompt
 from jobjob.loader.loadreference import load_reference_documents
 from jobjob.loader.loadstatic import read_document
+from jobjob.structure.experience import Role
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
@@ -51,6 +52,9 @@ class ResumeImportDraft:
         highlights: Reusable accomplishment blocks (with inferred topic + keywords).
         skills: Reusable skill entries.
         background: A professional-background narrative for ``reference/background``.
+        experience: Structured work history — one role per entry, with multiple roles
+            at one employer kept as separate entries (the shape an ATS wants and the
+            autofill flow fills from). Most recent first.
         identity: Applicant contact details read from the resume header (name/email/
             phone/linkedin); a key is present only when non-empty. Used to prefill the
             applicant identity during setup.
@@ -61,6 +65,7 @@ class ResumeImportDraft:
     highlights: tuple[Highlight, ...]
     skills: tuple[Skill, ...]
     background: str
+    experience: tuple[Role, ...] = ()
     identity: dict[str, str] = dcs.field(default_factory=dict)
 
 
@@ -117,6 +122,42 @@ def skill_from_dict(data: dict, seen: Optional[set[str]] = None) -> Skill:
         label=_dedupe_key(label, seen),
         text=text,
         keywords=_as_keywords(data.get("keywords")),
+    )
+
+
+_TRUE_STRINGS = frozenset({"true", "yes", "y", "1", "current", "present"})
+
+
+def _as_bool(value: Any) -> bool:
+    """Coerce a model-supplied "current role" flag (bool/str/number) to a bool."""
+    if isinstance(value, str):
+        return value.strip().lower() in _TRUE_STRINGS
+    return bool(value)
+
+
+def _as_description(value: Any) -> str:
+    """Coerce a model-supplied description (bullet list or string) to bullet lines.
+
+    A JSON array becomes one ``- ``-prefixed line per non-empty bullet; a plain
+    string is kept verbatim (it may already contain markers, which ``Role.bullets``
+    strips on read). The canonical stored form is one bullet per line.
+    """
+    if isinstance(value, (list, tuple)):
+        bullets = [str(item).strip() for item in value if str(item).strip()]
+        return "\n".join(f"- {bullet}" for bullet in bullets)
+    return str(value or "").strip()
+
+
+def role_from_dict(data: dict) -> Role:
+    """Build a Role from a loosely-typed mapping (model output or edited draft)."""
+    return Role(
+        company=str(data.get("company") or "").strip(),
+        title=str(data.get("title") or "").strip(),
+        location=str(data.get("location") or "").strip(),
+        start=str(data.get("start") or "").strip(),
+        end=str(data.get("end") or "").strip(),
+        current=_as_bool(data.get("current")),
+        description=_as_description(data.get("description")),
     )
 
 
@@ -213,12 +254,23 @@ def _draft_from_mapping(data: dict) -> ResumeImportDraft:
     sections = tuple(
         str(x).strip() for x in (data.get("sections") or []) if str(x).strip()
     )
+    experience = tuple(
+        role
+        for role in (
+            role_from_dict(r)
+            for r in (data.get("experience") or [])
+            if isinstance(r, dict)
+        )
+        # Keep an entry only when it names an employer or a title.
+        if role.company or role.title
+    )
     return ResumeImportDraft(
         objective=str(data.get("objective") or "").strip(),
         sections=sections,
         highlights=highlights,
         skills=skills,
         background=str(data.get("background") or "").strip(),
+        experience=experience,
         identity=_identity_from_dict(data.get("identity")),
     )
 
@@ -290,6 +342,18 @@ def draft_to_dict(draft: ResumeImportDraft) -> dict:
         "skills": [
             {"label": s.label, "text": s.text, "keywords": list(s.keywords)}
             for s in draft.skills
+        ],
+        "experience": [
+            {
+                "company": r.company,
+                "title": r.title,
+                "location": r.location,
+                "start": r.start,
+                "end": r.end,
+                "current": r.current,
+                "description": r.description,
+            }
+            for r in draft.experience
         ],
     }
 

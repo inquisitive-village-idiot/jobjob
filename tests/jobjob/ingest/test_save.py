@@ -3,8 +3,14 @@
 
 import pytest
 
-from jobjob.ingest.save import save_background, save_highlights, save_skills
-from jobjob.loader.loadcontent import load_highlights, load_skills
+from jobjob.ingest.save import (
+    save_background,
+    save_experience,
+    save_highlights,
+    save_skills,
+)
+from jobjob.loader.loadcontent import load_experience, load_highlights, load_skills
+from jobjob.structure.experience import Role
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
@@ -15,6 +21,23 @@ _HIGHLIGHTS = (
     ),
 )
 _SKILLS = (Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),)
+_ROLES = (
+    Role(
+        company="The Lattice Review",
+        title="Senior Correspondent",
+        location="Remote",
+        start="2021-04",
+        current=True,
+        description="- Led the desk.\n- Built a workflow.",
+    ),
+    Role(
+        company="The Lattice Review",
+        title="Correspondent",
+        start="2018-06",
+        end="2021-04",
+        description="- Covered science.",
+    ),
+)
 
 
 class TestSaveHighlights:
@@ -58,6 +81,38 @@ class TestSaveSkills:
         loaded = load_skills(path)
         assert [s.label for s in loaded.skills] == ["fact_checking"]
         assert loaded.skills[0].text == "Fact-Checking"
+
+
+class TestSaveExperience:
+    def test_replace_roundtrips_and_groups(self, tmp_path):
+        path = tmp_path / "content" / "experience.toml"
+        n = save_experience(path, _ROLES, mode="replace")
+        assert n == 2
+        loaded = load_experience(path)
+        assert [r.title for r in loaded.roles] == [
+            "Senior Correspondent",
+            "Correspondent",
+        ]
+        # The two adjacent same-employer roles read back as one company block.
+        blocks = [(b.company, len(b.roles)) for b in loaded.grouped()]
+        assert blocks == [("The Lattice Review", 2)]
+
+    def test_current_flag_and_bullets_survive(self, tmp_path):
+        path = tmp_path / "experience.toml"
+        save_experience(path, _ROLES, mode="replace")
+        loaded = load_experience(path)
+        assert loaded.roles[0].current is True
+        assert loaded.roles[0].bullets() == ("Led the desk.", "Built a workflow.")
+
+    def test_append_adds_without_dropping(self, tmp_path):
+        path = tmp_path / "experience.toml"
+        save_experience(path, _ROLES, mode="replace")
+        save_experience(path, _ROLES[:1], mode="append")
+        assert len(load_experience(path).roles) == 3
+
+    def test_unknown_mode_raises(self, tmp_path):
+        with pytest.raises(ValueError):
+            save_experience(tmp_path / "e.toml", _ROLES, mode="bogus")
 
 
 class TestSaveBackground:
