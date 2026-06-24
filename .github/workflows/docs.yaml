@@ -1,7 +1,7 @@
 name: Docs
 
-# Build the Sphinx site and publish it to GitHub Pages (gh-pages branch). The package
-# is installed so autodoc can import jobjob and its dependencies.
+# Build the docs Sphinx site and publish it to GitHub Pages (gh-pages branch). The
+# package is installed so autodoc can import jobjob and its dependencies.
 on:
   push:
     branches: [main]
@@ -29,9 +29,9 @@ jobs:
           # placeholder dir to satisfy the build backend during the editable install.
           mkdir -p webapp/frontend/dist
           pip install -e .
-          pip install sphinx sphinx-rtd-theme myst-parser
+          pip install -r docs/requirements.txt
       - name: Sphinx build
-        run: sphinx-build -b html docs/source docs/build
+        run: sphinx-build -b html docs docs/build
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

@@ -1,7 +1,8 @@
-API Reference
+API (autodoc)
 =============
 
-The public surface of the ``jobjob`` package. Docstrings follow Google style.
+Generated from the package's docstrings (Google style). For the bigger picture, read
+:doc:`architecture` first.
 
 Configuration
 -------------
@@ -9,8 +10,8 @@ Configuration
 .. automodule:: jobjob.config
    :members:
 
-Profiles & content
-------------------
+Profiles and content
+--------------------
 
 .. automodule:: jobjob.loader.profiles
    :members:
