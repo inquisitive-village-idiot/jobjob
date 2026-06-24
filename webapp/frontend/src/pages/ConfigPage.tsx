@@ -172,6 +172,10 @@ export default function ConfigPage() {
   const groups = schema
     ? Array.from(new Set(Object.values(schema).map((f) => f.group)))
     : [];
+  // The editable "Directories" overrides duplicate the read-only Location panel, so
+  // show them only while editing a profile (the Location panel is hidden then).
+  const visibleGroups =
+    isProfileConfig && !editing ? groups.filter((g) => g !== "Directories") : groups;
   const outline: OutlineItem[] = groups.map((g) => ({
     id: `config-${slug(g)}`,
     label: g,
@@ -319,10 +323,14 @@ export default function ConfigPage() {
     </nav>
   );
 
-  // The config form (schema-driven groups + fields), shared by App and Profile.
+  // Profiles open read-only (a clean summary); the editable inputs appear on Edit.
+  const profileViewMode = isProfileConfig && !editing;
+
+  // The config form (schema-driven groups + fields), shared by App and Profile. In a
+  // profile's read-only view it renders values as plain text instead of inputs.
   const configForm = schema ? (
     <div className="space-y-10">
-      {groups.map((group) => (
+      {visibleGroups.map((group) => (
         <section key={group} id={`config-${slug(group)}`} className="scroll-mt-16">
           <SectionHeader>{group}</SectionHeader>
           <div className="space-y-4">
@@ -334,7 +342,7 @@ export default function ConfigPage() {
                     {field.label}
                     {field.required && <span className="ml-1 text-red-500">*</span>}
                   </label>
-                  {field.description && (
+                  {field.description && !profileViewMode && (
                     <p className="text-xs text-gray-500 mb-1">{field.description}</p>
                   )}
                   {field.is_secret ? (
@@ -352,6 +360,8 @@ export default function ConfigPage() {
                         Secrets can only be set by editing config/.env directly.
                       </span>
                     </div>
+                  ) : profileViewMode ? (
+                    <ReadOnlyValue field={field} />
                   ) : field.options ? (
                     <select
                       value={edits[key] ?? field.value ?? ""}
@@ -501,7 +511,7 @@ export default function ConfigPage() {
               )}
             </div>
           </div>
-          <ProfileResourcesPanel name={profileTab} />
+          {!editing && <ProfileResourcesPanel name={profileTab} />}
           {configForm}
         </>
       )}
@@ -671,6 +681,21 @@ function AddProfileForm({
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   );
+}
+
+// Read-only display of a config field's value: the set value, else the documented
+// default shown muted as "<default> (default)", else "Not set".
+function ReadOnlyValue({ field }: { field: ConfigField }) {
+  if (field.value) {
+    return <span className="text-sm font-mono text-gray-900">{field.value}</span>;
+  }
+  const fallback = placeholderFor(field);
+  if (fallback && fallback !== "Required") {
+    return (
+      <span className="text-sm font-mono text-gray-400">{fallback} (default)</span>
+    );
+  }
+  return <span className="text-sm text-gray-400 italic">Not set</span>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

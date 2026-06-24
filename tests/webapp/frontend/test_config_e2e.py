@@ -118,16 +118,9 @@ def test_profile_tab_shows_location_and_dir_pills(driver, live_app):
         )
     )
     assert panel.is_displayed()
-    # The "Directories" config group renders below once the profile schema loads.
-    _wait(driver).until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//*[normalize-space(text())='Directories']")
-        )
-    )
     # The example profile ships content/ and reference/ dirs, shown as pills.
     body = driver.find_element(By.TAG_NAME, "body").text
     assert "content" in body and "reference" in body
-    assert "Directories" in body
 
 
 def test_add_profile_tab_opens_form(driver, live_app):
