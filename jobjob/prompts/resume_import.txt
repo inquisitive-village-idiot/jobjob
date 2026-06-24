@@ -30,6 +30,20 @@ these top-level keys:
     - label: a short snake_case identifier (e.g. "data_analysis").
     - text: the display label (e.g. "Data Analysis").
     - keywords: an array of one to five lowercase keywords or synonyms.
+- experience: A JSON array of work-history entries, most recent first. Emit ONE entry
+  per distinct role. CRITICAL: when the candidate held several titles at the SAME
+  employer (e.g. a promotion), produce a SEPARATE entry for each title — repeat the
+  company name, and give each its own dates and bullets. Never merge multiple roles
+  into one entry, and never combine their date ranges. Each element is an object with
+  these keys:
+    - company: the employer name, exactly as written.
+    - title: the job title for THIS role.
+    - location: the work location (city, or "Remote"); empty string if absent.
+    - start: the start date as written (e.g. "2021-04" or "Apr 2021"); empty if absent.
+    - end: the end date as written; empty string when this is the current role.
+    - current: true if this is an ongoing/current role, otherwise false.
+    - description: a JSON array of accomplishment bullets for this role — each a plain
+      string with NO leading bullet marker, drawn ONLY from what the resume states.
 - background: ${background_guidance}
 ${voice_anchor}
 Rules:

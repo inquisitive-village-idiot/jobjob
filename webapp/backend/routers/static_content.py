@@ -17,6 +17,7 @@ _TOML_FILES = {
     "highlights": "static/example/content/highlights.toml",
     "skills": "static/example/content/skills.toml",
     "templates": "static/example/content/templates.toml",
+    "experience": "static/example/content/experience.toml",
 }
 _REFERENCE_BASE = "static/example/reference"
 
@@ -26,6 +27,7 @@ _ITEM_PATH: dict[str, tuple[list[str], str]] = {
     "highlights": (["tool", "highlights"], "highlight"),
     "skills": (["tool", "skills"], "skill"),
     "templates": (["tool", "templates"], "template"),
+    "experience": (["tool", "experience"], "role"),
 }
 
 
