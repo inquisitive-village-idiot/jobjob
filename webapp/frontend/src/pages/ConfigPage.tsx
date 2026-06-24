@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { api } from "../api/client";
 import type {
   ConfigField,
@@ -396,20 +396,25 @@ export default function ConfigPage() {
     </div>
   );
 
-  // Profile read-only view: one bordered card per group, values shown as pills —
-  // the same box style as the Location & directories panel.
+  // Profile read-only view: one bordered card per group (the same box style as the
+  // Location panel), with a label/value list inside like the About version box.
   const profileSummary = schema ? (
     <div className="space-y-4">
       {visibleGroups.map((group) => (
         <div key={group} className="border border-gray-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">{group}</h3>
-          <div className="flex flex-wrap gap-2">
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
             {Object.entries(schema)
               .filter(([, f]) => f.group === group)
               .map(([key, field]) => (
-                <SummaryPill key={key} field={field} />
+                <Fragment key={key}>
+                  <dt className="text-gray-500">{field.label}</dt>
+                  <dd className="min-w-0">
+                    <SummaryValue field={field} />
+                  </dd>
+                </Fragment>
               ))}
-          </div>
+          </dl>
         </div>
       ))}
     </div>
@@ -702,36 +707,26 @@ function AddProfileForm({
   );
 }
 
-// A read-only field shown as a pill (label + value), matching the directory pills in
-// ProfileResourcesPanel. Value is the set value, else the documented default shown
-// muted as "<default> (default)", else "Not set".
-function SummaryPill({ field }: { field: ConfigField }) {
-  let value: string;
-  let muted: boolean;
+// A read-only field value: the set value (dark mono), else the documented default
+// shown muted as "<default> (default)", else "Not set".
+function SummaryValue({ field }: { field: ConfigField }) {
   if (field.is_secret) {
-    value = field.is_set ? "Set" : "Not set";
-    muted = !field.is_set;
-  } else if (field.value) {
-    value = field.value;
-    muted = false;
-  } else {
-    const fallback = placeholderFor(field);
-    value = fallback && fallback !== "Required" ? `${fallback} (default)` : "Not set";
-    muted = true;
-  }
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs
-        border bg-gray-50 border-gray-200 max-w-full"
-    >
-      <span className="font-medium text-gray-700 whitespace-nowrap">{field.label}</span>
-      <span
-        className={`font-mono break-all ${muted ? "text-gray-400" : "text-gray-900"}`}
-      >
-        {value}
+    return (
+      <span className={field.is_set ? "text-gray-900" : "text-gray-400 italic"}>
+        {field.is_set ? "Set" : "Not set"}
       </span>
-    </span>
-  );
+    );
+  }
+  if (field.value) {
+    return <span className="font-mono text-gray-900 break-all">{field.value}</span>;
+  }
+  const fallback = placeholderFor(field);
+  if (fallback && fallback !== "Required") {
+    return (
+      <span className="font-mono text-gray-400 break-all">{fallback} (default)</span>
+    );
+  }
+  return <span className="text-gray-400 italic">Not set</span>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

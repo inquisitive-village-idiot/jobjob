@@ -47,8 +47,9 @@ _SCHEMA: dict[str, dict[str, Any]] = {
     "CLAUDE_CACHE_ENABLED": {
         "label": "Response Cache Enabled",
         "group": "AI",
-        "description": "Set false to disable the local response cache.",
+        "description": "Enable the local response cache. Default: true.",
         "required": False,
+        "options": ["true", "false"],
     },
     "GOOGLE_CREDENTIALS_FILE": {
         "label": "Google Credentials File",
