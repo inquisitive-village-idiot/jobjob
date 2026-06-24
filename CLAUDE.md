@@ -104,7 +104,7 @@ coherent, runnable example. Replace it with your own content via the Static Cont
 ## Configuration
 
 Two disjoint tiers (validated at load; no overlap). Full reference: README.md /
-docs/setup.md.
+docs/guide/configuration.rst.
 
 **App config** — `config/.env` (machine-local, gitignored; `config/.env.template`
 committed):

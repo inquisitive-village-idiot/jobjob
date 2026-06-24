@@ -82,7 +82,7 @@ Prerequisites: Python ≥ 3.12 and `uv <https://docs.astral.sh/uv/>`_ (or plain 
    uv sync                          # create the venv and install dependencies
    uv run --group test pytest       # run the test suite
    uv run ruff check .              # lint
-   uv run --group docs sphinx-build -b html docs2 docs2/build   # build these docs
+   uv run --group docs sphinx-build -b html docs docs/build   # build these docs
 
 Run the webapp dev servers (two terminals)::
 

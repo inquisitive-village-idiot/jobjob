@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Make the ``jobjob`` package importable for autodoc, whether or not it is installed.
-# Anchored on this file: <root>/docs2/conf.py -> <root>.
+# Anchored on this file: <root>/docs/conf.py -> <root>.
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
@@ -62,5 +62,5 @@ html_context = {
     "github_user": "inquisitive-village-idiot",
     "github_repo": "jobjob",
     "github_version": "main",
-    "conf_py_path": "/docs2/",
+    "conf_py_path": "/docs/",
 }
