@@ -1,0 +1,42 @@
+# Example work history for the bundled demo persona (Tila Mer, print science
+# correspondent). Replace with your own via the Static Content page, or import a
+# résumé. Each [[tool.experience.role]] is one ATS "Work Experience" entry; the two
+# Lattice Review roles below are adjacent, so a résumé groups them under one company
+# (a promotion) while filling them as two separate ATS rows.
+[tool.experience]
+
+[[tool.experience.role]]
+company = "The Lattice Review"
+title = "Senior Science Correspondent"
+location = "Remote"
+start = "2021-04"
+end = ""
+current = true
+description = '''
+- Lead the print science desk, shipping two long-form features a month.
+- Built the magazine's first data-reporting workflow, cutting fact-check time 30%.
+'''
+
+[[tool.experience.role]]
+company = "The Lattice Review"
+title = "Science Correspondent"
+location = "Boston, MA"
+start = "2018-06"
+end = "2021-04"
+current = false
+description = '''
+- Covered materials science and print technology for a 200k-reader audience.
+- Won the 2020 Whitlock Award for a series on archival ink degradation.
+'''
+
+[[tool.experience.role]]
+company = "Meridian Press"
+title = "Staff Writer"
+location = "Boston, MA"
+start = "2015-09"
+end = "2018-05"
+current = false
+description = '''
+- Reported daily science and technology stories on deadline.
+- Launched a weekly explainer column that doubled section newsletter signups.
+'''
