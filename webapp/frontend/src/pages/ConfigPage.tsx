@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type {
+  ConfigField,
   ConfigSchema,
   ProfileEntry,
   ProfileResources,
@@ -15,6 +16,15 @@ import type { OutlineItem } from "../components/PageOutline";
 import UpdatePanel from "./UpdatePanel";
 
 const slug = (group: string) => group.toLowerCase().replace(/\s+/g, "-");
+
+// Optional fields often document a conventional default ("… Default: content.").
+// Surface it as the input placeholder so an unset field reads as its default value
+// rather than looking empty/unpopulated.
+function placeholderFor(field: ConfigField): string {
+  if (field.required) return "Required";
+  const m = field.description?.match(/Default:\s*([^.]+)\./i);
+  return m ? m[1].trim() : "";
+}
 
 const ISSUES_URL = "https://github.com/inquisitive-village-idiot/jobjob/issues";
 
@@ -365,7 +375,7 @@ export default function ConfigPage() {
                       className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded
                       focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono
                       disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
-                      placeholder={field.required ? "Required" : ""}
+                      placeholder={placeholderFor(field)}
                     />
                   )}
                 </div>
