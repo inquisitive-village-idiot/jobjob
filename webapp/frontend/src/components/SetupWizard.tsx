@@ -44,16 +44,49 @@ export default function SetupWizard({
     refresh();
   }, []);
 
+  // Esc closes the wizard (for now) — it can be reopened from the account menu.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const steps = ["Anthropic key", "Google (optional)", "Profile", "Your details"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg bg-white rounded-xl shadow-xl flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Welcome to jobjob</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            A few one-time steps to get you running.
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Welcome to jobjob</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                A few one-time steps to get you running.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close setup"
+              title="Close — reopen anytime from the account menu"
+              className="-mr-2 -mt-1 p-1.5 rounded text-gray-400 hover:text-gray-700
+                hover:bg-gray-100"
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
           <div className="flex gap-1.5 mt-3">
             {steps.map((label, i) => (
               <div key={label} className="flex-1">
