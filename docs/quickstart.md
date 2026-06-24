@@ -1,214 +1,122 @@
-# Quick-Start Guide
+# Getting started
 
-This guide gets **jobjob** running on your computer. It is written for someone
-comfortable using a computer but new to programming tools — every step is spelled out.
+**jobjob** runs entirely on your machine as a small local website you open in your
+browser. It does two things:
 
-**Time:** about 30–60 minutes the first time (mostly the one-time Anthropic + Google
-setup). After that, each application takes a couple of minutes.
+1. **Application Builder** — give it a job posting (PDF, URL, or pasted text). It reads
+   the posting, picks the most relevant parts of your background, and writes a tailored
+   cover letter and résumé summary — saved on your computer and, optionally, to Google
+   Drive as editable Docs.
+2. **Contact Enrichment** — give it a PDF or screenshot of a LinkedIn profile. It parses
+   out the details and writes them to a Google spreadsheet.
 
----
+These steps work on **Windows, macOS, and Linux**. Plan on 30–60 minutes the first time
+(mostly the one-time account setup); after that, each application takes a couple of
+minutes.
 
-## What this tool does
-
-JobJob runs entirely on your machine as a small local website you open in your browser.
-Under the hood it calls the Claude AI (by Anthropic) through its pay-as-you-go API —
-about **$0.20–0.50 per application**, billed to your Anthropic account. There is no free
-Anthropic tier (the free Claude.ai chat plan has no API access); for an experimental free
-alternative, see the [free option](install-free-option.md).
-
-1. **Application Builder**
-
-   You give jobjob a job-description PDF. It reads the posting, picks the most relevant
-   parts of your background, and writes a tailored cover letter and resume summary —
-   saving them on your computer and (optionally) to Google Drive as editable Docs.
-
-2. **Contact Enrichment**
-
-   Given a PDF or screenshot of a LinkedIn profile, parse out details and write to a
-   Google spreadsheet.
+Follow the steps below in order. Optional and advanced topics are linked at the end.
 
 ---
 
-## What you will need
+## Step 1 — Get an Anthropic API key
 
-| What                           | Why                                                       |
-| ------------------------------ | --------------------------------------------------------- |
-| macOS, Windows 10/11, or Linux | Runs the tool                                             |
-| Python 3.12+ **or** `uv`       | jobjob is a Python program (`uv` installs Python for you) |
-| An Anthropic API key           | Powers the AI (the wizard links you to it)                |
-| A Google account (optional)    | Save outputs to Google Drive/Docs                         |
-| A job-description PDF          | The posting you are applying to                           |
+jobjob uses **Claude** (Anthropic's AI) to parse the job description, write the cover
+letter, and more. It calls Claude through Anthropic's **API**, which is **pay-as-you-go —
+about $0.20–0.50 per application**, billed to a card on your Anthropic account.
 
-You do **not** need Git, Node, or a code checkout — everything is bundled.
+> **NOTE — a paid key is required.** There is no free Anthropic tier, and the free
+> Claude.ai *chat* plan does **not** include API access. You *may* be able to run jobjob
+> for free using Google AI Studio instead — see the [free option](install-free-option.md)
+> — but that path is experimental and untested.
+>
+> **NOTE — Claude only.** jobjob currently supports the Anthropic API only; other
+> providers could be added later.
+
+1. Go to <https://console.anthropic.com/> and **sign up** (verify your email).
+2. **Add a payment method.** Open **Settings → Billing**
+   (<https://console.anthropic.com/settings/billing>) and add a card or a small prepaid
+   balance.
+3. **Create the key.** Open **Settings → API keys**
+   (<https://console.anthropic.com/settings/keys>), click **Create Key**, name it
+   `jobjob`, and **copy the key now** — it starts with `sk-ant-` and is shown only once.
+   Keep it somewhere safe (a password manager is ideal).
+
+You'll paste this key into jobjob in Step 3.
 
 ---
 
-## Step 1 — Install jobjob
+## Step 2 — Install jobjob
 
-JobJob is distributed as a python package. For simplicity and to ensure the JobJob has
-its own isolated environment (so it never interferes with other software), using `uv` or
-`pipx` is recommended, but plain `pip install jobjob` into a virtual environment also
-works.
+jobjob is a small Python program. The easiest installer is **`uv`** (it brings its own
+Python). You don't need Git, Node, or a code checkout.
 
-Open a terminal (macOS: **Cmd+Space** → "Terminal"; Windows: Start → "Command Prompt"),
-then pick one of the options below.
+**Open a terminal:** macOS — Cmd+Space → "Terminal"; Windows — Start → "PowerShell";
+Linux — your Terminal app. Then:
 
-### Easiest if you need python — `uv`
-
-First, install `uv` by pasting one command into the terminal (nothing to download from a
-website):
-
-- **macOS / Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
-
-`uv` can install Python for you if needed (see the
-[installer docs](https://docs.astral.sh/uv/getting-started/installation/)). Then close
-and reopen the terminal.
-
-Then install JobJob
-
-```shell
+```
 uv tool install jobjob
 ```
 
-### Or if you have python -- `pipx`
+> **Don't have `uv`?** Install it by **pasting one command into the terminal** (nothing to
+> download from a website):
+>
+> - **macOS / Linux:** `curl -LsSf https://astral.sh/uv/install.sh | sh`
+> - **Windows (PowerShell):** `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
+>
+> Then **close the terminal, open a new one**, and run `uv tool install jobjob`. Already
+> have Python 3.12+? `pipx install jobjob` or `pip install jobjob` work too.
 
-First install, `pipx`: <https://pipx.pypa.io/stable/how-to/install-pipx/>.
-
-Then install JobJob
-
-```shell
-pipx install jobjob
-```
+**Check it worked:** run `jobjob-app --help` — you should see usage text. ("Command not
+found"? Open a fresh terminal so it picks up the new command.)
 
 ---
 
-## Step 2 — Launch it
+## Step 3 — Launch and finish setup
 
-```shell
+```
 jobjob-app
 ```
 
-The first time, this creates a folder at **`~/Documents/jobjob`** (your "jobjob folder")
-to hold your settings, content, and finished applications — then opens the dashboard in
-your browser. Leave the terminal window open while you use jobjob; closing it stops the
-app. To stop it, press **Ctrl+C** in the terminal.
+The first run creates your **jobjob folder** at `~/Documents/jobjob` (settings, content,
+finished applications) and opens the dashboard in your browser. Leave the terminal open
+while you use jobjob; **Ctrl+C** stops it.
 
-> Want the folder elsewhere? `jobjob-app --dir "/path/you/prefer"`.
+A **Setup** window opens automatically and walks you through:
 
----
+1. **Anthropic API key** — paste the key from Step 1 ("✓ A key is configured").
+2. **Google (optional)** — connect Google Drive/Docs for editable-document output. This
+   needs a one-time Google project setup → [Set up Google Drive/Docs](install-google-project.md).
+   Skip it for local-only output.
+3. **Your details** — name, email, phone, LinkedIn (used on your cover-letter header).
 
-## Step 3 — Setup Configuration
-
-> [!NOTE]  
-> You'll need credentials for this part. See the
-> [Google setup guide](install-google-project.md) for details.
-
-> [!NOTE]  
-> See the detailed [Setup guide](setup.md) for details about the configuration
-> parameters.
-
-The first time, a **Setup** window opens automatically and walks you through:
-
-1. **Anthropic API key** — paste your key (get one at
-   <https://console.anthropic.com/settings/keys>, and add a payment method under
-   **Settings → Billing**). It is stored only on your computer.
-2. **Google (optional)** — provide the path for the `credentials.json` you get from
-   Google, then click **Connect Google** and approve in the tab that opens. Skip this
-   for local-only output.
-3. **Your details** — name, email, phone, LinkedIn. These appear on your cover-letter
-   header.
-
-You can reopen this anytime from the **account menu (top-right) → Run setup**, and
-change anything later under **Settings**.
+Prefer to configure by editing files instead of the wizard? See
+[Setup & configuration](setup.md).
 
 ---
 
-## Step 4 — Add your background
+## Step 4 — Run your first application
 
-jobjob tailors output from documents that describe _you_. Open the **Static Content**
-tab in the app to edit them in the browser:
+Add some background about yourself (the **Static Content** tab, or import a résumé),
+then generate an application — full walkthrough here:
 
-| Content       | What it holds                             |
-| ------------- | ----------------------------------------- |
-| Highlights    | Your key achievements / credential blocks |
-| Skills        | Your skills with keywords                 |
-| Background    | Career narrative, relocation preferences  |
-| Writing style | Voice and tone guidance                   |
-| Cover letters | Example letters (style reference)         |
-| STARs         | STAR-format stories of your experience    |
-
-Your profile starts **empty** so none of the bundled example persona's content sneaks
-into your applications. Two shortcuts to fill it faster:
-
-- **Import a résumé** — on the Static Content tab, import an existing résumé to pre-fill
-  highlights, skills, and background, then review before saving.
-- **Borrow from the example** — the app includes a read-only **example** profile (the
-  fictional _Tila Mer_). Switch to it from **account menu → Profiles** to see how a
-  complete profile looks, or **Duplicate** it and edit your copy.
-
-(Your content lives in `~/Documents/jobjob/profiles/local/` if you prefer to edit the
-files directly. See the [Profiles guide](profiles.md).)
-
----
-
-## Step 5 — Run your first application
-
-1. Put a job-description PDF in **`~/Documents/jobjob/data/jobs/`** (or use the app's
-   upload, if available).
-2. In the **Queue** tab, find the posting and click **Apply**.
-3. Watch the progress; when it finishes it appears on the **Dashboard**.
-
-Your tailored cover letter, resume, skills analysis, and a per-application README are
-saved under **`~/Documents/jobjob/data/completed/`** — and, if you connected Google, as
-editable Google Docs in your Drive.
+→ **[Applications](usage-applications.md)** · also: [Enrichment](usage-enrichment.md)
+(import LinkedIn contacts into a Google Sheet)
 
 > The cover letter starts with a **⚠️ GAPS / FLAGS – DELETE BEFORE SENDING** section
-> listing anything the AI could not match to your documented background. Review and
-> delete that section before sending. The AI flags gaps rather than inventing
-> qualifications.
+> listing anything the AI couldn't match to your documented background — review and delete
+> it before sending. jobjob flags gaps rather than inventing qualifications.
 
 ---
 
 ## Where your files live
 
-Everything is under your jobjob folder (default `~/Documents/jobjob`):
-
 ```
 ~/Documents/jobjob/
-  config/.env          ← your settings (managed by the wizard/Settings)
-  data/jobs/           ← drop job-description PDFs here
-  data/completed/      ← finished applications
-  profiles/local/      ← your content + reference documents
-  profiles/<name>/     ← any additional profiles you create
+  config/.env          your settings (wizard/Settings, or edit by hand)
+  data/jobs/           job-description PDFs
+  data/completed/      finished applications
+  profiles/local/      your content + reference documents
 ```
 
----
-
-## Updating
-
-The app checks for updates on launch and shows them under **Settings** — click
-**Update** there to upgrade in place. Or from the terminal:
-
-```
-uv tool upgrade jobjob      # or: pipx upgrade jobjob
-```
-
-Your jobjob folder (settings, content, applications) is untouched by updates.
-
-> The in-app update check and **Update** button are available in **2.0.0 and later**. On
-> 1.x, upgrade once from the terminal; after that you can update from Settings.
-
-### Upgrading from 1.x
-
-Upgrade the normal way (above). The first launch on 2.0.0+ automatically moves your old
-`profile/` folder to `profiles/local/` — nothing to do, and nothing is lost. See the
-[Profiles guide](profiles.md) for the profile model.
-
----
-
-## Power users / developers
-
-Prefer the command line, or want to contribute? jobjob also has a CLI (`jobjob apply`,
-`jobjob enrich`) and a from-source workflow — see [Setup guide](setup.md),
-[Applications](usage-applications.md), and [Enrichment](usage-enrichment.md).
+**More:** [Setup & configuration](setup.md) · [Profiles](profiles.md) ·
+[Architecture](architecture.md) · contributing/from-source? [Developer reference](developer.md).
