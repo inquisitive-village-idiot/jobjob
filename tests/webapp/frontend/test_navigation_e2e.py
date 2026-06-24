@@ -1,83 +1,60 @@
 #!/usr/bin/env python3
 """Reference end-to-end tests: the app boots and top-level navigation works.
 
-These establish the harness pattern (``live_app`` + ``driver`` fixtures from conftest)
+These establish the harness pattern (``live_app`` + ``page`` fixtures from conftest)
 that the rest of the frontend e2e suite follows: drive the real UI, then assert on
-rendered text/elements with explicit waits.
+rendered text/elements with Playwright's auto-waiting ``expect``.
 """
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+import re
+
+from playwright.sync_api import Page, expect
 
 
-def _wait(driver, timeout=10):
-    return WebDriverWait(driver, timeout)
-
-
-def _nav_link(driver, label):
+def _nav_link(page: Page, label: str):
     """Return the top-nav anchor with the given visible text."""
-    return driver.find_element(By.XPATH, f"//nav//a[normalize-space(text())='{label}']")
+    return page.locator(f"//nav//a[normalize-space(text())='{label}']")
 
 
-def test_dashboard_loads(driver, live_app):
+def test_dashboard_loads(page: Page, live_app: str) -> None:
     """The SPA mounts and the Dashboard renders its heading."""
-    driver.get(live_app + "/")
-    heading = _wait(driver).until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//h1[normalize-space()='Dashboard']")
-        )
-    )
-    assert heading.is_displayed()
+    page.goto(live_app + "/")
+    expect(page.locator("//h1[normalize-space()='Dashboard']")).to_be_visible()
 
 
-def test_nav_shows_core_links(driver, live_app):
+def test_nav_shows_core_links(page: Page, live_app: str) -> None:
     """The primary nav exposes the expected destinations."""
-    driver.get(live_app + "/")
-    _wait(driver).until(EC.presence_of_element_located((By.CSS_SELECTOR, "nav")))
+    page.goto(live_app + "/")
+    expect(page.locator("nav").first).to_be_visible()
     for label in ("Dashboard", "Queue", "Static Content", "Prompts"):
-        assert _nav_link(driver, label).is_displayed()
+        expect(_nav_link(page, label)).to_be_visible()
 
 
-def test_navigate_to_prompts_page(driver, live_app):
+def test_navigate_to_prompts_page(page: Page, live_app: str) -> None:
     """Clicking the Prompts nav link loads the prompt editor with its catalog."""
-    driver.get(live_app + "/")
-    _wait(driver).until(EC.presence_of_element_located((By.CSS_SELECTOR, "nav")))
-    _nav_link(driver, "Prompts").click()
-
-    _wait(driver).until(
-        EC.presence_of_element_located((By.XPATH, "//h1[normalize-space()='Prompts']"))
-    )
+    page.goto(live_app + "/")
+    _nav_link(page, "Prompts").click()
+    expect(page.locator("//h1[normalize-space()='Prompts']")).to_be_visible()
     # The catalog lists the generation prompts; "Cover letter" is one of them.
-    body = driver.find_element(By.TAG_NAME, "body").text
-    assert "Cover letter" in body
+    expect(page.locator("body")).to_contain_text("Cover letter")
 
 
-def test_settings_cog_opens_config(driver, live_app):
+def test_settings_cog_opens_config(page: Page, live_app: str) -> None:
     """The header cog button navigates to the configuration page."""
-    driver.get(live_app + "/")
-    cog = _wait(driver).until(
-        EC.element_to_be_clickable(
-            (By.CSS_SELECTOR, "header button[aria-label='Settings']")
-        )
-    )
-    cog.click()
-    _wait(driver).until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//h1[normalize-space()='Configuration']")
-        )
-    )
-    assert driver.current_url.endswith("#config")
+    page.goto(live_app + "/")
+    page.locator("header button[aria-label='Settings']").click()
+    expect(page.locator("//h1[normalize-space()='Configuration']")).to_be_visible()
+    expect(page).to_have_url(re.compile(r"#config$"))
 
 
-def test_footer_reports_issue_link(driver, live_app):
+def test_footer_reports_issue_link(page: Page, live_app: str) -> None:
     """The footer shows the copyright line and a Report an issue link."""
-    driver.get(live_app + "/")
-    footer = _wait(driver).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "footer"))
-    )
-    assert "inquisitive-village-idiot" in footer.text
-    link = footer.find_element(By.XPATH, ".//a[normalize-space()='Report an issue']")
-    assert link.get_attribute("href").endswith(
-        "github.com/inquisitive-village-idiot/jobjob/issues"
+    page.goto(live_app + "/")
+    footer = page.locator("footer")
+    expect(footer).to_be_visible()
+    expect(footer).to_contain_text("inquisitive-village-idiot")
+    expect(
+        footer.locator("xpath=.//a[normalize-space()='Report an issue']")
+    ).to_have_attribute(
+        "href", re.compile(r"github\.com/inquisitive-village-idiot/jobjob/issues$")
     )

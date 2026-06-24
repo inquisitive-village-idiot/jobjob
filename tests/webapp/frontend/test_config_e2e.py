@@ -7,150 +7,123 @@ the whole-profile Edit toggle co-located with the fields, the read-only guard on
 bundled ``example`` profile, and the Update panel living under About.
 """
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+import re
+
+from playwright.sync_api import Page, expect
 
 
-def _wait(driver, timeout=10):
-    return WebDriverWait(driver, timeout)
+def _open_config(page: Page, live_app: str) -> None:
+    page.goto(live_app + "/#config")
+    expect(page.locator("//h1[normalize-space()='Configuration']")).to_be_visible()
 
 
-def _open_config(driver, live_app):
-    driver.get(live_app + "/#config")
-    _wait(driver).until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//h1[normalize-space()='Configuration']")
-        )
-    )
-
-
-def _nav_button(driver, label):
+def _nav_button(page: Page, label: str):
     """Return a left-nav section button (App / Profiles / About)."""
-    return driver.find_element(
-        By.XPATH,
+    return page.locator(
         "//nav[@aria-label='Configuration sections']"
-        f"//button[normalize-space(text())='{label}']",
+        f"//button[normalize-space(text())='{label}']"
     )
 
 
-def _sidebar(driver):
-    return driver.find_element(
-        By.CSS_SELECTOR, "nav[aria-label='Configuration sections']"
-    )
+def _sidebar(page: Page):
+    return page.locator("nav[aria-label='Configuration sections']")
 
 
-def _open_profiles(driver):
+def _open_profiles(page: Page):
     """Switch to the Profiles section and wait for the profile tab list."""
-    _nav_button(driver, "Profiles").click()
-    return _wait(driver).until(
-        EC.presence_of_element_located(
-            (By.CSS_SELECTOR, "div[role='tablist'][aria-label='Profiles']")
-        )
-    )
+    _nav_button(page, "Profiles").click()
+    tablist = page.locator("div[role='tablist'][aria-label='Profiles']")
+    expect(tablist).to_be_visible()
+    return tablist
 
 
-def _profile_tab(driver, label):
+def _profile_tab(page: Page, label: str):
     """Return the body profile tab whose visible text equals ``label``."""
-    return driver.find_element(
-        By.XPATH,
+    return page.locator(
         "//div[@role='tablist'][@aria-label='Profiles']"
-        f"//button[normalize-space(text())='{label}']",
+        f"//button[normalize-space(text())='{label}']"
     )
 
 
-def test_config_nav_has_three_sections(driver, live_app):
+def test_config_nav_has_three_sections(page: Page, live_app: str) -> None:
     """The left nav exposes App, Profiles, and About."""
-    _open_config(driver, live_app)
+    _open_config(page, live_app)
     for label in ("App", "Profiles", "About"):
-        assert _nav_button(driver, label).is_displayed()
+        expect(_nav_button(page, label)).to_be_visible()
 
 
-def test_profiles_section_shows_tabs_and_add(driver, live_app):
+def test_profiles_section_shows_tabs_and_add(page: Page, live_app: str) -> None:
     """Profiles render as body tabs (incl. the example) plus an add (＋) tab."""
-    _open_config(driver, live_app)
-    _open_profiles(driver)
-    assert _profile_tab(driver, "example").is_displayed()
-    add = driver.find_element(
-        By.XPATH,
+    _open_config(page, live_app)
+    _open_profiles(page)
+    expect(_profile_tab(page, "example")).to_be_visible()
+    add = page.locator(
         "//div[@role='tablist'][@aria-label='Profiles']"
-        "//button[@aria-label='Add a profile']",
+        "//button[@aria-label='Add a profile']"
     )
-    assert add.is_displayed()
+    expect(add).to_be_visible()
 
 
-def test_example_profile_is_read_only(driver, live_app):
+def test_example_profile_is_read_only(page: Page, live_app: str) -> None:
     """Selecting the read-only example profile disables editing."""
-    _open_config(driver, live_app)
-    _open_profiles(driver)
-    _profile_tab(driver, "example").click()
+    _open_config(page, live_app)
+    _open_profiles(page)
+    _profile_tab(page, "example").click()
 
-    # The whole-profile Edit toggle is present (beside the fields) but disabled.
-    # Re-find each poll so an async re-render can't hand back a stale reference.
-    _wait(driver).until(
-        lambda d: any(
-            b.get_attribute("disabled") is not None
-            for b in d.find_elements(By.XPATH, "//button[normalize-space()='Edit']")
-        )
-    )
-    assert "read-only" in driver.find_element(By.TAG_NAME, "body").text
+    # The whole-profile Edit toggle (beside the fields) is present but disabled.
+    # to_be_disabled auto-waits and re-evaluates, so the async re-render can't hand
+    # back a stale reference the way Selenium's find_elements could.
+    disabled_edit = page.locator("//button[normalize-space()='Edit' and @disabled]")
+    expect(disabled_edit.first).to_be_visible()
+    expect(page.locator("body")).to_contain_text("read-only")
 
 
-def test_app_sidebar_expands_subsections(driver, live_app):
+def test_app_sidebar_expands_subsections(page: Page, live_app: str) -> None:
     """The App section expands into its config-schema subsections in the sidebar."""
-    _open_config(driver, live_app)
+    _open_config(page, live_app)
     # App is the default section; its schema groups (e.g. Google) show as anchors.
-    anchor = _wait(driver).until(
-        lambda d: _sidebar(d).find_element(
-            By.XPATH, ".//button[normalize-space()='Google']"
-        )
-    )
-    assert anchor.is_displayed()
+    anchor = _sidebar(page).locator("xpath=.//button[normalize-space()='Google']")
+    expect(anchor).to_be_visible()
     anchor.click()
-    assert "Google" in _sidebar(driver).text
+    expect(_sidebar(page)).to_contain_text("Google")
 
 
-def test_profile_tab_shows_location_and_dir_pills(driver, live_app):
+def test_profile_tab_shows_location_and_dir_pills(page: Page, live_app: str) -> None:
     """Selecting a profile shows its location and resource-dir file-count pills."""
-    _open_config(driver, live_app)
-    _open_profiles(driver)
-    _profile_tab(driver, "example").click()
-    # visibility_of_element_located re-locates each poll, so it survives the async
-    # re-render that loads the resources panel (avoids a stale-element race).
-    _wait(driver).until(
-        EC.visibility_of_element_located(
-            (By.XPATH, "//h3[normalize-space()='Location & directories']")
-        )
-    )
+    _open_config(page, live_app)
+    _open_profiles(page)
+    _profile_tab(page, "example").click()
+    expect(
+        page.locator("//h3[normalize-space()='Location & directories']")
+    ).to_be_visible()
     # The example profile ships content/ and reference/ dirs, shown as pills.
-    body = driver.find_element(By.TAG_NAME, "body").text
-    assert "content" in body and "reference" in body
+    body = page.locator("body")
+    expect(body).to_contain_text("content")
+    expect(body).to_contain_text("reference")
 
 
-def test_add_profile_tab_opens_form(driver, live_app):
+def test_add_profile_tab_opens_form(page: Page, live_app: str) -> None:
     """The ＋ tab opens the create / duplicate / register add-profile form."""
-    _open_config(driver, live_app)
-    _open_profiles(driver)
-    driver.find_element(
-        By.XPATH,
+    _open_config(page, live_app)
+    _open_profiles(page)
+    page.locator(
         "//div[@role='tablist'][@aria-label='Profiles']"
-        "//button[@aria-label='Add a profile']",
+        "//button[@aria-label='Add a profile']"
     ).click()
     # The register action and the name field are part of the add form.
-    _wait(driver).until(
-        EC.visibility_of_element_located(
-            (By.XPATH, "//button[normalize-space()='Register folder']")
-        )
-    )
-    assert "New profile name" in driver.find_element(By.TAG_NAME, "body").text
+    expect(
+        page.locator("//button[normalize-space()='Register folder']")
+    ).to_be_visible()
+    expect(page.locator("body")).to_contain_text("New profile name")
 
 
-def test_about_section_shows_updates_and_issue_link(driver, live_app):
+def test_about_section_shows_updates_and_issue_link(page: Page, live_app: str) -> None:
     """The About section hosts the Update panel and a Report-an-issue link."""
-    _open_config(driver, live_app)
-    _nav_button(driver, "About").click()
-    _wait(driver).until(
-        EC.presence_of_element_located((By.XPATH, "//h2[normalize-space()='Updates']"))
-    )
-    issue = driver.find_element(By.XPATH, "//a[normalize-space()='Report an issue']")
-    assert issue.get_attribute("href").startswith("https://github.com/")
+    _open_config(page, live_app)
+    _nav_button(page, "About").click()
+    expect(page.locator("//h2[normalize-space()='Updates']")).to_be_visible()
+    # Scope to the main content (the footer has its own issue link, covered by the
+    # navigation suite) so the locator is unambiguous under Playwright strict mode.
+    expect(
+        page.get_by_role("main").get_by_role("link", name="Report an issue")
+    ).to_have_attribute("href", re.compile(r"^https://github\.com/"))
