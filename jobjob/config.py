@@ -43,6 +43,7 @@ DEFAULT_MODEL = "claude-sonnet-4-6"
 
 # Env-var names (single source of truth)
 ENV_ANTHROPIC_API_KEY = "ANTHROPIC_API_KEY"
+ENV_ANTHROPIC_BASE_URL = "ANTHROPIC_BASE_URL"
 ENV_MODEL = "CLAUDE_MODEL"
 ENV_CACHE_ENABLED = "CLAUDE_CACHE_ENABLED"
 ENV_CACHE_DIR = "CACHE_DIR"
@@ -96,6 +97,7 @@ ENV_PROMPT_DIR = "PROMPT_DIR"
 APP_KEYS = frozenset(
     {
         ENV_ANTHROPIC_API_KEY,
+        ENV_ANTHROPIC_BASE_URL,
         ENV_MODEL,
         ENV_CACHE_ENABLED,
         ENV_CACHE_DIR,
@@ -165,6 +167,9 @@ class Settings:
         applicant: Applicant identity.
         model: Claude model id.
         anthropic_api_key: Anthropic API key.
+        anthropic_base_url: Optional override for the Anthropic API base URL. Point it
+            at a Claude-compatible proxy (e.g. one forwarding to a free Gemini key) to
+            run without a paid Anthropic key. None uses the SDK default.
         cache_enabled: Default response-cache toggle.
         google: Google credential + resume-template settings.
         applications_input_dir: Local root holding ``jobs/``, ``profiles/`` and
@@ -183,6 +188,7 @@ class Settings:
     applicant: Applicant
     model: str = DEFAULT_MODEL
     anthropic_api_key: Optional[str] = None
+    anthropic_base_url: Optional[str] = None
     cache_enabled: bool = True
     google: GoogleSettings = dcs.field(default_factory=GoogleSettings)
     applications_input_dir: Path = DEFAULT_INPUT_DIR
@@ -361,6 +367,7 @@ def load_settings(app_config: Path = DEFAULT_APP_CONFIG) -> Settings:
         applicant=applicant,
         model=os.environ.get(ENV_MODEL) or DEFAULT_MODEL,
         anthropic_api_key=os.environ.get(ENV_ANTHROPIC_API_KEY),
+        anthropic_base_url=_text(os.environ.get(ENV_ANTHROPIC_BASE_URL)),
         cache_enabled=_bool(os.environ.get(ENV_CACHE_ENABLED), default=True),
         google=GoogleSettings(
             credentials_file=_path(os.environ.get(ENV_GOOGLE_CREDENTIALS_FILE)),

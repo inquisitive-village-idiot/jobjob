@@ -32,6 +32,22 @@ class TestInit(ThisTestCase):
         with self.assertRaisesRegex(ValueError, "API key"):
             MOD.AnthropicAdapter(model="claude-sonnet-4-6")
 
+    def test_passes_base_url_to_client(self) -> None:
+        with mock.patch.object(MOD.anthropic, "Anthropic") as ctor:
+            MOD.AnthropicAdapter(
+                model="claude-sonnet-4-6",
+                api_key="sk-test",
+                base_url="http://localhost:3000",
+            )
+        _, kwargs = ctor.call_args
+        self.assertEqual("http://localhost:3000", kwargs["base_url"])
+
+    def test_base_url_defaults_to_none(self) -> None:
+        with mock.patch.object(MOD.anthropic, "Anthropic") as ctor:
+            MOD.AnthropicAdapter(model="claude-sonnet-4-6", api_key="sk-test")
+        _, kwargs = ctor.call_args
+        self.assertIsNone(kwargs["base_url"])
+
 
 class TestComplete(ThisTestCase):
     """Test method."""

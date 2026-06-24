@@ -65,6 +65,10 @@ App config keys (``config/.env``)
    * - ``ANTHROPIC_API_KEY``
      - Anthropic API key. A secret — never displayed by the wizard or Settings.
      - Yes
+   * - ``ANTHROPIC_BASE_URL``
+     - Override the Anthropic API endpoint — point it at a Claude-compatible proxy to
+       run on a free backend. See :doc:`free-option`.
+     - No
    * - ``CLAUDE_MODEL``
      - Model id (default: ``claude-sonnet-4-6``).
      - No

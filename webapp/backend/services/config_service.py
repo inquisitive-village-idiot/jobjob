@@ -30,6 +30,16 @@ _SCHEMA: dict[str, dict[str, Any]] = {
         "description": "Your Anthropic API key.",
         "required": True,
     },
+    "ANTHROPIC_BASE_URL": {
+        "label": "Anthropic Base URL",
+        "group": "AI",
+        "description": (
+            "Advanced: override the Anthropic API endpoint with a Claude-compatible "
+            "proxy (e.g. one forwarding to a free Google AI key) to run on a free "
+            "backend. Leave blank to use Anthropic directly. Default: Anthropic."
+        ),
+        "required": False,
+    },
     "CLAUDE_MODEL": {
         "label": "Claude Model",
         "group": "AI",

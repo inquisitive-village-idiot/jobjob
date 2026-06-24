@@ -80,6 +80,19 @@ class TestLoadSettings(ThisTestCase):
     def test_no_api_key_is_none(self) -> None:
         self.assertIsNone(self.load_with_env({}).anthropic_api_key)
 
+    def test_reads_anthropic_base_url(self) -> None:
+        settings = self.load_with_env(
+            {MOD.ENV_ANTHROPIC_BASE_URL: "http://localhost:3000"}
+        )
+        self.assertEqual("http://localhost:3000", settings.anthropic_base_url)
+
+    def test_base_url_none_when_unset(self) -> None:
+        self.assertIsNone(self.load_with_env({}).anthropic_base_url)
+
+    def test_base_url_is_app_scoped(self) -> None:
+        self.assertIn(MOD.ENV_ANTHROPIC_BASE_URL, MOD.APP_KEYS)
+        self.assertNotIn(MOD.ENV_ANTHROPIC_BASE_URL, MOD.PROFILE_KEYS)
+
 
 class TestIoRenameFallback(ThisTestCase):
     """The per-component rename keeps deprecated keys working (load-time fallback)."""
