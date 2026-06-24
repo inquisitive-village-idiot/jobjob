@@ -4,10 +4,10 @@ The core feature: give jobjob a job posting and it tailors a résumé summary an
 letter from your [profile](profiles.md), saving them locally and (optionally) to Google
 Drive.
 
-**Before you start:** [install](install-software.md) and
-[set up](setup-wizard.md) jobjob, and add some background content (Static Content tab, or
+**Before you start:** [install](quickstart.md) and
+[set up](setup.md) jobjob, and add some background content (Static Content tab, or
 import a résumé). Configuration keys for this feature live under **Applications** in
-[Local configuration](setup-local-config.md#app-config-configenv).
+[Local configuration](setup.md#app-config-keys-configenv).
 
 ## In the app
 
@@ -50,5 +50,5 @@ editable Google Docs.
 
 ## See also
 
-→ [Configuration](setup-local-config.md#app-config-configenv) · [Profiles](profiles.md)
+→ [Configuration](setup.md#app-config-keys-configenv) · [Profiles](profiles.md)
 · [Enrichment](usage-enrichment.md)

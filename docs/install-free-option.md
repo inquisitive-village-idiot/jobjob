@@ -4,7 +4,7 @@
 > AI Studio** key through a community proxy instead of a paid Anthropic key. It is not
 > tested as part of jobjob and has a real limitation (see the caveat below). If you just
 > want the simplest reliable path, use a paid Anthropic key — it's only about
-> **$0.20–0.50 per application** (see [Create your accounts](install-accounts.md)).
+> **$0.20–0.50 per application** (see [Create your accounts](quickstart.md)).
 
 **Why this works:** jobjob talks to Claude through the official `anthropic` library,
 which honors an `ANTHROPIC_BASE_URL` setting. Point that at a local **proxy** that speaks
@@ -37,7 +37,7 @@ to use your Google AI Studio key and a Gemini model per its README.
 
 ## 3. Point jobjob at the proxy
 
-Add these to your `config/.env` (see [Local configuration](setup-local-config.md) for
+Add these to your `config/.env` (see [Local configuration](setup.md) for
 where that file lives). The key can be any placeholder — the proxy uses your Google key,
 not this one:
 
@@ -61,4 +61,4 @@ address.
 
 ## Next
 
-→ [Install the software](install-software.md) · [Set up with the wizard](setup-wizard.md)
+→ [Install the software](quickstart.md) · [Set up with the wizard](setup.md)

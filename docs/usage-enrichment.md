@@ -4,10 +4,10 @@ Enrichment reads a **LinkedIn profile screenshot** and appends the parsed contac
 Google **Sheet** — handy for tracking recruiters and hiring managers alongside your
 applications.
 
-**Before you start:** [install](install-software.md) and [set up](setup-wizard.md)
+**Before you start:** [install](quickstart.md) and [set up](setup.md)
 jobjob, including Google access with the **Sheets API** enabled (see
 [the Google project step](install-google-project.md)). Configuration keys live under
-**Enrichment** in [Local configuration](setup-local-config.md#app-config-configenv) —
+**Enrichment** in [Local configuration](setup.md#app-config-keys-configenv) —
 notably `ENRICHMENT_OUTPUT_SHEET_ID` (the target spreadsheet) and, optionally,
 `ENRICHMENT_INPUT_DIR` (defaults to the applications input).
 
@@ -38,8 +38,8 @@ for real and check the new row in your Sheet.
 
 Open the Sheet in your browser; the id is the long string in the URL between
 `/d/` and `/edit`. Put it in `ENRICHMENT_OUTPUT_SHEET_ID`
-([Local configuration](setup-local-config.md#app-config-configenv)) or pass `--sheet-id`.
+([Local configuration](setup.md#app-config-keys-configenv)) or pass `--sheet-id`.
 
 ## See also
 
-→ [Configuration](setup-local-config.md#app-config-configenv) · [Applications](usage-applications.md)
+→ [Configuration](setup.md#app-config-keys-configenv) · [Applications](usage-applications.md)

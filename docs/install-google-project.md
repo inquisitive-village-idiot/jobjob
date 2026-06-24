@@ -9,9 +9,9 @@ file**. That file lets jobjob ask *your* permission at run time — it does not 
 else access. **Cost:** free. All steps are in the browser, so they're the same on every
 operating system.
 
-> This is step 2 of [Installation](quickstart.md#installation). It produces a
-> `credentials.json` file; you'll hand that to jobjob during
-> [setup](setup-wizard.md).
+> This is the optional Google setup referenced from
+> [Getting started](quickstart.md). It produces a `credentials.json` file; you'll hand
+> that to jobjob during [setup](setup.md).
 
 ## 1. Create a project
 
@@ -56,8 +56,8 @@ during setup, when you upload it and click **Connect Google** — Google will sh
 
 ## Next
 
-→ Give the file to jobjob: [Set up with the wizard](setup-wizard.md) (upload it), or
-[Local configuration](setup-local-config.md) (place it by hand).
+→ Give the file to jobjob during [Setup](setup.md) — upload it in the wizard, or place
+it by hand.
 
 ## Troubleshooting
 

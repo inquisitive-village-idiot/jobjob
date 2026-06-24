@@ -1,141 +1,133 @@
-# Setup — Developer / Technical Reference
+# Setup & configuration
 
-> **Not a developer?** See [docs/quickstart.md](quickstart.md) for a step-by-step
-> guide written for non-technical users.
+Two ways to configure jobjob: the **in-app wizard** (easiest) or **editing the config
+files** by hand (advanced). They're interchangeable — use whichever you prefer.
 
-This document covers installation, environment configuration, and content setup for
-anyone contributing to or maintaining jobjob.
+## The wizard (recommended)
+
+Launch jobjob in a terminal (macOS/Linux) or PowerShell (Windows):
+
+```
+jobjob-app
+```
+
+The first run creates your jobjob folder (`~/Documents/jobjob`) and opens the dashboard.
+A **Setup** window opens automatically (reopen anytime from the **account menu → Run
+setup**) and walks you through:
+
+1. **Anthropic API key** — paste your key (see [Getting started](quickstart.md), Step 1).
+   *Done when:* "✓ A key is configured."
+2. **Google (optional)** — **upload** the `credentials.json` from
+   [Set up Google Drive/Docs](install-google-project.md), then **Connect Google** and
+   approve in the tab that opens. *Done when:* "✓ Google is connected."
+3. **Profile** — optionally register an existing profile folder or bootstrap one from a
+   résumé. See [Profiles](profiles.md).
+4. **Your details** — name, email, phone, LinkedIn (cover-letter header).
+
+Change anything later under **Settings**.
 
 ---
 
-## Prerequisites
+## Editing config files (advanced)
 
-- Python ≥ 3.12
-- [uv](https://docs.astral.sh/uv/) (recommended) or plain `pip`
+jobjob has **two config files**, validated as disjoint (no key may appear in both):
 
-## Install
+- **App config** — `<jobjob folder>/config/.env` (machine-local; default folder
+  `~/Documents/jobjob`).
+- **Profile config** — `<profile>/config/.profile`, inside each profile directory (see
+  [Profiles](profiles.md)).
 
-```sh
-uv sync              # recommended — creates the venv and installs dependencies
-# — or —
-pip install -e .     # installs the package in editable mode
-```
+**Open the app config** in any plain-text editor:
 
-## Upgrading
+- **macOS:** `open -e ~/Documents/jobjob/config/.env`
+- **Linux:** `nano ~/Documents/jobjob/config/.env`
+- **Windows (PowerShell):** `notepad $env:USERPROFILE\Documents\jobjob\config\.env`
 
-Installed copies upgrade like any pip/pipx/uv tool (`uv tool upgrade jobjob` /
-`pipx upgrade jobjob`). On **2.0.0 and later** you can also update from the dashboard
-(**Settings → Update**); that in-app updater is 2.0.0+ only.
+Lines are `KEY="value"` — keep the quotes, no spaces around `=`.
 
-**From 1.x:** the working-dir layout changed in 2.0.0 — a single `profile/` directory
-became `profiles/<name>/`. On first launch, `jobjob-app` migrates `profile/` →
-`profiles/local/` automatically (a directory move plus a registry-path rewrite;
-idempotent, nothing lost). See the [Profiles guide](profiles.md).
+### App config keys (`config/.env`)
 
-## Configuration
+**AI (required)**
 
-The full configuration reference — both config tiers, the per-feature key tables, the
-resolution precedence, deprecated-key map, and where to place the Google credentials —
-lives in **[Local configuration](setup-local-config.md)**. To obtain the Google
-credentials in the first place, see **[Set up the Google project](install-google-project.md)**.
+| Variable | Purpose | Required |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key (a secret — the wizard/Settings won't display it) | Yes |
+| `CLAUDE_MODEL` | Model id (default: `claude-sonnet-4-6`) | No |
+| `CLAUDE_CACHE_ENABLED` / `CACHE_DIR` | Response-cache toggle / directory | No |
 
-Quick orientation: configuration is split into two disjoint tiers (validated at load —
-no key may appear in both): **app config** (`config/.env`, machine-local) and
-**profile config** (`<profile>/config/.profile`). Copy the app template to start:
+**Google (for Drive/Docs output)**
 
-```sh
-cp config/.env.template config/.env
-```
+| Variable | Purpose | Required |
+|---|---|---|
+| `GOOGLE_CREDENTIALS_FILE` | Path to the OAuth client-secrets JSON (default: `~/.config/jobjob/credentials.json`) | Drive/Sheets |
+| `GOOGLE_TOKEN_FILE` | Path to the pickled OAuth token (default: `~/.config/jobjob/token.pickle`) | Drive/Sheets |
 
----
+**[Applications](usage-applications.md) (apply)**
 
-## Profile content
+| Variable | Purpose | Required |
+|---|---|---|
+| `APPLICATIONS_INPUT_DIR` | Input/working root holding `jobs/`, `profiles/`, `completed/` (default: `data`) | No |
+| `APPLICATIONS_OUTPUT_DIR` | Local synced Google Drive mirror (output) | No |
+| `APPLICATIONS_OUTPUT_DRIVE_ID` | Drive folder id for output | No |
 
-Each profile's `content/` holds TOML files that drive resume customization:
+**[Enrichment](usage-enrichment.md) (enrich)**
 
-| File | Purpose |
+| Variable | Purpose | Required |
+|---|---|---|
+| `ENRICHMENT_INPUT_DIR` | Enrich input root; blank ⇒ use `APPLICATIONS_INPUT_DIR` | No |
+| `ENRICHMENT_OUTPUT_SHEET_ID` | Contacts spreadsheet id | `enrich` only |
+
+**Profile registry**
+
+| Variable | Purpose | Required |
+|---|---|---|
+| `JOBJOB_PROFILE_<NAME>` | Path to a profile directory | Yes |
+| `JOBJOB_ACTIVE_PROFILE` | Name of the active profile | Yes |
+
+### Profile config keys (`<profile>/config/.profile`)
+
+| Variable | Purpose | Required |
+|---|---|---|
+| `APPLICANT_NAME` / `_PHONE` / `_EMAIL` / `_LINKEDIN` | Cover-letter header details | No |
+| `RESUME_TEMPLATE_ID` | Résumé-template Google Doc id for this profile | Drive only |
+| `INDUSTRY` | Optional domain (e.g. "science journalism") used to describe the target company accurately | No |
+
+### Precedence & deprecated keys
+
+Highest first: **CLI flag → environment variable → config file → built-in default.** An
+environment variable overrides the config file, even across the rename below; within one
+source, the new name wins over its deprecated alias.
+
+Pre-2.4 names are still read and auto-rewritten in `config/.env` on launch — no action
+needed:
+
+| Deprecated | New name |
 |---|---|
-| `highlights.toml` | Credential blocks with keywords; the model selects the most relevant per JD |
-| `skills.toml` | Skill entries with labels and keywords; used in the skills analysis |
-| `templates.toml` | Resume archetypes (e.g. `print_correspondent`) mapping keywords to Google Doc IDs |
+| `DATA_DIR` | `APPLICATIONS_INPUT_DIR` |
+| `APPLICATIONS_LOCAL_DIR` | `APPLICATIONS_OUTPUT_DIR` |
+| `APPLICATIONS_FOLDER_ID` | `APPLICATIONS_OUTPUT_DRIVE_ID` |
+| `LINKEDIN_SHEET_ID` | `ENRICHMENT_OUTPUT_SHEET_ID` |
 
-Each profile's `reference/` holds free-text documents the model reads as context:
+### Place the Google credentials file
 
-| Path | Purpose |
-|---|---|
-| `background.*` | Career narrative and relocation intent |
-| `cover_letters/` | Style-anchor examples (voice reference) |
-| `stars/` | STAR-format experience blocks (honesty enforcement layer) |
-| `writing_style.*` | Voice and writing rules |
+If you set up the [Google project](install-google-project.md), put the downloaded JSON
+where jobjob expects it (or point `GOOGLE_CREDENTIALS_FILE` at its full path):
 
-Both directories are editable via the local webapp (`webapp/`). The repo's bundled
-`static/example/` is the read-only **example** profile (the fictional *Tila Mer*,
-with its own `content/`, `reference/`, and `config/.profile`) and the fallback used
-when no profile is active (tests, a fresh clone). Do not store real personal
-credentials in `static/` — it is committed to the repo. See the
-[Profiles guide](profiles.md).
+- **macOS/Linux:**
+  ```sh
+  mkdir -p ~/.config/jobjob
+  cp ~/Downloads/client_secret_*.json ~/.config/jobjob/credentials.json
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  mkdir $env:USERPROFILE\.config\jobjob -Force
+  copy $env:USERPROFILE\Downloads\client_secret_*.json $env:USERPROFILE\.config\jobjob\credentials.json
+  ```
 
----
-
-## Development
-
-### Running tests
-
-```sh
-uv run --group test pytest               # full suite
-uv run --group test pytest --no-cov      # skip coverage (faster)
-```
-
-### Linting
-
-```sh
-uv run ruff check .
-```
-
-### Docs
-
-```sh
-uv run --group docs sphinx-build -b html docs/source docs/build
-```
-
-### Running the webapp (development mode)
-
-See [webapp/README.md](../webapp/README.md). Two terminals required:
-
-```sh
-# Terminal 1 — backend
-cd webapp/backend
-uvicorn main:app --host 127.0.0.1 --port 8000 --reload
-
-# Terminal 2 — frontend dev server
-cd webapp/frontend
-npm run dev
-```
+The first Drive/Docs run opens a browser to authorize and writes the token to
+`GOOGLE_TOKEN_FILE`. To re-authorize, delete that token file
+(`rm ~/.config/jobjob/token.pickle`).
 
 ---
 
-## Architecture overview
-
-| Module | Role |
-|--------|------|
-| `jobjob/config.py` | Central `Settings`; loads `config/.env` + builds applicant identity |
-| `jobjob/ailib/` | AI orchestration: `query` (retry + cache), `client/` (provider adapters), `session.py` (cached context + token tracking) |
-| `jobjob/loader/` | Auth, prompt/content/reference loaders, static-file location |
-| `jobjob/structure/` | Typed domain models (job description, highlight, skill, …) |
-| `jobjob/apply/` | Five-step application workflow: parse → highlights → resume → cover letter → skills |
-| `jobjob/apply/generate/` | Individual AI-call steps |
-| `jobjob/apply/output/` | PDF/DOCX output builders |
-| `jobjob/enrich/` | LinkedIn profile ingestion into contacts sheet |
-| `jobjob/gapi/` | Google Drive/Docs/Sheets I/O |
-| `jobjob/__main__.py` | CLI dispatcher |
-
-Adding a new AI provider: implement a thin adapter under `jobjob/ailib/client/`.
-
-### Caching
-
-- **Anthropic prompt cache** — stable context (resume, STARs, background, style
-  examples) is sent as a cached system-message prefix shared across all five calls in
-  a run. Cache lifetime is 5 minutes, extended by hits. Keep stable content at the top
-  of the prefix; variable content (JD, company name) at the end.
-- **Local file cache** — SHA256-keyed responses stored in `CACHE_DIR`. Skips
-  identical prompts on re-runs. Toggle with `CLAUDE_CACHE_ENABLED`.
+**See also:** [Profiles](profiles.md) · [Developer reference](developer.md)

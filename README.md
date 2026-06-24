@@ -48,9 +48,8 @@ Configuration is split into two **disjoint** tiers:
 - **Profile config** (`<profile>/config/.profile`) — the active profile's applicant
   identity and resume template.
 
-See **[docs/setup-local-config.md](docs/setup-local-config.md)** for the full
-configuration reference and **[docs/profiles.md](docs/profiles.md)** for the profile
-model.
+See **[docs/setup.md](docs/setup.md)** for the full configuration reference and
+**[docs/profiles.md](docs/profiles.md)** for the profile model.
 
 ## Usage
 
@@ -68,12 +67,11 @@ See **[Applications](docs/usage-applications.md)** and
 
 ## Documentation
 
-- [Getting started](docs/quickstart.md) — overview + the install → setup → usage path
-- Installation: [accounts](docs/install-accounts.md) · [Google project](docs/install-google-project.md) · [software](docs/install-software.md) · [free option](docs/install-free-option.md)
-- Setup: [wizard](docs/setup-wizard.md) · [local configuration](docs/setup-local-config.md)
+- **[Getting started](docs/quickstart.md)** — zero to your first application (start here)
+- [Setup & configuration](docs/setup.md) — the wizard + the full config reference
 - Usage: [applications](docs/usage-applications.md) · [enrichment](docs/usage-enrichment.md)
-- [Profile model](docs/profiles.md) · [Architecture](docs/architecture.md) — how the package is laid out
-- [Developer reference](docs/setup.md) — from-source, tests, webapp dev
+- Optional: [Google Drive/Docs setup](docs/install-google-project.md) · [free option](docs/install-free-option.md) (experimental)
+- [Profile model](docs/profiles.md) · [Architecture](docs/architecture.md) · [Developer reference](docs/developer.md)
 - [Local dashboard](webapp/README.md) — the `webapp/` setup
 - Published docs site: **<https://inquisitive-village-idiot.github.io/jobjob/>**
 

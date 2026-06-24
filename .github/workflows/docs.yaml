@@ -31,7 +31,7 @@ jobs:
           pip install -e .
           pip install sphinx sphinx-rtd-theme myst-parser
       - name: Sphinx build
-        run: sphinx-build -b html docs/source docs/build
+        run: sphinx-build -b html docs docs/build
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:

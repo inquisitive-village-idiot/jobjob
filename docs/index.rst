@@ -7,37 +7,29 @@ one cached context prefix — to parse the role, select credential highlights, t
 the resume, draft a cover letter, and produce a skills gap analysis. It writes local
 artifacts and (optionally) uploads to Google Drive.
 
-New here? Start with **Getting Started**, then work through Installation, Setup, and
-Usage. Reference material and the ``jobjob`` package API follow.
+**New here? Start with Getting started** — it walks you from zero to your first
+application. The rest is reference you reach for as needed.
 
 .. toctree::
    :maxdepth: 1
    :caption: Start here
 
-   getting-started
+   quickstart
 
 .. toctree::
    :maxdepth: 1
-   :caption: Installation
+   :caption: Setup & usage
 
-   install-accounts
-   install-google-project
-   install-software
-   install-free-option
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Setup
-
-   setup-wizard
-   setup-local-config
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Usage
-
+   setup
    usage-applications
    usage-enrichment
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Optional / advanced
+
+   install-google-project
+   install-free-option
 
 .. toctree::
    :maxdepth: 1
@@ -45,7 +37,7 @@ Usage. Reference material and the ``jobjob`` package API follow.
 
    profiles
    architecture
-   configuration
+   developer
 
 .. toctree::
    :maxdepth: 2
