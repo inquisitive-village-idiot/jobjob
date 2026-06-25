@@ -6,6 +6,10 @@ the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — foll
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-06-24
+
+- [MINOR] Auto-fill now recognizes more application sites: dedicated adapters for Greenhouse, Lever, Ashby, Workable, and SmartRecruiters fill your name, email, phone, and LinkedIn from the active profile, and a generic fallback fills the contact basics on any other standards-compliant form (so `jobjob autofill <url>` does something useful even on an unrecognized board). Workday remains the one that also fills your structured work history. Selectors are best-effort per site; the résumé upload and submit are always left to you
+
 ## [2.7.0] - 2026-06-24
 
 - [MINOR] Add `jobjob autofill <url>`: assisted, human-in-the-loop auto-fill of an online application in a real browser (Workday to start). It fills the contact basics and your work history from the active profile, flags anything it can't map confidently (custom date widgets, screening questions), and leaves account creation and the final submit to you — it never submits on your behalf. Needs the new browser extra (`pip install 'jobjob[autofill]'` then `playwright install chromium`)

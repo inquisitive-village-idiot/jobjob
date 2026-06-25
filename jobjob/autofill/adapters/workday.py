@@ -23,6 +23,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
+from jobjob.autofill.adapters._common import split_name
 from jobjob.autofill.data import ApplicationData
 from jobjob.autofill.report import (
     FilledField,
@@ -34,6 +35,9 @@ from jobjob.structure.experience import Role
 
 if TYPE_CHECKING:
     from playwright.sync_api import Locator, Page
+
+# Re-exported from _common so existing references (and tests) keep resolving here.
+__all__ = ["WorkdayAdapter", "split_name", "format_description"]
 
 NAME = "jobjob.autofill.workday"
 
@@ -58,23 +62,6 @@ _AID_START_DATE = "startDate"
 _AID_END_DATE = "endDate"
 
 _BULLET = "• "
-
-
-def split_name(full_name: str | None) -> tuple[str, str]:
-    """Split a single full-name field into ``(first, last)``.
-
-    Workday wants separate first/last fields. We split on the last run of
-    whitespace: ``"Ada B. Lovelace"`` → ``("Ada B.", "Lovelace")``. A single token
-    yields ``(token, "")`` and an empty/None name yields ``("", "")`` — the caller
-    flags the missing last name rather than guessing one.
-    """
-    name = (full_name or "").strip()
-    if not name:
-        return ("", "")
-    first, _, last = name.rpartition(" ")
-    if not first:
-        return (last, "")
-    return (first.strip(), last.strip())
 
 
 def format_description(role: Role) -> str:
