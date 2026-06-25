@@ -5,14 +5,15 @@ from collections.abc import Sequence
 
 from jobjob.autofill.adapters.ashby import AshbyAdapter
 from jobjob.autofill.adapters.base import Adapter
+from jobjob.autofill.adapters.generic import GenericAdapter
 from jobjob.autofill.adapters.greenhouse import GreenhouseAdapter
 from jobjob.autofill.adapters.lever import LeverAdapter
 from jobjob.autofill.adapters.smartrecruiters import SmartRecruitersAdapter
 from jobjob.autofill.adapters.workable import WorkableAdapter
 from jobjob.autofill.adapters.workday import WorkdayAdapter
 
-# Ordered registry: the first adapter whose ``matches`` returns True wins. A generic
-# fallback adapter (matching any URL) must always be appended LAST.
+# Ordered registry: the first adapter whose ``matches`` returns True wins. The generic
+# fallback matches any URL, so it MUST stay LAST — every named adapter takes priority.
 ADAPTERS: tuple[Adapter, ...] = (
     WorkdayAdapter(),
     GreenhouseAdapter(),
@@ -20,6 +21,7 @@ ADAPTERS: tuple[Adapter, ...] = (
     AshbyAdapter(),
     WorkableAdapter(),
     SmartRecruitersAdapter(),
+    GenericAdapter(),
 )
 
 
