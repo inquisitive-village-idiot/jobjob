@@ -9,16 +9,18 @@ another input file in ``data/jobs/``.
 
 Two entry points:
 
-* :func:`snapshot_from_url` — a plain server-side GET plus readability-style main
-  text extraction. JS-rendered or auth-gated boards (LinkedIn, Workday, iCIMS,
-  Greenhouse SPAs) return an empty skeleton to a plain GET, so a minimum-length
-  heuristic detects that and raises :class:`JDIngestError` rather than parsing
-  empty text. A headless browser is intentionally *not* used here.
+* :func:`snapshot_from_url` — first a cheap server-side GET plus readability-style
+  main-text extraction. JS-rendered or auth-gated boards (LinkedIn, Workday, iCIMS,
+  Greenhouse SPAs) return an empty skeleton to a plain GET; when the cheap path
+  yields too little text (or fails outright) and Playwright is installed, it falls
+  back to a headless browser that renders the page before re-extracting. Only when
+  both come up short is :class:`JDIngestError` raised.
 * :func:`snapshot_from_text` — the reliable fallback for the hard boards: the user
   pastes the raw posting text and it is snapshotted the same way.
 
-Network access (:func:`_http_get`) and extraction (:func:`extract_main_text`) are
-isolated, lazily-imported, and injectable so callers/tests never hit the network.
+Network access (:func:`_http_get` / :func:`fetch_rendered_html`) and extraction
+(:func:`extract_main_text`) are isolated, lazily-imported, and injectable so
+callers/tests never hit the network or launch a browser.
 """
 
 import logging
@@ -85,11 +87,14 @@ def get_user_agent() -> str:
     return f"Mozilla/5.0 ({platform}; {software}; +{contact})"
 
 
-# Guidance shown when a URL yields too little text — the actionable fallback.
+# Guidance shown when a URL yields too little text — the actionable fallback. Reached
+# only after the headless-browser attempt (so it also covers Playwright being absent).
 _EXTRACTION_FAILED_MESSAGE = (
     "Couldn't extract text from this URL — save the posting as a PDF and upload it "
-    "instead, or paste the posting text. Many job boards render the posting with "
-    "JavaScript or require sign-in, which a simple fetch can't see."
+    "instead, or paste the posting text. Many job boards require sign-in, which an "
+    "automated fetch can't see. For JavaScript-rendered postings, install the browser "
+    "extra (pip install 'jobjob[autofill]' && playwright install chromium) to let "
+    "jobjob render the page."
 )
 
 
@@ -151,6 +156,53 @@ def _http_get(url: str, *, timeout: float = DEFAULT_TIMEOUT) -> str:
     )
     resp.raise_for_status()
     return resp.text
+
+
+def fetch_rendered_html(
+    url: str,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    logger: Optional[logging.Logger] = None,
+) -> str:
+    """Render ``url`` in a headless browser and return the settled page HTML.
+
+    The fallback for JS-rendered postings a plain GET can't see. Playwright is an
+    optional runtime extra (``jobjob[autofill]``), imported lazily so this module
+    stays cheap and offline; an absent browser engine surfaces as a JDIngestError
+    with install guidance.
+
+    Arguments:
+        url: The absolute http(s) URL to render.
+        timeout: Navigation timeout in seconds.
+        logger: Optional logger; falls back to the module logger.
+    Returns:
+        The rendered page's full HTML.
+    Raises:
+        JDIngestError: If Playwright is not installed or the page fails to render.
+    """
+    _logger = logger or logging.getLogger(__name__)
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise JDIngestError(
+            "JavaScript rendering needs the browser extra: "
+            "pip install 'jobjob[autofill]' && playwright install chromium."
+        ) from exc
+
+    timeout_ms = int(timeout * 1000)
+    with sync_playwright() as play:
+        browser = play.chromium.launch(headless=True)
+        try:
+            page = browser.new_page(user_agent=get_user_agent())
+            page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
+            # Best-effort: let SPA content settle; not all pages reach networkidle.
+            try:
+                page.wait_for_load_state("networkidle", timeout=timeout_ms)
+            except Exception as exc:  # noqa: BLE001 — settle is best-effort.
+                _logger.debug("networkidle wait skipped for %s: %s", url, exc)
+            return page.content()
+        finally:
+            browser.close()
 
 
 def extract_main_text(html: str) -> str:
@@ -240,40 +292,86 @@ def write_snapshot(
     return path
 
 
+def _extract_static(
+    url: str,
+    _fetch_html: Callable[[str], str],
+    _extract: Callable[[str], str],
+    logger: logging.Logger,
+) -> str:
+    """Cheap path: plain GET + extract. Returns "" on any transport/HTTP error."""
+    try:
+        html = _fetch_html(url)
+    except Exception as exc:  # noqa: BLE001 — fall back to the browser path.
+        logger.info("Static fetch failed for %s (%s); will try a browser.", url, exc)
+        return ""
+    return _extract(html)
+
+
+def _extract_rendered(
+    url: str,
+    _fetch_rendered: Callable[..., str],
+    _extract: Callable[[str], str],
+    logger: logging.Logger,
+) -> str:
+    """Fallback path: headless render + extract. Returns "" if rendering is unusable.
+
+    A render failure — including Playwright being absent (JDIngestError) — is not
+    fatal here: it returns "" so the caller falls through to the comprehensive
+    failure guidance (which itself names the browser extra and the paste/upload path).
+    """
+    try:
+        html = _fetch_rendered(url, logger=logger)
+    except Exception as exc:  # noqa: BLE001 — non-fatal; fall through to guidance.
+        logger.info("Headless render unavailable/failed for %s (%s).", url, exc)
+        return ""
+    return _extract(html)
+
+
 def snapshot_from_url(
     url: str,
     jobs_dir: Path,
     *,
     min_chars: int = MIN_SNAPSHOT_CHARS,
+    use_browser: bool = True,
     logger: Optional[logging.Logger] = None,
     _fetch_html: Callable[[str], str] = _http_get,
+    _fetch_rendered: Callable[..., str] = fetch_rendered_html,
     _extract: Callable[[str], str] = extract_main_text,
 ) -> Path:
     """Fetch ``url``, extract its main text, and write a snapshot into ``jobs_dir``.
+
+    Tries a cheap server-side GET first; if that yields too little text (or fails)
+    and ``use_browser`` is set, falls back to a headless browser render before
+    re-extracting. Only when both come up short is a JDIngestError raised.
 
     Arguments:
         url: The job-posting URL (http/https).
         jobs_dir: The jobs input directory.
         min_chars: Minimum extracted length below which extraction is treated as a
             failure (JS-rendered/auth-gated board returning an empty skeleton).
+        use_browser: Whether to fall back to a headless render when the cheap path
+            is thin. Disable to force the GET-only behavior (e.g. tests, no browser).
         logger: Optional logger; falls back to the module logger.
         _fetch_html: Injection point for the HTTP GET (testing).
+        _fetch_rendered: Injection point for the headless render (testing).
         _extract: Injection point for main-text extraction (testing).
     Returns:
         The path to the written snapshot.
     Raises:
-        JDIngestError: If the URL is missing/invalid, the fetch fails, or too little
-            text was extracted to parse.
+        JDIngestError: If the URL is missing/invalid, or too little text was
+            extracted by either path.
     """
     _logger = logger or logging.getLogger(__name__)
     clean_url = str(safe_url(url))
 
-    try:
-        html = _fetch_html(clean_url)
-    except Exception as exc:  # noqa: BLE001 — any transport/HTTP error → loud, clean.
-        raise JDIngestError(f"Could not fetch the URL: {exc}") from exc
+    text = _extract_static(clean_url, _fetch_html, _extract, _logger)
 
-    text = _extract(html)
+    if len(text) < min_chars and use_browser:
+        _logger.info("Cheap fetch thin (%d chars); rendering %s.", len(text), clean_url)
+        rendered = _extract_rendered(clean_url, _fetch_rendered, _extract, _logger)
+        if len(rendered) >= len(text):
+            text = rendered
+
     if len(text) < min_chars:
         _logger.warning(
             "Extraction yielded %d chars from %s; refusing to parse.",
