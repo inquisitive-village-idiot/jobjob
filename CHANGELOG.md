@@ -6,6 +6,12 @@ the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — foll
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-06-24
+
+- [MINOR] Add `jobjob autofill <url>`: assisted, human-in-the-loop auto-fill of an online application in a real browser (Workday to start). It fills the contact basics and your work history from the active profile, flags anything it can't map confidently (custom date widgets, screening questions), and leaves account creation and the final submit to you — it never submits on your behalf. Needs the new browser extra (`pip install 'jobjob[autofill]'` then `playwright install chromium`)
+- [MINOR] Store a structured work history per profile in `content/experience.toml` — one entry per role, keeping several roles at one employer as separate entries (the shape an application form wants) while still grouping them as one company on a résumé
+- [MINOR] Résumé import now also extracts your work history into that structured form, with an editable Work-experience section in the import review before you save
+- [MINOR] Ingest a job description from a JavaScript-rendered posting URL: when a plain fetch comes up empty (Workday, Greenhouse, LinkedIn and similar), jobjob falls back to a headless browser render before extracting, so more postings can be captured by URL instead of pasting. Uses the same browser extra
 - [PATCH] Migrate the browser end-to-end test suite from Selenium to Playwright (no user-facing change): Playwright fetches its own Chromium, so the e2e CI job no longer needs a system Chrome, and the tests use auto-waiting locators
 
 ## [2.6.0] - 2026-06-24
