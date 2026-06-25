@@ -3,8 +3,12 @@
 
 from collections.abc import Sequence
 
+from jobjob.autofill.adapters.ashby import AshbyAdapter
 from jobjob.autofill.adapters.base import Adapter
 from jobjob.autofill.adapters.greenhouse import GreenhouseAdapter
+from jobjob.autofill.adapters.lever import LeverAdapter
+from jobjob.autofill.adapters.smartrecruiters import SmartRecruitersAdapter
+from jobjob.autofill.adapters.workable import WorkableAdapter
 from jobjob.autofill.adapters.workday import WorkdayAdapter
 
 # Ordered registry: the first adapter whose ``matches`` returns True wins. A generic
@@ -12,6 +16,10 @@ from jobjob.autofill.adapters.workday import WorkdayAdapter
 ADAPTERS: tuple[Adapter, ...] = (
     WorkdayAdapter(),
     GreenhouseAdapter(),
+    LeverAdapter(),
+    AshbyAdapter(),
+    WorkableAdapter(),
+    SmartRecruitersAdapter(),
 )
 
 

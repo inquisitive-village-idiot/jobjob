@@ -56,6 +56,10 @@ class TestSelectAdapter(ThisTestCase):
             # (expected_name, url)
             ("workday", "https://acme.myworkdayjobs.com/job"),
             ("greenhouse", "https://boards.greenhouse.io/acme/jobs/1"),
+            ("lever", "https://jobs.lever.co/acme/abc"),
+            ("ashby", "https://jobs.ashbyhq.com/acme/role"),
+            ("workable", "https://apply.workable.com/acme/j/ABC/"),
+            ("smartrecruiters", "https://jobs.smartrecruiters.com/Acme/1-role"),
         ]
         for expected, url in tests:
             with self.subTest(url):
