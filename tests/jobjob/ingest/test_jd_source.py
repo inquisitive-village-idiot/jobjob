@@ -46,11 +46,13 @@ class TestSnapshotFromUrl(TestCase):
             self.assertIn("<!-- source: https://jobs.example.com", content)
 
     def test_empty_skeleton_raises_and_writes_nothing(self) -> None:
+        # GET-only mode (use_browser=False): SPA skeleton extracts to nothing → raise.
         jobs_dir = Path(self._tmp())
         with self.assertRaises(MOD.JDIngestError):
             MOD.snapshot_from_url(
                 "https://linkedin.com/jobs/view/123",
                 jobs_dir,
+                use_browser=False,
                 _fetch_html=lambda url: _SKELETON_HTML,
                 _extract=lambda html: "",  # SPA skeleton → no text
             )
@@ -62,21 +64,26 @@ class TestSnapshotFromUrl(TestCase):
             MOD.snapshot_from_url(
                 "https://jobs.example.com/x",
                 jobs_dir,
+                use_browser=False,
                 _fetch_html=lambda url: "<html>…</html>",
                 _extract=lambda html: "Apply now",  # under MIN_SNAPSHOT_CHARS
             )
 
-    def test_fetch_failure_raises_clean_error(self) -> None:
+    def test_get_only_fetch_failure_raises_guidance(self) -> None:
+        # In GET-only mode a transport failure yields the actionable guidance message.
         def _boom(url: str) -> str:
             raise RuntimeError("connection reset")
 
+        jobs_dir = Path(self._tmp())
         with self.assertRaises(MOD.JDIngestError) as ctx:
             MOD.snapshot_from_url(
                 "https://jobs.example.com/x",
-                Path(self._tmp()),
+                jobs_dir,
+                use_browser=False,
                 _fetch_html=_boom,
             )
-        self.assertIn("connection reset", str(ctx.exception))
+        self.assertIn("PDF", str(ctx.exception))
+        self.assertEqual([], list(jobs_dir.iterdir()))
 
     def test_rejects_non_http_scheme(self) -> None:
         with self.assertRaises(MOD.JDIngestError):
@@ -85,6 +92,63 @@ class TestSnapshotFromUrl(TestCase):
     def test_rejects_empty_url(self) -> None:
         with self.assertRaises(MOD.JDIngestError):
             MOD.snapshot_from_url("   ", Path(self._tmp()))
+
+    def test_browser_fallback_used_when_static_is_thin(self) -> None:
+        # The cheap GET returns a skeleton; the rendered HTML carries the posting.
+        jobs_dir = Path(self._tmp())
+        snapshot = MOD.snapshot_from_url(
+            "https://acme.myworkdayjobs.com/job/123",
+            jobs_dir,
+            _fetch_html=lambda url: "SKELETON",
+            _fetch_rendered=lambda url, **kw: "RENDERED",
+            _extract=lambda html: _ACME_POSTING if html == "RENDERED" else "",
+        )
+        self.assertTrue(snapshot.is_file())
+        self.assertIn("Acme Gazette", snapshot.read_text(encoding="utf-8"))
+
+    def test_browser_not_called_when_static_is_sufficient(self) -> None:
+        # A guard: a healthy cheap fetch must short-circuit before the browser.
+        def _must_not_render(url: str, **kw: object) -> str:
+            raise AssertionError("browser should not be used when static suffices")
+
+        snapshot = MOD.snapshot_from_url(
+            "https://jobs.example.com/acme",
+            Path(self._tmp()),
+            _fetch_html=lambda url: "<html>…</html>",
+            _fetch_rendered=_must_not_render,
+            _extract=lambda html: _ACME_POSTING,
+        )
+        self.assertTrue(snapshot.is_file())
+
+    def test_both_paths_thin_raises_and_writes_nothing(self) -> None:
+        jobs_dir = Path(self._tmp())
+        with self.assertRaises(MOD.JDIngestError):
+            MOD.snapshot_from_url(
+                "https://acme.myworkdayjobs.com/job/123",
+                jobs_dir,
+                _fetch_html=lambda url: "SKELETON",
+                _fetch_rendered=lambda url, **kw: "STILL_SKELETON",
+                _extract=lambda html: "",
+            )
+        self.assertEqual([], list(jobs_dir.iterdir()))
+
+    def test_browser_unavailable_falls_through_to_guidance(self) -> None:
+        # A render error (e.g. Playwright absent) is non-fatal: fall through to the
+        # actionable guidance rather than surfacing the raw render error.
+        def _no_browser(url: str, **kw: object) -> str:
+            raise MOD.JDIngestError("needs the browser extra")
+
+        jobs_dir = Path(self._tmp())
+        with self.assertRaises(MOD.JDIngestError) as ctx:
+            MOD.snapshot_from_url(
+                "https://acme.myworkdayjobs.com/job/123",
+                jobs_dir,
+                _fetch_html=lambda url: "SKELETON",
+                _fetch_rendered=_no_browser,
+                _extract=lambda html: "",
+            )
+        self.assertIn("PDF", str(ctx.exception))
+        self.assertEqual([], list(jobs_dir.iterdir()))
 
     def _tmp(self) -> str:
         import tempfile
