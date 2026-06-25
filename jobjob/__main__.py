@@ -13,6 +13,7 @@ from typing import Optional
 
 from jobjob.apply.__main__ import main as apply_main
 from jobjob.auth.__main__ import main as auth_main
+from jobjob.autofill.__main__ import main as autofill_main
 from jobjob.cli import run_main
 from jobjob.enrich.__main__ import main as enrich_main
 
@@ -21,6 +22,7 @@ COMMANDS: Mapping[str, Callable[..., int]] = {
     "apply": apply_main,
     "enrich": enrich_main,
     "auth": auth_main,
+    "autofill": autofill_main,
 }
 
 

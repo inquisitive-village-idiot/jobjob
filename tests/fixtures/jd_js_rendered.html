@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!--
+  A JS-rendered job-posting fixture for the headless-fetch e2e test. A plain read of
+  this file yields only the skeleton (no posting text); the posting is injected by
+  JavaScript after load, so only a rendered fetch surfaces it — exactly the case
+  fetch_rendered_html exists for. No live site is contacted.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Science Correspondent — Acme Gazette</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      // Defer so the initial DOM is an empty skeleton (mimics an SPA board).
+      window.addEventListener("load", function () {
+        var article = document.createElement("article");
+        article.innerHTML =
+          "<h1>Science Correspondent — Acme Gazette</h1>" +
+          "<p>Acme Gazette seeks a science correspondent to cover print science " +
+          "and the history of typography. You will report on Gutenberg-era " +
+          "printing, fact-check claims against primary sources, and file 800-word " +
+          "features on deadline. Requirements: five years of newsroom experience, a " +
+          "nose for accuracy, and the ability to translate dense research into " +
+          "lively prose for a general audience.</p>";
+        document.getElementById("app").appendChild(article);
+      });
+    </script>
+  </body>
+</html>

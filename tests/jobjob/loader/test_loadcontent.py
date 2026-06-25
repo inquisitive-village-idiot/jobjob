@@ -89,4 +89,31 @@ class TestLoadSkills(ThisTestCase):
         self.assertTrue(first.text)
 
 
+class TestLoadExperience(ThisTestCase):
+    """Test function. Uses the real static/example/content/experience.toml."""
+
+    def setUp(self) -> None:
+        self.result = MOD.load_experience()
+
+    def test_loads_roles(self) -> None:
+        self.assertGreater(len(self.result.roles), 0)
+
+    def test_groups_adjacent_same_company_roles(self) -> None:
+        # The example persona has two adjacent Lattice Review roles (a promotion),
+        # which must collapse into one company block of two roles.
+        blocks = [(b.company, len(b.roles)) for b in self.result.grouped()]
+        self.assertIn(("The Lattice Review", 2), blocks)
+
+    def test_strips_description_whitespace(self) -> None:
+        sample = self.result.roles[0].description
+        self.assertEqual(sample, sample.strip())
+
+    def test_missing_file_returns_empty_set(self) -> None:
+        with mock.patch.object(
+            MOD, "get_content_path", side_effect=ValueError("not found")
+        ):
+            found = MOD.load_experience()
+        self.assertEqual((), found.roles)
+
+
 # __END__

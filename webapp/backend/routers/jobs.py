@@ -303,10 +303,12 @@ def _launch_snapshot_apply(
 def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
     """Capture a job posting from a URL, then apply. Returns {job_id, snapshot}.
 
-    A plain server-side GET + readability extraction writes a durable snapshot into
-    ``data/jobs/``; the snapshot then runs through the normal apply pipeline. A
-    JS-rendered or auth-gated board yields too little text and is rejected with a
-    422 so the user can fall back to PDF upload or paste-text.
+    A server-side GET + readability extraction writes a durable snapshot into
+    ``data/jobs/``; when the cheap fetch is thin (a JS-rendered board) and the
+    browser extra is installed, it falls back to a headless render before
+    extracting. The snapshot then runs through the normal apply pipeline. Only when
+    both paths come up short is it rejected with a 422 so the user can fall back to
+    PDF upload or paste-text.
     """
     s = _app_settings(request)
 

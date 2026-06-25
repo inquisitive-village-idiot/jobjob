@@ -27,12 +27,22 @@ interface DraftSkill {
   text: string;
   keywords: string[];
 }
+interface DraftRole {
+  company: string;
+  title: string;
+  location: string;
+  start: string;
+  end: string;
+  current: boolean;
+  description: string;
+}
 interface ExtractResult {
   objective: string;
   sections: string[];
   background: string;
   highlights: DraftHighlight[];
   skills: DraftSkill[];
+  experience: DraftRole[];
   background_mode: string;
 }
 interface SaveResult {
@@ -72,6 +82,8 @@ export default function ResumeImportPanel() {
   const [hlMode, setHlMode] = useState<Mode>("append");
   const [saveSkills, setSaveSkills] = useState(true);
   const [skMode, setSkMode] = useState<Mode>("append");
+  const [saveExperience, setSaveExperience] = useState(true);
+  const [exMode, setExMode] = useState<Mode>("append");
   const [saveBackground, setSaveBackground] = useState(false);
   const [bgMode, setBgMode] = useState<Mode>("replace");
   const [saving, setSaving] = useState(false);
@@ -122,6 +134,21 @@ export default function ResumeImportPanel() {
     );
   const removeSkill = (i: number) =>
     setDraft((d) => (d ? { ...d, skills: d.skills.filter((_, idx) => idx !== i) } : d));
+  const patchRole = (i: number, patch: Partial<DraftRole>) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            experience: d.experience.map((r, idx) =>
+              idx === i ? { ...r, ...patch } : r
+            ),
+          }
+        : d
+    );
+  const removeRole = (i: number) =>
+    setDraft((d) =>
+      d ? { ...d, experience: d.experience.filter((_, idx) => idx !== i) } : d
+    );
 
   const save = async () => {
     if (!draft) return;
@@ -132,10 +159,12 @@ export default function ResumeImportPanel() {
       const targets: Record<string, Mode> = {};
       if (saveHighlights) targets.highlights = hlMode;
       if (saveSkills) targets.skills = skMode;
+      if (saveExperience) targets.experience = exMode;
       if (saveBackground) targets.background = bgMode;
       const res = await api.post<SaveResult>("/resume-import/save", {
         highlights: draft.highlights,
         skills: draft.skills,
+        experience: draft.experience,
         background: draft.background,
         targets,
       });
@@ -157,8 +186,8 @@ export default function ResumeImportPanel() {
     <div className="space-y-5">
       <p className="text-sm text-gray-600">
         Upload an existing résumé to bootstrap your reusable content. jobjob extracts
-        highlights, skills, an objective, and a background narrative for you to review
-        and edit before saving into your active profile.
+        highlights, skills, your work history, an objective, and a background narrative
+        for you to review and edit before saving into your active profile.
       </p>
 
       {/* ── Upload ── */}
@@ -356,6 +385,111 @@ export default function ResumeImportPanel() {
             </div>
           </section>
 
+          {/* ── Experience ── */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Work experience ({draft.experience.length})
+              </h3>
+              <label className="flex items-center gap-2 text-xs text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={saveExperience}
+                  onChange={(e) => setSaveExperience(e.target.checked)}
+                />
+                Save
+                {saveExperience && (
+                  <SaveModeSelect value={exMode} onChange={setExMode} />
+                )}
+              </label>
+            </div>
+            <p className="text-xs text-gray-400 mb-2">
+              One entry per role. Several roles at the same employer (e.g. a promotion)
+              are kept separate — each with its own dates and bullets — which is how an
+              application form wants them.
+            </p>
+            <div className="space-y-3">
+              {draft.experience.map((r, i) => (
+                <div
+                  key={i}
+                  className="border border-gray-200 rounded-lg p-3 space-y-2"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={r.title}
+                      onChange={(e) => patchRole(i, { title: e.target.value })}
+                      placeholder="Title"
+                      className="px-2 py-1 text-sm border border-gray-300 rounded w-44
+                        focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      value={r.company}
+                      onChange={(e) => patchRole(i, { company: e.target.value })}
+                      placeholder="Company"
+                      className="px-2 py-1 text-sm border border-gray-300 rounded w-44
+                        focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      value={r.location}
+                      onChange={(e) => patchRole(i, { location: e.target.value })}
+                      placeholder="Location"
+                      className="px-2 py-1 text-xs border border-gray-300 rounded w-28
+                        focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => removeRole(i)}
+                      className="text-xs text-gray-400 hover:text-red-600 ml-auto"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={r.start}
+                      onChange={(e) => patchRole(i, { start: e.target.value })}
+                      placeholder="Start (e.g. 2021-04)"
+                      className="px-2 py-1 text-xs border border-gray-300 rounded w-36
+                        focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      value={r.end}
+                      onChange={(e) => patchRole(i, { end: e.target.value })}
+                      placeholder="End"
+                      disabled={r.current}
+                      className="px-2 py-1 text-xs border border-gray-300 rounded w-36
+                        focus:outline-none focus:ring-2 focus:ring-blue-500
+                        disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                    <label className="flex items-center gap-1 text-xs text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={r.current}
+                        onChange={(e) =>
+                          patchRole(i, {
+                            current: e.target.checked,
+                            ...(e.target.checked ? { end: "" } : {}),
+                          })
+                        }
+                      />
+                      Current role
+                    </label>
+                  </div>
+                  <textarea
+                    value={r.description}
+                    onChange={(e) => patchRole(i, { description: e.target.value })}
+                    rows={3}
+                    placeholder="One accomplishment per line"
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded
+                      focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  />
+                </div>
+              ))}
+              {draft.experience.length === 0 && (
+                <p className="text-xs text-gray-400">No work experience extracted.</p>
+              )}
+            </div>
+          </section>
+
           {/* ── Background ── */}
           <section>
             <div className="flex items-center justify-between mb-2">
@@ -387,7 +521,10 @@ export default function ResumeImportPanel() {
           <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
             <button
               onClick={save}
-              disabled={saving || (!saveHighlights && !saveSkills && !saveBackground)}
+              disabled={
+                saving ||
+                (!saveHighlights && !saveSkills && !saveExperience && !saveBackground)
+              }
               className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium
                 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >

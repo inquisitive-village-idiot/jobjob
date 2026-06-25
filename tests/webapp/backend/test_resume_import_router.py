@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 import routers.resume_import as ri
 import security
 from jobjob.ingest.resume_import import ResumeImportDraft
+from jobjob.structure.experience import Role
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
@@ -43,6 +44,15 @@ _DRAFT = ResumeImportDraft(
         Skill(label="fact_checking", text="Fact-Checking", keywords=("accuracy",)),
     ),
     background="Tila Mer is a science correspondent.",
+    experience=(
+        Role(
+            company="The Lattice Review",
+            title="Senior Correspondent",
+            start="2021-04",
+            current=True,
+            description="- Led the desk.",
+        ),
+    ),
 )
 
 
@@ -59,6 +69,8 @@ class TestExtractEndpoint:
         body = resp.json()
         assert body["objective"] == "Tell true stories about cells."
         assert body["highlights"][0]["topic"] == "Creativity"
+        assert body["experience"][0]["company"] == "The Lattice Review"
+        assert body["experience"][0]["current"] is True
         assert body["background_mode"] == "fuller"
 
     def test_unsupported_suffix_415(self, client):
@@ -111,6 +123,15 @@ class TestSaveEndpoint:
                     "keywords": ["accuracy"],
                 }
             ],
+            "experience": [
+                {
+                    "company": "The Lattice Review",
+                    "title": "Senior Correspondent",
+                    "start": "2021-04",
+                    "current": True,
+                    "description": "- Led the desk.",
+                }
+            ],
             "background": "Tila Mer is a science correspondent.",
             "targets": targets,
         }
@@ -127,6 +148,16 @@ class TestSaveEndpoint:
         assert "skills" not in saved  # not targeted
         assert (repo / "static" / "example" / "content" / "highlights.toml").is_file()
         assert (repo / "static" / "example" / "reference" / "background.md").is_file()
+
+    def test_saves_experience(self, client, repo):
+        resp = client.post(
+            "/api/resume-import/save",
+            json=self._payload(experience="replace"),
+        )
+        assert resp.status_code == 200, resp.text
+        saved = resp.json()["saved"]
+        assert saved["experience"]["count"] == 1
+        assert (repo / "static" / "example" / "content" / "experience.toml").is_file()
 
     def test_nothing_selected_422(self, client):
         resp = client.post("/api/resume-import/save", json=self._payload())

@@ -25,9 +25,15 @@ from jobjob.ingest.resume_import import (
     draft_to_dict,
     extract_resume,
     highlight_from_dict,
+    role_from_dict,
     skill_from_dict,
 )
-from jobjob.ingest.save import save_background, save_highlights, save_skills
+from jobjob.ingest.save import (
+    save_background,
+    save_experience,
+    save_highlights,
+    save_skills,
+)
 from jobjob.loader.loadstatic import SUPPORTED_SUFFIXES
 from routers.static_content import _reference_base, _toml_path
 
@@ -109,18 +115,20 @@ class SaveTargets(BaseModel):
     # Per-section save mode ("replace"/"append") or None to skip that section.
     highlights: Optional[str] = None
     skills: Optional[str] = None
+    experience: Optional[str] = None
     background: Optional[str] = None
 
 
 class SaveRequest(BaseModel):
     highlights: list[dict[str, Any]] = []
     skills: list[dict[str, Any]] = []
+    experience: list[dict[str, Any]] = []
     background: str = ""
     targets: SaveTargets = SaveTargets()
 
 
 def _validate_modes(targets: SaveTargets) -> None:
-    for name in ("highlights", "skills", "background"):
+    for name in ("highlights", "skills", "experience", "background"):
         mode = getattr(targets, name)
         if mode is not None and mode not in SAVE_MODES:
             raise HTTPException(
@@ -154,6 +162,12 @@ def save(body: SaveRequest, request: Request) -> dict:
         path = _toml_path(request, "skills")
         count = save_skills(path, skills, mode=body.targets.skills)
         written["skills"] = {"count": count, "mode": body.targets.skills}
+
+    if body.targets.experience and body.experience:
+        roles = [role_from_dict(r) for r in body.experience]
+        path = _toml_path(request, "experience")
+        count = save_experience(path, roles, mode=body.targets.experience)
+        written["experience"] = {"count": count, "mode": body.targets.experience}
 
     if body.targets.background and body.background.strip():
         path = _background_path(request)

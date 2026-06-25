@@ -28,8 +28,8 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-  # Browser end-to-end tests (Selenium) against the built, app-served frontend.
-  # ubuntu-latest ships Google Chrome; Selenium Manager resolves the matching driver.
+  # Browser end-to-end tests (Playwright) against the built, app-served frontend.
+  # Playwright fetches its own pinned Chromium, so no system browser is required.
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +47,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pytest pytest-cov coverage httpx selenium
+          pip install pytest pytest-cov coverage httpx playwright
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
       - name: Run e2e tests
         run: pytest -m e2e --no-cov -q
 

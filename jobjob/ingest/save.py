@@ -13,6 +13,7 @@ from pathlib import Path
 import tomlkit
 
 from jobjob.ingest.resume_import import SAVE_MODES
+from jobjob.structure.experience import Role
 from jobjob.structure.highlight import Highlight
 from jobjob.structure.skill import Skill
 
@@ -54,6 +55,18 @@ def _skill_item(skill: Skill):
     item["label"] = skill.label
     item["text"] = skill.text
     item["keywords"] = list(skill.keywords)
+    return item
+
+
+def _role_item(role: Role):
+    item = tomlkit.table()
+    item["company"] = role.company
+    item["title"] = role.title
+    item["location"] = role.location
+    item["start"] = role.start
+    item["end"] = role.end
+    item["current"] = role.current
+    item["description"] = tomlkit.string(role.description.strip(), multiline=True)
     return item
 
 
@@ -102,6 +115,17 @@ def save_skills(path: Path, skills: Iterable[Skill], *, mode: str) -> int:
         ["tool", "skills"],
         "skill",
         (_skill_item(s) for s in skills),
+        mode=mode,
+    )
+
+
+def save_experience(path: Path, roles: Iterable[Role], *, mode: str) -> int:
+    """Write roles into ``[[tool.experience.role]]`` of ``path``."""
+    return _save_aot(
+        path,
+        ["tool", "experience"],
+        "role",
+        (_role_item(r) for r in roles),
         mode=mode,
     )
 
