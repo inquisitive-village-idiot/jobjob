@@ -1,0 +1,18 @@
+{
+    "guide/configuration": 0.055,
+    "guide/credentials": 0.008,
+    "guide/free-option": 0.009,
+    "guide/github-repo": 0.009,
+    "guide/google-project": 0.012,
+    "guide/index": 0.008,
+    "guide/install": 0.012,
+    "guide/prerequisites": 0.01,
+    "guide/profiles": 0.016,
+    "guide/usage-applications": 0.015,
+    "guide/usage-enrichment": 0.01,
+    "index": 0.007,
+    "library/architecture": 0.015,
+    "library/index": 0.002,
+    "library/reference": 0.952,
+    "restapi/index": 0.062
+}

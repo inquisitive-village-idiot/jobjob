@@ -1,0 +1,160 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Guide &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=69ff2ef9"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Prerequisites" href="prerequisites.html" />
+    <link rel="prev" title="jobjob documentation" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="credentials.html">Credentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiles.html">Profiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage-applications.html">Applications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage-enrichment.html">Enrichment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="google-project.html">Google Drive/Docs setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="github-repo.html">Profile content in a Git/GitHub repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="free-option.html">Free option (experimental)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">User Guide</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/guide/index.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="user-guide">
+<h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
+<p>jobjob runs on your own machine as a small local website. It does two things:</p>
+<ol class="arabic simple">
+<li><p><strong>Application Builder</strong> — give it a job posting (PDF, URL, or pasted text). It reads
+the posting, picks the most relevant parts of your background, and writes a tailored
+cover letter and résumé summary. Output is saved on your computer and, optionally, to
+Google Drive as editable Docs.</p></li>
+<li><p><strong>Contact Enrichment</strong> — give it a PDF or screenshot of a LinkedIn profile. It parses
+out the details and appends them to a Google spreadsheet.</p></li>
+</ol>
+<p>Everything below works on <strong>Windows, macOS, and Linux</strong>. Plan on 30–60 minutes the first
+time — most of that is the one-time account setup. After that, each application takes a
+couple of minutes.</p>
+<p>Follow the pages in order.</p>
+<p class="rubric">Steps</p>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="prerequisites.html"><span class="doc">Prerequisites</span></a> — install Python (or <code class="docutils literal notranslate"><span class="pre">uv</span></code>, which brings its own).</p></li>
+<li><p><a class="reference internal" href="credentials.html"><span class="doc">Credentials</span></a> — get an Anthropic API key; optionally set up Google.</p></li>
+<li><p><a class="reference internal" href="install.html"><span class="doc">Install</span></a> — install the <code class="docutils literal notranslate"><span class="pre">jobjob</span></code> app.</p></li>
+<li><p><a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> — launch jobjob and finish setup.</p></li>
+<li><p><a class="reference internal" href="profiles.html"><span class="doc">Profiles</span></a> — set up your content profile.</p></li>
+<li><p><a class="reference internal" href="usage-applications.html"><span class="doc">Applications</span></a> — generate your first application.</p></li>
+</ol>
+<p class="rubric">Reference and optional topics</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="usage-enrichment.html"><span class="doc">Enrichment</span></a> — import LinkedIn contacts into a Google Sheet.</p></li>
+<li><p><a class="reference internal" href="google-project.html"><span class="doc">Google Drive/Docs setup</span></a> — create the Google project needed for Drive/Docs output.</p></li>
+<li><p><a class="reference internal" href="github-repo.html"><span class="doc">Profile content in a Git/GitHub repository</span></a> — keep your profile content in a Git/GitHub repository.</p></li>
+<li><p><a class="reference internal" href="free-option.html"><span class="doc">Free option (experimental)</span></a> — run on a free Google AI backend instead of a paid key.</p></li>
+</ul>
+<div class="toctree-wrapper compound">
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="jobjob documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="prerequisites.html" class="btn btn-neutral float-right" title="Prerequisites" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

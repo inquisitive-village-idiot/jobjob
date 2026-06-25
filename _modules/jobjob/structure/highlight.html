@@ -1,0 +1,205 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.structure.highlight &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=69ff2ef9"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.structure.highlight</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.structure.highlight</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Credential highlight blocks and their selection metadata.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dcs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Iterable</span><span class="p">,</span> <span class="n">Mapping</span>
+
+
+<div class="viewcode-block" id="Highlight">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.structure.highlight.Highlight">[docs]</a>
+<span class="nd">@dcs</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Highlight</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A single pre-written credential block.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        context: Stable key identifying the block (e.g. &quot;fda_class3&quot;).</span>
+<span class="sd">        text: The block prose.</span>
+<span class="sd">        keywords: Keywords used to score relevance against a job description.</span>
+<span class="sd">        enabled: Whether the block is eligible for selection.</span>
+<span class="sd">        topic: Single-word grouping for the UI (e.g. Collaboration, Communication,</span>
+<span class="sd">            Creativity, Leadership, Teamwork, Technical). Empty string if ungrouped.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">dcs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">tuple</span><span class="p">)</span>
+    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">topic</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="HighlightSet">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.structure.highlight.HighlightSet">[docs]</a>
+<span class="nd">@dcs</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HighlightSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A collection of highlights plus selection defaults.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        highlights: All loaded highlights (enabled and disabled).</span>
+<span class="sd">        default_number: Default count to select for an application.</span>
+<span class="sd">        max_characters: Upper bound on total selected character count.</span>
+<span class="sd">        min_characters: Lower bound on total selected character count.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">highlights</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Highlight</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+    <span class="n">default_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">max_characters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">900</span>
+    <span class="n">min_characters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">600</span>
+
+<div class="viewcode-block" id="HighlightSet.enabled">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.structure.highlight.HighlightSet.enabled">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enabled</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Highlight</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return only the enabled highlights.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">highlights</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">enabled</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HighlightSet.by_context">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.structure.highlight.HighlightSet.by_context">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">by_context</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Highlight</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a mapping of context key to highlight (all, including disabled).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">x</span><span class="o">.</span><span class="n">context</span><span class="p">:</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">highlights</span><span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="make_highlight_set">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.structure.highlight.make_highlight_set">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_highlight_set</span><span class="p">(</span>
+    <span class="n">highlights</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Highlight</span><span class="p">],</span>
+    <span class="n">default_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">max_characters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">min_characters</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HighlightSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a HighlightSet from an iterable of highlights.</span>
+
+<span class="sd">    NOTE: selection defaults live only on ``HighlightSet``; passing None for any</span>
+<span class="sd">        keeps that field&#39;s default (so the value is declared in exactly one place).</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        highlights: The highlights.</span>
+<span class="sd">        default_number: Override for the default selection count.</span>
+<span class="sd">        max_characters: Override for the max total character count.</span>
+<span class="sd">        min_characters: Override for the min total character count.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A HighlightSet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">overrides</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;default_number&quot;</span><span class="p">:</span> <span class="n">default_number</span><span class="p">,</span>
+        <span class="s2">&quot;max_characters&quot;</span><span class="p">:</span> <span class="n">max_characters</span><span class="p">,</span>
+        <span class="s2">&quot;min_characters&quot;</span><span class="p">:</span> <span class="n">min_characters</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">value</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">overrides</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">HighlightSet</span><span class="p">(</span><span class="n">highlights</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">highlights</span><span class="p">),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

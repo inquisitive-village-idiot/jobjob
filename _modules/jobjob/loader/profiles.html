@@ -1,0 +1,309 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.loader.profiles &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=69ff2ef9"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.loader.profiles</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.loader.profiles</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Profile registry resolution.</span>
+
+<span class="sd">A *profile* is a separate git repo holding one content set (highlights,</span>
+<span class="sd">reference docs, and a committed ``config/.profile``). The app config registers</span>
+<span class="sd">profiles by path and names the active one::</span>
+
+<span class="sd">    JOBJOB_PROFILE_LOCAL=&quot;/path/to/your/profile&quot;</span>
+<span class="sd">    JOBJOB_ACTIVE_PROFILE=&quot;local&quot;</span>
+
+<span class="sd">This module is intentionally dependency-light (os + pathlib) so both</span>
+<span class="sd">``jobjob.config`` and ``jobjob.loader.location`` can import it without a cycle.</span>
+<span class="sd">It reads ``os.environ`` (populated by ``load_dotenv`` of the app config), so the</span>
+<span class="sd">active-profile lookup reflects whatever the app config most recently sourced.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="n">ENV_ACTIVE_PROFILE</span> <span class="o">=</span> <span class="s2">&quot;JOBJOB_ACTIVE_PROFILE&quot;</span>
+<span class="n">PROFILE_REGISTRY_PREFIX</span> <span class="o">=</span> <span class="s2">&quot;JOBJOB_PROFILE_&quot;</span>
+<span class="c1"># A profile repo keeps its committed config under ``config/.profile``.</span>
+<span class="n">PROFILE_CONFIG_SUBDIR</span> <span class="o">=</span> <span class="s2">&quot;config&quot;</span>
+<span class="n">PROFILE_CONFIG_NAME</span> <span class="o">=</span> <span class="s2">&quot;.profile&quot;</span>
+
+<span class="c1"># The bundled, read-only example profile (the Tila Mer demo persona). Its location is</span>
+<span class="c1"># the package ``static/`` dir, so it is always present and never user-editable (it lives</span>
+<span class="c1"># in site-packages under an installed wheel). It is offered alongside the registered</span>
+<span class="c1"># profiles as a reference the user can *duplicate* into a profile they own.</span>
+<span class="n">EXAMPLE_PROFILE_NAME</span> <span class="o">=</span> <span class="s2">&quot;example&quot;</span>
+
+
+<div class="viewcode-block" id="Profile">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.Profile">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Profile</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A registered (or bundled) profile with its state resolved once at load time.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        name: Lowercased profile name (its registry suffix).</span>
+<span class="sd">        path: The profile directory.</span>
+<span class="sd">        read_only: True if this is the bundled example (lives in the read-only</span>
+<span class="sd">            package ``static/example`` and may only be duplicated).</span>
+<span class="sd">        owned: True if jobjob created and manages this dir (a direct child of the</span>
+<span class="sd">            home ``profiles/`` base) and so may delete its files. False for the</span>
+<span class="sd">            bundled example and for externally-registered, in-place dirs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">read_only</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">owned</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_same_dir</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True if two paths resolve to the same location (False on OSError).&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">a</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="o">==</span> <span class="n">b</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+
+<div class="viewcode-block" id="build_profiles">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.build_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_profiles</span><span class="p">(</span><span class="n">profiles_base</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;Profile&quot;</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve every profile (registry + bundled example) into ``Profile`` objects.</span>
+
+<span class="sd">    ``read_only`` and ``owned`` are computed once here so callers carry the flags</span>
+<span class="sd">    instead of recomputing predicates. ``profiles_base`` is the home ``profiles/``</span>
+<span class="sd">    dir (used to decide ``owned``); when None, no profile is considered owned.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        profiles_base: The ``&lt;home&gt;/profiles`` dir, or None if unknown.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        ``{name: Profile}`` for the bundled example plus all registered profiles.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">example</span> <span class="o">=</span> <span class="n">bundled_example_dir</span><span class="p">()</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">profiles_base</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span> <span class="k">if</span> <span class="n">profiles_base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Profile</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">all_profiles</span><span class="p">()</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">read_only</span> <span class="o">=</span> <span class="n">example</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_same_dir</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">example</span><span class="p">)</span>
+        <span class="n">owned</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span>
+            <span class="ow">not</span> <span class="n">read_only</span> <span class="ow">and</span> <span class="n">base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">_same_dir</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">result</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Profile</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">read_only</span><span class="o">=</span><span class="n">read_only</span><span class="p">,</span> <span class="n">owned</span><span class="o">=</span><span class="n">owned</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="list_profiles">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.list_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">list_profiles</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the registered profiles as ``{name: repo_path}`` (names lowercased).</span>
+
+<span class="sd">    Reads ``JOBJOB_PROFILE_&lt;NAME&gt;=&lt;path&gt;`` entries from the environment. The</span>
+<span class="sd">    active-profile pointer (``JOBJOB_ACTIVE_PROFILE``) is not a registry entry.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">PROFILE_REGISTRY_PREFIX</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">key</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">PROFILE_REGISTRY_PREFIX</span><span class="p">)</span> <span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">profiles</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span><span class="p">))</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">profiles</span></div>
+
+
+
+<div class="viewcode-block" id="bundled_example_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.bundled_example_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bundled_example_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the bundled example profile dir (``static/example``), or None.</span>
+
+<span class="sd">    Computed directly from this file&#39;s location (``&lt;root&gt;/jobjob/loader/profiles.py``</span>
+<span class="sd">    → ``&lt;root&gt;/static/example``) so this module stays import-light (no dependency on</span>
+<span class="sd">    ``loader.location``). The example lives in its own subdir — isolated from any</span>
+<span class="sd">    other ``static/`` assets — and doubles as the no-active-profile fallback.</span>
+<span class="sd">    Returns None when the dir is absent (e.g. a stripped install), so callers can</span>
+<span class="sd">    simply skip the example.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">candidate</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="s2">&quot;static&quot;</span> <span class="o">/</span> <span class="s2">&quot;example&quot;</span>
+    <span class="k">return</span> <span class="n">candidate</span> <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="all_profiles">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.all_profiles">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">all_profiles</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the registered profiles plus the bundled ``example`` profile.</span>
+
+<span class="sd">    The registry (``list_profiles``) is the user-managed source of truth; the</span>
+<span class="sd">    read-only ``example`` is injected here so it is always switchable for reference</span>
+<span class="sd">    without polluting the user&#39;s config. An explicit ``JOBJOB_PROFILE_EXAMPLE``</span>
+<span class="sd">    registry entry overrides the bundled location.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profiles</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">example</span> <span class="o">=</span> <span class="n">bundled_example_dir</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">example</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">profiles</span><span class="p">[</span><span class="n">EXAMPLE_PROFILE_NAME</span><span class="p">]</span> <span class="o">=</span> <span class="n">example</span>
+    <span class="n">profiles</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">list_profiles</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">profiles</span></div>
+
+
+
+<div class="viewcode-block" id="active_profile_name">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.active_profile_name">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">active_profile_name</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the active profile name (lowercased), or None if unset.&quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_ACTIVE_PROFILE</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">and</span> <span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_active_profile_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.resolve_active_profile_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_active_profile_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the active profile&#39;s repo path, or None when none is configured.</span>
+
+<span class="sd">    Returns the registered path even if it does not yet exist on disk — callers</span>
+<span class="sd">    decide whether a missing dir is an error (config load) or a fallback signal</span>
+<span class="sd">    (content resolution).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">active_profile_name</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">all_profiles</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="profile_config_file">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.profile_config_file">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">profile_config_file</span><span class="p">(</span><span class="n">profile_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the path to a profile repo&#39;s committed config (``config/.profile``).&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">profile_dir</span> <span class="o">/</span> <span class="n">PROFILE_CONFIG_SUBDIR</span> <span class="o">/</span> <span class="n">PROFILE_CONFIG_NAME</span></div>
+
+
+
+<div class="viewcode-block" id="read_env_keys">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.profiles.read_env_keys">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">read_env_keys</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the set of ``KEY`` names assigned in a dotenv-format file.</span>
+
+<span class="sd">    Blank lines, comments, and lines without ``=`` are ignored. Used to validate</span>
+<span class="sd">    that app and profile configs hold disjoint key sets.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">keys</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">keys</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+        <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span> <span class="ow">or</span> <span class="n">stripped</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;#&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;=&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">keys</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stripped</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">keys</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

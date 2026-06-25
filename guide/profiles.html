@@ -1,0 +1,262 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profiles &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=69ff2ef9"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Applications" href="usage-applications.html" />
+    <link rel="prev" title="Configuration" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">User Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="credentials.html">Credentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Profiles</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-files">The files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-three-kinds-of-profile">The three kinds of profile</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-registry">The registry</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#creating-your-profile">Creating your profile</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#next">Next</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage-applications.html">Applications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage-enrichment.html">Enrichment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="google-project.html">Google Drive/Docs setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="github-repo.html">Profile content in a Git/GitHub repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="free-option.html">Free option (experimental)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">User Guide</a></li>
+      <li class="breadcrumb-item active">Profiles</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/guide/profiles.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="profiles">
+<h1>Profiles<a class="headerlink" href="#profiles" title="Link to this heading"></a></h1>
+<p>A <strong>profile</strong> is a self-contained directory holding everything jobjob tailors an
+application from: your reusable credential blocks, skills, résumé archetypes, and the
+reference documents that keep the AI honest. Switching profiles swaps the entire set at
+once — useful for keeping one profile per role type.</p>
+<p>Every profile has the same shape:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>&lt;profile&gt;/
+  content/
+    highlights.toml     reusable credential blocks the model selects from
+    skills.toml         skills, with keywords for job-description matching
+    templates.toml      résumé archetypes + editable sections
+  reference/
+    background.md       career narrative / context (sent on every generation)
+    writing_style.md    voice and style guidance
+    cover_letters/      *.txt / *.md / *.pdf — voice anchors
+    stars/              STAR-format experience docs (honesty enforcement layer)
+  config/
+    .profile            applicant identity + résumé template id (no secrets)
+  prompt/               optional: per-profile prompt overrides
+</pre></div>
+</div>
+<section id="the-files">
+<h2>The files<a class="headerlink" href="#the-files" title="Link to this heading"></a></h2>
+<p><strong>content/</strong> — structured TOML that drives résumé customization. Edit these in the
+dashboard’s <strong>Static Content</strong> tab.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.0%" />
+<col style="width: 72.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>What it holds</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">highlights.toml</span></code></p></td>
+<td><p>Credential blocks tagged with keywords. The model selects the most relevant ones
+per job description.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">skills.toml</span></code></p></td>
+<td><p>Skill entries with labels and keywords. Used in the skills-gap analysis.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">templates.toml</span></code></p></td>
+<td><p>Résumé archetypes (e.g. <code class="docutils literal notranslate"><span class="pre">print_correspondent</span></code>) that map keywords to a Google
+Doc template id and editable sections.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>reference/</strong> — free-text documents the model reads as context. Plain Markdown/text
+(and PDFs for cover letters) — write them as you would for a person.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.0%" />
+<col style="width: 72.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Path</p></th>
+<th class="head"><p>What it holds</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">background.*</span></code></p></td>
+<td><p>Career narrative, relocation intent, and context. Shared on every generation.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">writing_style.*</span></code></p></td>
+<td><p>Voice and writing rules the cover letter should follow.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">cover_letters/</span></code></p></td>
+<td><p>Example letters used as voice anchors (<code class="docutils literal notranslate"><span class="pre">*.txt</span></code> / <code class="docutils literal notranslate"><span class="pre">*.md</span></code> / <code class="docutils literal notranslate"><span class="pre">*.pdf</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">stars/</span></code></p></td>
+<td><p>STAR-format experience documents. <strong>The honesty layer:</strong> the model draws claims
+from these rather than inventing them. A job requirement with no supporting STAR
+is flagged, not bridged.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>jobjob never asserts a qualification it can’t trace to your documents. The richer your
+<code class="docutils literal notranslate"><span class="pre">stars/</span></code> and <code class="docutils literal notranslate"><span class="pre">highlights.toml</span></code>, the stronger and more truthful the output.</p>
+</div>
+</section>
+<section id="the-three-kinds-of-profile">
+<h2>The three kinds of profile<a class="headerlink" href="#the-three-kinds-of-profile" title="Link to this heading"></a></h2>
+<p>All three use the <em>same</em> model; only their location differs.</p>
+<ul class="simple">
+<li><p><strong>example (read-only)</strong> — the bundled demo persona, the fictional <em>Tila Mer</em> (a print
+science correspondent). It ships inside the package and can’t be edited. Switch to it
+for reference, or <strong>duplicate</strong> it into a profile you own.</p></li>
+<li><p><strong>Local / owned</strong> — under <code class="docutils literal notranslate"><span class="pre">&lt;jobjob</span> <span class="pre">folder&gt;/profiles/&lt;name&gt;/</span></code>. New ones start
+<strong>blank</strong> from a valid-but-empty skeleton (no example content leaks in). Fill them in
+by hand, or by importing an existing résumé.</p></li>
+<li><p><strong>External</strong> — a directory elsewhere on disk that you <em>register</em> (validated, never
+copied). Use this when you keep your content in its own repository — see
+<a class="reference internal" href="github-repo.html"><span class="doc">Profile content in a Git/GitHub repository</span></a>.</p></li>
+</ul>
+</section>
+<section id="the-registry">
+<h2>The registry<a class="headerlink" href="#the-registry" title="Link to this heading"></a></h2>
+<p>Profiles are listed in the app config (<code class="docutils literal notranslate"><span class="pre">config/.env</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">JOBJOB_PROFILE_</span><span class="o">&lt;</span><span class="n">NAME</span><span class="o">&gt;=/</span><span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">profile</span>      <span class="c1"># one line per profile</span>
+<span class="n">JOBJOB_ACTIVE_PROFILE</span><span class="o">=&lt;</span><span class="n">name</span><span class="o">&gt;</span>                <span class="c1"># the active one</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">example</span></code> profile is always available without a registry entry. In the dashboard,
+manage everything from <strong>Settings → Profiles</strong>: create, duplicate, register, switch, or
+delete. Editing content while <code class="docutils literal notranslate"><span class="pre">example</span></code> is active is blocked — duplicate it first.</p>
+</section>
+<section id="creating-your-profile">
+<h2>Creating your profile<a class="headerlink" href="#creating-your-profile" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Open <strong>Settings → Profiles</strong>.</p></li>
+<li><p><strong>Create blank</strong> (then fill in <strong>Static Content</strong>), <strong>Import a résumé</strong> (jobjob
+extracts highlights, skills, objective, and background for you to review), or
+<strong>Register</strong> an existing folder.</p></li>
+<li><p>Switch to it so it becomes active.</p></li>
+<li><p>Fill in your details under setup / <strong>Settings</strong> (name, email, phone, LinkedIn) — these
+land in <code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>.</p></li>
+</ol>
+</section>
+<section id="next">
+<h2>Next<a class="headerlink" href="#next" title="Link to this heading"></a></h2>
+<p>→ <a class="reference internal" href="usage-applications.html"><span class="doc">Applications</span></a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage-applications.html" class="btn btn-neutral float-right" title="Applications" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
