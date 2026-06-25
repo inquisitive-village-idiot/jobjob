@@ -4,10 +4,15 @@
 from collections.abc import Sequence
 
 from jobjob.autofill.adapters.base import Adapter
+from jobjob.autofill.adapters.greenhouse import GreenhouseAdapter
 from jobjob.autofill.adapters.workday import WorkdayAdapter
 
-# Ordered registry: the first adapter whose ``matches`` returns True wins.
-ADAPTERS: tuple[Adapter, ...] = (WorkdayAdapter(),)
+# Ordered registry: the first adapter whose ``matches`` returns True wins. A generic
+# fallback adapter (matching any URL) must always be appended LAST.
+ADAPTERS: tuple[Adapter, ...] = (
+    WorkdayAdapter(),
+    GreenhouseAdapter(),
+)
 
 
 def select_adapter(

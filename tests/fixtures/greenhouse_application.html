@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!--
+  Greenhouse-like application fixture for the adapter e2e test. Field ids/types mirror
+  jobjob/autofill/adapters/greenhouse.py (stable #first_name/#last_name/#email/#phone
+  ids, a LinkedIn text field, and a résumé file input the adapter intentionally leaves
+  alone). Not a copy of any real posting; exercises the adapter offline.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Apply — Acme (Greenhouse)</title>
+  </head>
+  <body>
+    <form>
+      <label>First name
+        <input type="text" id="first_name" name="job_application[first_name]" />
+      </label>
+      <label>Last name
+        <input type="text" id="last_name" name="job_application[last_name]" />
+      </label>
+      <label>Email
+        <input type="email" id="email" name="job_application[email]" />
+      </label>
+      <label>Phone
+        <input type="tel" id="phone" name="job_application[phone]" />
+      </label>
+      <label>LinkedIn Profile
+        <input type="text" name="job_application[linkedin_profile]" />
+      </label>
+      <label>Resume
+        <input type="file" id="resume" name="job_application[resume]" />
+      </label>
+    </form>
+  </body>
+</html>

@@ -51,9 +51,15 @@ class TestSelectAdapter(ThisTestCase):
     def test_returns_none_when_no_match(self) -> None:
         self.assertIsNone(MOD.select_adapter("https://gamma.com", self.adapters))
 
-    def test_default_registry_recognizes_workday(self) -> None:
-        found = MOD.select_adapter("https://acme.myworkdayjobs.com/job")
-        self.assertEqual("workday", found.name)
+    def test_default_registry_routes_known_hosts(self) -> None:
+        tests = [
+            # (expected_name, url)
+            ("workday", "https://acme.myworkdayjobs.com/job"),
+            ("greenhouse", "https://boards.greenhouse.io/acme/jobs/1"),
+        ]
+        for expected, url in tests:
+            with self.subTest(url):
+                self.assertEqual(expected, MOD.select_adapter(url).name)
 
 
 # __END__
