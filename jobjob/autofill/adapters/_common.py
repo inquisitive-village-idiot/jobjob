@@ -10,13 +10,24 @@ that records filled vs. flagged. Playwright types are referenced only for type
 checking — adapters never import Playwright themselves.
 """
 
+import logging
+import re
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
-from jobjob.autofill.report import FilledField, FlaggedField
+from jobjob.autofill.data import ApplicationData
+from jobjob.autofill.report import (
+    FilledField,
+    FillReport,
+    FlaggedField,
+    make_fill_report,
+)
 
 if TYPE_CHECKING:
     from playwright.sync_api import Locator, Page
+
+# (candidate selectors, value, label, required) — one contact field to fill.
+ContactSpec = tuple[Sequence[str], str, str, bool]
 
 
 def split_name(full_name: str | None) -> tuple[str, str]:
@@ -70,6 +81,51 @@ def fill_contact_field(
         return
     field.fill(value)
     filled.append(FilledField(label, value))
+
+
+class ContactFormAdapter:
+    """Base for single-page ATS forms: a host match plus a contact selector map.
+
+    Most boards (Greenhouse, Lever, Ashby, Workable, SmartRecruiters) are one page of
+    contact basics + a résumé upload. A subclass sets ``name`` and ``host`` (a
+    compiled pattern) and implements :meth:`contact_specs`; the shared ``fill`` walks
+    the specs, filling present fields and flagging required empties — and never
+    touches the résumé upload, custom questions, or submit.
+    """
+
+    name: str = ""
+    host: "re.Pattern[str]" = re.compile(r"(?!)")  # never matches; subclass overrides
+
+    def __init__(self, logger: logging.Logger | None = None) -> None:
+        self._logger = logger or logging.getLogger(f"jobjob.autofill.{self.name}")
+
+    def matches(self, url: str) -> bool:
+        """Return True if ``url`` is hosted on this adapter's ATS."""
+        return bool(self.host.search(url or ""))
+
+    def contact_specs(self, data: ApplicationData) -> list[ContactSpec]:
+        """Return the contact fields to fill for this form. Override in subclasses."""
+        raise NotImplementedError
+
+    def fill(self, page: "Page", data: ApplicationData) -> FillReport:
+        """Fill the visible contact fields and report what was/was not handled."""
+        filled: list[FilledField] = []
+        flagged: list[FlaggedField] = []
+        for selectors, value, label, required in self.contact_specs(data):
+            fill_contact_field(
+                page,
+                selectors,
+                value,
+                label,
+                required=required,
+                filled=filled,
+                flagged=flagged,
+            )
+        report = make_fill_report(self.name, filled, flagged)
+        self._logger.info(
+            "%s fill: %d filled, %d flagged", self.name, len(filled), len(flagged)
+        )
+        return report
 
 
 # __END__
