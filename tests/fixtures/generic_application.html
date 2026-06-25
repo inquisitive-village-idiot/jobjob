@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<!--
+  A plain, non-ATS application form using standards-compliant autocomplete tokens and
+  input types. Exercises the generic fallback adapter's heuristic selectors (no stable
+  ATS ids/names). Mirrors jobjob/autofill/adapters/generic.py.
+-->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Apply — Acme (generic)</title></head>
+  <body>
+    <form>
+      <label>First name <input type="text" autocomplete="given-name" /></label>
+      <label>Last name <input type="text" autocomplete="family-name" /></label>
+      <label>Email <input type="email" autocomplete="email" /></label>
+      <label>Phone <input type="tel" autocomplete="tel" /></label>
+      <label>LinkedIn <input type="text" name="linkedin_url" /></label>
+      <label>Resume <input type="file" name="cv" /></label>
+    </form>
+  </body>
+</html>
