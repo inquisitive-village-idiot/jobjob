@@ -44,7 +44,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    format="%(asctime)s [%(levelname)s] %(lineno)s:%(name)s: %(message)s",
 )
 
 # ── Paths ──────────────────────────────────────────────────────────────────────

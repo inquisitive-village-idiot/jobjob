@@ -19,6 +19,7 @@ import dataclasses as dcs
 import hashlib
 import json
 import os
+import tempfile
 import textwrap
 from collections.abc import Callable
 from pathlib import Path
@@ -70,7 +71,8 @@ def get_cache_hash(value: Any, size: int = 32) -> str:
 class CacheManager:
     """Supports prompt/response loading to and saving from a cache.
 
-    TODO: Add fcntl or filelock for thread and process safety.
+    Writes are atomic (temp file + ``os.replace``), so entries are always
+    complete-or-absent; no locking is needed. See ``save_to_cache``.
 
     Class Attributes:
         _registry: Tracks instances based on cache path. Used to ensure one one
@@ -207,19 +209,40 @@ class CacheManager:
     def save_to_cache(self, prompt: str, response: Any) -> None:
         """Save given prompt and response to the cache.
 
+        Atomic: content is written to a uniquely-named ``.tmp`` file in the
+        cache directory, then moved onto the final path via ``os.replace``.
+        Readers never observe a partial entry. On failure, the temp file is
+        removed (best-effort) and the final path is left untouched -- recovery
+        is a cache miss followed by a fresh save, never a resumed temp file.
+        Orphaned ``.tmp`` files (hard kill) are ignored by readers and removed
+        by ``purge_cache``.
+
         Arguments:
             prompt: The prompt string
             response: The response. Must be JSON encodable.
         Returns:
             None.
         Raises:
-            None.
+            Errors from encoding or writing are propagated.
         """
         key = self._get_cache_hash(prompt)
         path = self._cache_path_for(key)
         data = {"prompt": prompt, "response": response}
         content = json.dumps(data, separators=(",", ":"))
-        path.write_text(content, encoding="utf-8")
+
+        # Same directory as the final path guarantees same filesystem,
+        # which guarantees os.replace is atomic.
+        fd, tmp_name = tempfile.mkstemp(
+            dir=self.cache_path, prefix=f"{key}.", suffix=".tmp"
+        )
+        tmp_path = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(content)
+            os.replace(tmp_path, path)
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)  # best-effort; orphans are inert
+            raise
 
     # "private" methods
     # ----------------------------------
