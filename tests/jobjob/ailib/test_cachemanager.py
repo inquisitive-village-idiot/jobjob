@@ -292,6 +292,60 @@ class TestCacheManagerSaveToCache(ThisTestCase):
         found = json.loads(cache_path.read_text())
         self.assertEqual(expected, found)
 
+    def test_successful_save_leaves_no_temp_files(self) -> None:
+        instance = self.get_clean_cache()
+
+        prompt = "foo bar baz"
+        key = instance._get_cache_hash(prompt)
+
+        instance.save_to_cache(prompt, "... some data ...")
+
+        expected = [instance._cache_path_for(key)]
+        found = list(instance.cache_path.iterdir())
+        self.assertEqual(expected, found)
+
+    def test_failed_write_leaves_final_path_unchanged(self) -> None:
+        instance = self.get_clean_cache()
+
+        prompt = "foo bar baz"
+        response1 = "... some data ..."
+        cache_path = instance._cache_path_for(instance._get_cache_hash(prompt))
+        instance.save_to_cache(prompt, response1)
+
+        err = OSError("disk full")
+        with mock.patch.object(MOD.os, "replace", side_effect=err):
+            with self.subTest("exception propagates"):
+                with self.assertRaisesRegex(OSError, "disk full"):
+                    instance.save_to_cache(prompt, "... other data ...")
+
+        with self.subTest("prior entry untouched"):
+            expected = response1
+            found = instance.load_from_cache(prompt)
+            self.assertEqual(expected, found)
+
+        with self.subTest("temp file removed"):
+            expected = [cache_path]
+            found = list(instance.cache_path.iterdir())
+            self.assertEqual(expected, found)
+
+    def test_orphaned_temp_file_is_inert(self) -> None:
+        instance = self.get_clean_cache()
+
+        prompt = "foo bar baz"
+        key = instance._get_cache_hash(prompt)
+        orphan = Path(instance.cache_path, f"{key}.orphan.tmp")
+        orphan.write_text("{ partial garbage")
+
+        with self.subTest("ignored by load_from_cache"):
+            with self.assertRaises(KeyError):
+                instance.load_from_cache(prompt)  # miss, NOT InvalidCacheError
+
+        with self.subTest("removed by purge_cache"):
+            instance.purge_cache()
+            expected = []
+            found = list(instance.cache_path.iterdir())
+            self.assertEqual(expected, found)
+
 
 # Module Functions
 # ======================================================================
