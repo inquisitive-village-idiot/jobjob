@@ -157,3 +157,6 @@ config/*
 # jobjob local run outputs
 /out/
 /out-test/
+
+# Claude Code machine-local settings
+.claude/settings.local.json
