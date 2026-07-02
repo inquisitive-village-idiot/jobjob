@@ -22,6 +22,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from routers import (
     config,
     jobs,
@@ -34,7 +36,6 @@ from routers import (
     update,
 )
 from security import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SAFE_METHODS, configure_sandbox
-from starlette.middleware.base import BaseHTTPMiddleware
 
 # Add the backend dir to sys.path so ``from routers import ...`` works when
 # uvicorn is launched from the webapp/backend directory.
@@ -115,10 +116,9 @@ def reload_state() -> None:
     profile so content, applicant identity, template, and the sandbox refresh
     without a server restart.
     """
-    from services.profile_service import profiles_base
-
     from jobjob.config import load_settings
     from jobjob.loader.profiles import build_profiles, profile_config_file
+    from services.profile_service import profiles_base
 
     settings = load_settings(_APP_CONFIG)
     roots = [_STATIC_DIR, _DATA_DIR, _REPO_ROOT / "config"]
