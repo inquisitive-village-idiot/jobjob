@@ -8,6 +8,9 @@ _version.py
 .pdm-python
 .vs_code
 data/
+# jobjob/data holds packaged app data (skill cloud + ESCO notice) — committed,
+# unlike the local applications input dir the pattern above targets.
+!jobjob/data/
 # static/ holds the bundled demo content (Tila Mer persona): content/*.toml +
 # reference/. It is committed and force-included into the wheel, so it must NOT be
 # ignored. Real per-user content lives in separate profile repos, not here.
@@ -160,3 +163,6 @@ config/*
 
 # Claude Code machine-local settings
 .claude/settings.local.json
+
+# ESCO API response cache (curation tooling)
+/.esco-cache/
