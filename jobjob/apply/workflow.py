@@ -22,9 +22,9 @@ from typing import Any, Optional
 
 from jobjob.ailib.session import AIClient
 from jobjob.apply.generate.archetype import select_template
+from jobjob.apply.generate.ats import assess_ats
 from jobjob.apply.generate.coverletter import generate_cover_letter_text
 from jobjob.apply.generate.highlights import select_highlights
-from jobjob.apply.generate.ats import assess_ats
 from jobjob.apply.generate.parse import parse_job_description
 from jobjob.apply.generate.readme import generate_application_readme
 from jobjob.apply.generate.resume import tailor_resume

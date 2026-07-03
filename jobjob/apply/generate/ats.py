@@ -23,8 +23,8 @@ from collections.abc import Mapping
 from typing import Optional
 
 from jobjob.structure.job_decription import JobDescription
-from jobjob.structure.skill import SkillSet
 from jobjob.structure.normalize import NormalizedRequirement, normalize_requirements
+from jobjob.structure.skill import SkillSet
 from jobjob.structure.skillcloud import get_skill_cloud
 
 # Criticality weights per requirement source (mirrors the fit-scoring stance:
@@ -148,12 +148,8 @@ def _weighted_requirements(
 ) -> list[tuple[NormalizedRequirement, float]]:
     """Normalize JD requirements + technical skills with criticality weights."""
     proposals = dict(job.canonical_skills or {})
-    key = normalize_requirements(
-        list(job.key_requirements or []), proposals=proposals
-    )
-    tech = normalize_requirements(
-        list(job.technical_skills or []), proposals=proposals
-    )
+    key = normalize_requirements(list(job.key_requirements or []), proposals=proposals)
+    tech = normalize_requirements(list(job.technical_skills or []), proposals=proposals)
     return [(r, WEIGHT_KEY_REQUIREMENT) for r in key] + [
         (r, WEIGHT_TECHNICAL_SKILL) for r in tech
     ]
@@ -301,8 +297,7 @@ def run_parseability_checks(document: Mapping) -> tuple[AtsCheck, ...]:
             name="nonstandard-headings",
             passed=not unrecognized,
             reason=(
-                "Headings ATS parsers may not recognize: "
-                + ", ".join(unrecognized[:5])
+                "Headings ATS parsers may not recognize: " + ", ".join(unrecognized[:5])
                 if unrecognized
                 else ""
             ),

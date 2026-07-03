@@ -135,9 +135,7 @@ def _add_ats(doc, ats) -> None:
     """
     doc.add_heading("ATS assessment", level=1)
     if ats.skipped:
-        doc.add_paragraph(
-            "Skipped — no resume document was generated (Drive skipped)."
-        )
+        doc.add_paragraph("Skipped — no resume document was generated (Drive skipped).")
         return
 
     paragraph = doc.add_paragraph()
