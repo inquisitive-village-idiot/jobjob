@@ -184,9 +184,7 @@ class TestGenerateApplicationReadme(ThisTestCase):
         )
         normalized = (NormalizedRequirement(text="alpaca wrangling"),)
         out = Path(self.get_tmpdir(), "readme.docx")
-        with mock.patch.object(
-            MOD, "normalize_requirements", return_value=normalized
-        ):
+        with mock.patch.object(MOD, "normalize_requirements", return_value=normalized):
             MOD.generate_application_readme(job, {}, out)
 
         doc = DocxDocument(str(out))
