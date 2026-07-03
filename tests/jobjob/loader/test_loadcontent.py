@@ -89,6 +89,74 @@ class TestLoadSkills(ThisTestCase):
         self.assertTrue(first.text)
 
 
+class TestResolveCanonical(ThisTestCase):
+    """Test function (skill-cloud enrichment of loaded skills)."""
+
+    class FakeSkill:
+        id = "python_programming"
+        categories = {"technical": 1.0}
+
+    class FakeCloud:
+        def __init__(self, hits: dict) -> None:
+            self.hits = hits
+
+        def resolve(self, text: str):
+            return self.hits.get(text)
+
+    def test_enriches_canonical_skill(self) -> None:
+        skill = MOD.Skill(label="python", text="Python", keywords=("scripting",))
+        cloud = self.FakeCloud({"Python": self.FakeSkill})
+
+        with mock.patch.object(MOD, "get_skill_cloud", return_value=cloud):
+            found = MOD._resolve_canonical(skill)
+
+        with self.subTest("canonical id attached"):
+            self.assertEqual("python_programming", found.canonical_id)
+            self.assertTrue(found.canonical)
+
+        with self.subTest("categories attached"):
+            self.assertEqual({"technical": 1.0}, found.categories)
+
+        with self.subTest("original fields untouched"):
+            self.assertEqual(("python", "Python"), (found.label, found.text))
+
+    def test_label_precedence_over_keyword(self) -> None:
+        class OtherSkill:
+            id = "other"
+            categories = {"domain": 1.0}
+
+        skill = MOD.Skill(label="python", text="Python", keywords=("data",))
+        cloud = self.FakeCloud({"python": self.FakeSkill, "data": OtherSkill})
+
+        with mock.patch.object(MOD, "get_skill_cloud", return_value=cloud):
+            found = MOD._resolve_canonical(skill)
+
+        expected = "python_programming"
+        self.assertEqual(expected, found.canonical_id)
+
+    def test_free_form_skill_stays_usable(self) -> None:
+        skill = MOD.Skill(label="alpacas", text="Alpaca wrangling")
+        cloud = self.FakeCloud({})
+
+        with mock.patch.object(MOD, "get_skill_cloud", return_value=cloud):
+            found = MOD._resolve_canonical(skill)
+
+        with self.subTest("unchanged"):
+            self.assertEqual(skill, found)
+
+        with self.subTest("flagged non-canonical"):
+            self.assertIsNone(found.canonical_id)
+            self.assertFalse(found.canonical)
+
+    def test_degrades_when_cloud_unavailable(self) -> None:
+        skill = MOD.Skill(label="python", text="Python")
+        with mock.patch.object(
+            MOD, "get_skill_cloud", side_effect=FileNotFoundError("no cloud")
+        ):
+            found = MOD._resolve_canonical(skill)  # should not raise
+        self.assertEqual(skill, found)
+
+
 class TestLoadExperience(ThisTestCase):
     """Test function. Uses the real static/example/content/experience.toml."""
 

@@ -111,13 +111,22 @@ def _add_items(
         doc.add_paragraph(text, style="List Bullet")
 
 
-def _add_skills(doc, skills: Mapping) -> None:
+def _add_skills(doc, skills: Mapping, unmapped: Optional[Iterable[str]] = None) -> None:
     doc.add_heading("Skills analysis", level=1)
 
     doc.add_heading("Critical gaps", level=2)
     _add_items(
         doc, skills.get("critical_gaps", []), "skill", "why_critical", "mitigation"
     )
+
+    unmapped = list(unmapped or [])
+    if unmapped:
+        doc.add_heading("Unmapped requirements", level=2)
+        doc.add_paragraph(
+            "Not in the skill cloud — either a genuine gap or a taxonomy hole:"
+        )
+        for text in unmapped:
+            doc.add_paragraph(text, style="List Bullet")
 
     doc.add_heading("Critical (supported)", level=2)
     _add_items(doc, skills.get("critical_supported", []), "skill", "evidence")
@@ -138,6 +147,7 @@ def create_readme_docx(
     template_name: Optional[str] = None,
     template_archetype: Optional[str] = None,
     resume_changes: Optional[Iterable[str]] = None,
+    unmapped: Optional[Iterable[str]] = None,
 ) -> Path:
     """Render the application README to a DOCX.
 
@@ -150,6 +160,7 @@ def create_readme_docx(
         template_name: Resume template used (None when Drive was skipped).
         template_archetype: Human-readable archetype of the template.
         resume_changes: Edits applied to the template (empty = used as-is).
+        unmapped: JD requirements with no skill-cloud match (omitted when empty).
     Returns:
         The output path.
     """
@@ -162,7 +173,7 @@ def create_readme_docx(
     _add_resume(doc, template_name, template_archetype, resume_changes)
     _add_fit(doc, fit)
     _add_issues(doc, issues)
-    _add_skills(doc, skills)
+    _add_skills(doc, skills, unmapped=unmapped)
     doc.save(str(output_path))
     return output_path
 

@@ -6,6 +6,7 @@ summarizes the role and folds in the skills analysis plus a fit assessment, so
 Lets you triage an application at a glance.
 """
 
+import logging
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Optional
@@ -13,6 +14,9 @@ from typing import Optional
 from jobjob.apply.output.readme_docx import create_readme_docx
 from jobjob.structure.fit import BAND_MODERATE, BAND_STRONG, BAND_WEAK, Fit
 from jobjob.structure.job_decription import JobDescription
+from jobjob.structure.skillcloud import normalize_requirements
+
+LOGGER = logging.getLogger(__name__)
 
 MODERATE_GAP_THRESHOLD = 2
 # A stretch-gap is outweighed when supporting evidence is this many times larger.
@@ -91,6 +95,7 @@ def generate_application_readme(
     """
     issues = list(issues) if issues is not None else []
     fit = assess_fit(skills)
+    unmapped = _unmapped_requirements(job)
     return create_readme_docx(
         output_path=output_path,
         job=job,
@@ -100,7 +105,25 @@ def generate_application_readme(
         template_name=template_name,
         template_archetype=template_archetype,
         resume_changes=resume_changes,
+        unmapped=unmapped,
     )
+
+
+def _unmapped_requirements(job: JobDescription) -> list[str]:
+    """Return JD requirements/skills that resolve to no skill-cloud entry.
+
+    NOTE: Surfacing only — a gap or a taxonomy hole, never bridged. Cloud load
+        failures degrade to an empty list (the README simply omits the section).
+    """
+    texts = list(job.key_requirements or []) + list(job.technical_skills or [])
+    try:
+        normalized = normalize_requirements(
+            texts, proposals=dict(job.canonical_skills or {})
+        )
+    except (OSError, ValueError) as exc:
+        LOGGER.warning("Skill cloud unavailable; skipping normalization: %s", exc)
+        return []
+    return [n.text for n in normalized if n.unmapped]
 
 
 # __END__
