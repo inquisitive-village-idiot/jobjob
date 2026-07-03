@@ -24,6 +24,7 @@ from jobjob.ailib.session import AIClient
 from jobjob.apply.generate.archetype import select_template
 from jobjob.apply.generate.coverletter import generate_cover_letter_text
 from jobjob.apply.generate.highlights import select_highlights
+from jobjob.apply.generate.ats import assess_ats
 from jobjob.apply.generate.parse import parse_job_description
 from jobjob.apply.generate.readme import generate_application_readme
 from jobjob.apply.generate.resume import tailor_resume
@@ -32,10 +33,10 @@ from jobjob.apply.output.cover_letter_docx import create_cover_letter_docx
 from jobjob.apply.output.cover_letter_pdf import create_cover_letter_pdf
 from jobjob.classify.classify import JD, classify_file
 from jobjob.gapi import drive as gdrive
-from jobjob.gapi.docs import verify_page_count
+from jobjob.gapi.docs import get_document, verify_page_count
 from jobjob.gapi.service import build_docs_service, build_drive_service
 from jobjob.loader.auth import get_google_credentials
-from jobjob.loader.loadcontent import load_highlights, load_templates
+from jobjob.loader.loadcontent import load_highlights, load_skills, load_templates
 from jobjob.loader.loadreference import load_reference_documents
 from jobjob.structure.applicant import Applicant
 from jobjob.structure.highlight import Highlight, HighlightSet
@@ -194,13 +195,14 @@ def run_application_workflow(
     resume_text = None
     drive_service = None
     folder_id = None
+    resume_doc = None
     if not skip_drive:
         template = _select_resume_template(
             job, query_service, template_id, template_name, use_cache
         )
         results["template"] = template.name
         _logger.info("Selected resume template: %s", template.name)
-        resume_text, drive_service, folder_id = _run_drive_resume_steps(
+        resume_text, drive_service, folder_id, resume_doc = _run_drive_resume_steps(
             job=job,
             output_dir=output_dir,
             query_service=query_service,
@@ -247,7 +249,18 @@ def run_application_workflow(
     skills_path.write_text(json.dumps(skills, indent=2), encoding="utf-8")
     results["skills_analysis"] = str(skills_path)
 
-    # Step 5: README (summary + folded skills + fit).
+    # Step 4b: ATS assessment of the rendered resume (advisory; None doc =>
+    # skipped section). Uses the declared skills file as the recommendation
+    # allowlist -- honesty layer.
+    try:
+        skill_set = load_skills()
+    except (OSError, ValueError) as exc:
+        _logger.warning("Skills file unavailable for ATS assessment: %s", exc)
+        skill_set = None
+    ats = assess_ats(resume_doc, job, skills, skill_set=skill_set)
+    results["ats_coverage"] = ats.coverage_score
+
+    # Step 5: README (summary + folded skills + fit + ATS).
     readme_path = generate_application_readme(
         job,
         skills,
@@ -256,6 +269,7 @@ def run_application_workflow(
         template_name=results.get("template"),
         template_archetype=results.get("template_archetype"),
         resume_changes=results.get("resume_changes"),
+        ats=ats,
     )
     results["readme"] = str(readme_path)
 
@@ -405,7 +419,16 @@ def _run_drive_resume_steps(
         drive_service, resume_id, Path(output_dir, f"{RESUME_NAME}.pdf"), logger=logger
     )
     results["resume_pdf"] = str(resume_pdf)
-    return resume_text, drive_service, folder_id
+
+    # One structural fetch of the updated doc serves the ATS assessment (text
+    # for keyword coverage, structure for parseability). Best-effort: the
+    # assessment degrades to skipped rather than failing the application.
+    resume_doc = None
+    try:
+        resume_doc = get_document(docs_service, resume_id)
+    except Exception as exc:  # noqa: BLE001 — assessment is advisory.
+        logger.warning("Could not fetch resume doc for ATS assessment: %s", exc)
+    return resume_text, drive_service, folder_id, resume_doc
 
 
 def _upload_outputs(

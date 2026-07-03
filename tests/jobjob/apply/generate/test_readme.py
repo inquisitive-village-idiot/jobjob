@@ -445,6 +445,68 @@ class TestGenerateApplicationReadme(ThisTestCase):
         # the strengths/weaknesses table is the only table
         self.assertEqual(1, len(doc.tables))
 
+    def test_renders_ats_section(self) -> None:
+        from docx import Document as DocxDocument
+
+        from jobjob.apply.generate.ats import AtsAssessment, AtsCheck
+
+        self.patch_cloud({})
+        ats = AtsAssessment(
+            coverage_score=0.64,
+            present=("Python",),
+            missing_evidenced=("SQL",),
+            recommendations=("SQL is supported by your documentation but absent.",),
+            skills_file_candidates=("Docker",),
+            upskill_targets=("Kubernetes",),
+            checks=(
+                AtsCheck(name="content-in-tables", passed=False, reason="1 table"),
+            ),
+            fit_gaps=("SQL",),
+        )
+        job = self.make_job(company_name="Acme", role_title="Engineer")
+        out = Path(self.get_tmpdir(), "readme.docx")
+        MOD.generate_application_readme(job, {}, out, ats=ats)
+
+        doc = DocxDocument(str(out))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        for expected in (
+            "ATS assessment",
+            "0.64",
+            "SQL is supported",
+            "Skills-file candidates",
+            "up-skill targets",
+            "content-in-tables: 1 table",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
+
+    def test_renders_ats_skipped(self) -> None:
+        from docx import Document as DocxDocument
+
+        from jobjob.apply.generate.ats import AtsAssessment
+
+        self.patch_cloud({})
+        job = self.make_job(company_name="Acme", role_title="Engineer")
+        out = Path(self.get_tmpdir(), "readme.docx")
+        MOD.generate_application_readme(job, {}, out, ats=AtsAssessment(skipped=True))
+
+        doc = DocxDocument(str(out))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertIn("Skipped — no resume document", text)
+        self.assertNotIn("Keyword coverage", text)
+
+    def test_omits_ats_section_when_none(self) -> None:
+        from docx import Document as DocxDocument
+
+        self.patch_cloud({})
+        job = self.make_job(company_name="Acme", role_title="Engineer")
+        out = Path(self.get_tmpdir(), "readme.docx")
+        MOD.generate_application_readme(job, {}, out)
+
+        doc = DocxDocument(str(out))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertNotIn("ATS assessment", text)
+
     def test_renders_unmapped_requirements(self) -> None:
         """JD requirements with no skill-cloud match surface in the README."""
         from unittest import mock
