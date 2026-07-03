@@ -287,7 +287,9 @@ class TestParsePreferenceFit(ThisTestCase):
             ]
         }
 
-        with self.assertLogs(MOD.LOGGER, level="WARNING") as captured:
+        with self.assertLogs(
+            "jobjob.apply.generate.readme", level="WARNING"
+        ) as captured:
             categories, score = MOD._parse_preference_fit(skills)
 
         with self.subTest("only the valid category survives"):
@@ -299,7 +301,7 @@ class TestParsePreferenceFit(ThisTestCase):
 
     def test_all_invalid_returns_none(self) -> None:
         skills = {"preference_fit": [{"name": "bad", "score": 2.0}]}
-        with self.assertLogs(MOD.LOGGER, level="WARNING"):
+        with self.assertLogs("jobjob.apply.generate.readme", level="WARNING"):
             expected = ((), None)
             found = MOD._parse_preference_fit(skills)
         self.assertEqual(expected, found)
