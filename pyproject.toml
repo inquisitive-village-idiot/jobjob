@@ -91,6 +91,9 @@ include = ["jobjob"]
 # content into the wheel. force-include is required because static/ and dist/ are
 # gitignored (hatchling respects VCS ignores by default). Paths land beside the
 # jobjob package so the webapp's __file__-relative path resolution works installed.
+# NOTE: jobjob/data/ (skill cloud + ESCO notice) needs no force-include: the
+# `!jobjob/data/` gitignore negation makes git track it, so hatchling ships it
+# with the package. Verify with: uv build --wheel && unzip -l dist/*.whl
 [tool.hatch.build.targets.wheel.force-include]
 "webapp/backend" = "webapp/backend"
 "webapp/frontend/dist" = "webapp/frontend/dist"

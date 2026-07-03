@@ -13,11 +13,19 @@ class Skill:
         label: Stable key identifying the skill (e.g. "python").
         text: Display text (e.g. "Python").
         keywords: Keywords used to score relevance against a job description.
+        canonical_id: Skill-cloud canonical id (None = non-canonical/free-form).
+        categories: The canonical skill's category weights ({} when non-canonical).
     """
 
     label: str
     text: str
     keywords: tuple[str, ...] = dcs.field(default_factory=tuple)
+    canonical_id: str | None = None
+    categories: dict[str, float] = dcs.field(default_factory=dict)
+
+    @property
+    def canonical(self) -> bool:
+        return self.canonical_id is not None
 
 
 @dcs.dataclass(frozen=True)

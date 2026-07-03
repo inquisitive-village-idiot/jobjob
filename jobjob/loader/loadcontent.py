@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Load credential highlights and skills from the static TOML content files."""
 
+import dataclasses as dcs
+import logging
 import tomllib
 from pathlib import Path
 from typing import Optional
@@ -9,6 +11,7 @@ from jobjob.loader.location import get_content_path
 from jobjob.structure.experience import ExperienceSet, Role, make_experience_set
 from jobjob.structure.highlight import Highlight, HighlightSet, make_highlight_set
 from jobjob.structure.skill import Skill, SkillSet, make_skill_set
+from jobjob.structure.skillcloud import get_skill_cloud
 from jobjob.structure.template import (
     ResumeSection,
     ResumeTemplate,
@@ -66,26 +69,58 @@ def load_highlights(path: Optional[Path] = None) -> HighlightSet:
     )
 
 
-def load_skills(path: Optional[Path] = None) -> SkillSet:
+def load_skills(
+    path: Optional[Path] = None, logger: logging.Logger | None = None
+) -> SkillSet:
     """Load the skill set from ``static/content/skills.toml``.
 
     Arguments:
         path: Override path to the TOML file. Defaults to the static content path.
+        logger: Optional logger for injection.
     Returns:
         A populated SkillSet.
     """
     path = path or get_content_path("skills")
     table = _load_toml_table(path, "skills")
     skills = [
-        Skill(
-            label=entry["label"],
-            text=entry["text"],
-            keywords=tuple(entry.get("keywords", ())),
+        _resolve_canonical(
+            Skill(
+                label=entry["label"],
+                text=entry["text"],
+                keywords=tuple(entry.get("keywords", ())),
+            ),
+            logger=logger,
         )
         for entry in table.get("skill", [])
     ]
     # NOTE: pass through TOML value (or None) — the default lives on SkillSet.
     return make_skill_set(skills, default_number=table.get("default_number"))
+
+
+def _resolve_canonical(skill: Skill, logger: logging.Logger | None = None) -> Skill:
+    """Attach skill-cloud canonical id + category weights when resolvable.
+
+    Resolution precedence: label, then text, then keywords (first hit wins).
+    Enrichment is in-memory only — the user's file is never modified. Unresolved
+    entries stay usable as free-form skills (flagged at INFO); a missing/invalid
+    cloud degrades to no enrichment at all (WARNING).
+    """
+    try:
+        cloud = get_skill_cloud()
+    except (OSError, ValueError) as exc:
+        _logger = logger or logging.getLogger(__name__)
+        _logger.warning("Skill cloud unavailable; skills stay non-canonical: %s", exc)
+        return skill
+
+    for candidate in (skill.label, skill.text, *skill.keywords):
+        match = cloud.resolve(candidate)
+        if match:
+            return dcs.replace(
+                skill, canonical_id=match.id, categories=dict(match.categories)
+            )
+    _logger = logger or logging.getLogger(__name__)
+    _logger.info("Non-canonical skill (no cloud match): %s", skill.label)
+    return skill
 
 
 def load_templates(

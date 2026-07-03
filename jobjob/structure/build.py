@@ -14,9 +14,19 @@ def _is_str_field(field: dcs.Field) -> bool:
     return field.type is str or field.type == "str"
 
 
+def _is_mapping_field(field: dcs.Field) -> bool:
+    """Return True if the field is annotated as a Mapping/dict."""
+    # NOTE: annotations may be the type object or a string (PEP 563); handle both.
+    return "Mapping" in str(field.type) or "dict" in str(field.type)
+
+
 def _default_for(field: dcs.Field) -> Any:
     """Return a sensible empty default for a missing field based on its type."""
-    return "" if _is_str_field(field) else ()
+    if _is_str_field(field):
+        return ""
+    if _is_mapping_field(field):
+        return {}
+    return ()
 
 
 def from_mapping(klass: Type[T], data: Mapping[str, Any]) -> T:
@@ -38,6 +48,10 @@ def from_mapping(klass: Type[T], data: Mapping[str, Any]) -> T:
         value = data.get(field.name)
         if value is None:
             value = _default_for(field)
+        elif _is_mapping_field(field) and not isinstance(value, Mapping):
+            # NOTE: a non-object returned for a mapping field is uninterpretable;
+            #   fall back to empty rather than propagating a wrong shape.
+            value = {}
         elif not _is_str_field(field) and isinstance(value, str):
             # NOTE: scalar returned for a list field -> wrap it so callers can
             #   iterate items rather than characters.

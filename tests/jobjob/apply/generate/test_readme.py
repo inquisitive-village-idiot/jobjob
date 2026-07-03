@@ -169,5 +169,48 @@ class TestGenerateApplicationReadme(ThisTestCase):
         self.assertIn("Python", table_text)
         self.assertIn("Rust", table_text)
 
+    def test_renders_unmapped_requirements(self) -> None:
+        """JD requirements with no skill-cloud match surface in the README."""
+        from unittest import mock
+
+        from docx import Document as DocxDocument
+
+        from jobjob.structure.normalize import NormalizedRequirement
+
+        job = self.make_job(
+            company_name="Acme",
+            role_title="Engineer",
+            key_requirements=("alpaca wrangling",),
+        )
+        normalized = (NormalizedRequirement(text="alpaca wrangling"),)
+        out = Path(self.get_tmpdir(), "readme.docx")
+        with mock.patch.object(MOD, "normalize_requirements", return_value=normalized):
+            MOD.generate_application_readme(job, {}, out)
+
+        doc = DocxDocument(str(out))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertIn("Unmapped requirements", text)
+        self.assertIn("alpaca wrangling", text)
+
+    def test_omits_unmapped_section_when_cloud_unavailable(self) -> None:
+        from unittest import mock
+
+        from docx import Document as DocxDocument
+
+        job = self.make_job(
+            company_name="Acme",
+            role_title="Engineer",
+            key_requirements=("anything",),
+        )
+        out = Path(self.get_tmpdir(), "readme.docx")
+        with mock.patch.object(
+            MOD, "normalize_requirements", side_effect=FileNotFoundError("no cloud")
+        ):
+            MOD.generate_application_readme(job, {}, out)  # should not raise
+
+        doc = DocxDocument(str(out))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertNotIn("Unmapped requirements", text)
+
 
 # __END__
