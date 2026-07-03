@@ -235,9 +235,7 @@ def slugify(value: str) -> str:
 
 
 def build_entry(resource: dict, weights: dict, used_ids: set[str]) -> Optional[dict]:
-    name = (resource.get("preferredLabel", {}) or {}).get("en") or resource.get(
-        "title"
-    )
+    name = (resource.get("preferredLabel", {}) or {}).get("en") or resource.get("title")
     if not name:
         return None
     uri = resource.get("uri", "")
