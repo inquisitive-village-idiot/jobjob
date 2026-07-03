@@ -95,7 +95,7 @@ class ThisTestCase(TestCase):
         self.addCleanup(patcher.stop)
         # normalize_requirements resolves via its own module-level accessor.
         patcher2 = mock.patch(
-            "jobjob.structure.skillcloud.get_skill_cloud", return_value=cloud
+            "jobjob.structure.normalize.get_skill_cloud", return_value=cloud
         )
         patcher2.start()
         self.addCleanup(patcher2.stop)
