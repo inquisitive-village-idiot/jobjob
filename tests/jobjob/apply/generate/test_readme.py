@@ -363,9 +363,7 @@ class TestGenerateApplicationReadme(ThisTestCase):
     def test_renders_two_axis_fit_tables(self) -> None:
         from docx import Document as DocxDocument
 
-        self.patch_cloud(
-            {"Python": FakeCloudSkill("python", {"technical": 1.0})}
-        )
+        self.patch_cloud({"Python": FakeCloudSkill("python", {"technical": 1.0})})
         job = self.make_job(company_name="Acme", role_title="Engineer")
         skills = {
             "critical_supported": [{"skill": "Python"}],
