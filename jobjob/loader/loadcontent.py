@@ -19,8 +19,6 @@ from jobjob.structure.template import (
     make_template_set,
 )
 
-LOGGER = logging.getLogger(__name__)
-
 DEFAULT_TEMPLATE_NAME = "default"
 
 
@@ -71,11 +69,14 @@ def load_highlights(path: Optional[Path] = None) -> HighlightSet:
     )
 
 
-def load_skills(path: Optional[Path] = None) -> SkillSet:
+def load_skills(
+    path: Optional[Path] = None, logger: logging.Logger | None = None
+) -> SkillSet:
     """Load the skill set from ``static/content/skills.toml``.
 
     Arguments:
         path: Override path to the TOML file. Defaults to the static content path.
+        logger: Optional logger for injection.
     Returns:
         A populated SkillSet.
     """
@@ -87,7 +88,8 @@ def load_skills(path: Optional[Path] = None) -> SkillSet:
                 label=entry["label"],
                 text=entry["text"],
                 keywords=tuple(entry.get("keywords", ())),
-            )
+            ),
+            logger=logger,
         )
         for entry in table.get("skill", [])
     ]
@@ -95,7 +97,7 @@ def load_skills(path: Optional[Path] = None) -> SkillSet:
     return make_skill_set(skills, default_number=table.get("default_number"))
 
 
-def _resolve_canonical(skill: Skill) -> Skill:
+def _resolve_canonical(skill: Skill, logger: logging.Logger | None = None) -> Skill:
     """Attach skill-cloud canonical id + category weights when resolvable.
 
     Resolution precedence: label, then text, then keywords (first hit wins).
@@ -106,7 +108,8 @@ def _resolve_canonical(skill: Skill) -> Skill:
     try:
         cloud = get_skill_cloud()
     except (OSError, ValueError) as exc:
-        LOGGER.warning("Skill cloud unavailable; skills stay non-canonical: %s", exc)
+        _logger = logger or logging.getLogger(__name__)
+        _logger.warning("Skill cloud unavailable; skills stay non-canonical: %s", exc)
         return skill
 
     for candidate in (skill.label, skill.text, *skill.keywords):
@@ -115,7 +118,8 @@ def _resolve_canonical(skill: Skill) -> Skill:
             return dcs.replace(
                 skill, canonical_id=match.id, categories=dict(match.categories)
             )
-    LOGGER.info("Non-canonical skill (no cloud match): %s", skill.label)
+    _logger = logger or logging.getLogger(__name__)
+    _logger.info("Non-canonical skill (no cloud match): %s", skill.label)
     return skill
 
 

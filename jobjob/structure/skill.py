@@ -20,7 +20,7 @@ class Skill:
     label: str
     text: str
     keywords: tuple[str, ...] = dcs.field(default_factory=tuple)
-    canonical_id: "str | None" = None
+    canonical_id: str | None = None
     categories: dict[str, float] = dcs.field(default_factory=dict)
 
     @property

@@ -6,182 +6,99 @@ plus the transversal skills/competences tree), assigns weighted category
 membership per skill from its nearest mapped ancestor group, and emits
 ``jobjob/data/skill_cloud.toml``.
 
-Regeneration is a rare, deliberate event: run against a new ESCO release, review
-the diff, commit. Raw API responses are cached on disk so an interrupted run
-resumes cheaply and re-runs are reproducible.
+All curation constraints (roots, budgets, group/category weights, seeds,
+curated aliases) live in ``scripts/curate_skill_cloud.toml`` -- edit that file
+to tune, then regenerate and review the diff. Raw API responses are cached on
+disk so an interrupted run resumes cheaply and re-runs are reproducible.
 
-Licensing: ESCO data is reusable for any purpose free of charge under Commission
-Decision 2011/833/EU (CC BY 4.0 terms). Attribution and an indication of changes
-(this curation) ship with the generated file. See jobjob/data/NOTICE-ESCO.md.
+Licensing: ESCO data is reusable for any purpose free of charge under
+Commission Decision 2011/833/EU (CC BY 4.0 terms). Attribution and an
+indication of changes (this curation) ship with the generated file. See
+jobjob/data/NOTICE-ESCO.md.
 
 Usage:
     uv run python scripts/curate_skill_cloud.py \
         --output jobjob/data/skill_cloud.toml \
-        --cache-dir .esco-cache \
-        --max-per-group 60 --max-total 1600
+        --cache-dir .esco-cache
 """
 
 import argparse
+import dataclasses as dcs
 import datetime as dt
 import hashlib
 import json
 import logging
 import re
 import time
+import tomllib
 import unicodedata
 from pathlib import Path
 from typing import Iterator, Optional
 
 import httpx
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 LOGGER = logging.getLogger("curate_skill_cloud")
 
-API_BASE = "https://ec.europa.eu/esco/api"
-ESCO_VERSION = "v1.2.1"  # verify against the release you traverse
+DEFAULT_CONFIG = Path(__file__).resolve().parent / "curate_skill_cloud.toml"
 
-CATEGORIES = (
-    "communication",
-    "collaboration",
-    "leadership",
-    "creativity",
-    "technical",
-    "domain",
-)
 
-# Category weights per ESCO group. Keys are ESCO skill-group URI suffixes (the
-# part after the final '/'). A leaf skill inherits the weights of its nearest
-# mapped ancestor (most specific wins). Weights must sum to 1.0 per group.
-#
-# PROVISIONAL: first-pass judgment; tune after reviewing real JD matches.
-GROUP_WEIGHTS: dict[str, dict[str, float]] = {
-    # --- S1: communication, collaboration and creativity -------------------
-    "S1.1": {"communication": 0.6, "collaboration": 0.4},  # negotiating
-    "S1.2": {"communication": 0.5, "collaboration": 0.5},  # liaising, networking
-    "S1.3": {"communication": 0.7, "leadership": 0.3},  # teaching and training
-    "S1.4": {"communication": 1.0},  # presenting information
-    "S1.5": {"communication": 0.6, "collaboration": 0.2, "domain": 0.2},  # advising
-    "S1.6": {"communication": 0.8, "domain": 0.2},  # promoting, selling
-    "S1.7": {"communication": 1.0},  # obtaining information verbally
-    "S1.8": {"collaboration": 1.0},  # working with others
-    "S1.9": {"creativity": 0.5, "technical": 0.5},  # solving problems
-    "S1.11": {"creativity": 0.6, "technical": 0.4},  # designing systems/products
-    "S1.12": {"creativity": 0.8, "communication": 0.2},  # artistic/visual materials
-    "S1.13": {"communication": 0.6, "creativity": 0.4},  # writing and composing
-    "S1.14": {"creativity": 0.8, "communication": 0.2},  # performing
-    "S1.15": {"communication": 1.0},  # using more than one language
-    # --- other S branches ---------------------------------------------------
-    "S2": {"technical": 0.6, "domain": 0.4},  # information skills
-    "S4": {"leadership": 0.7, "collaboration": 0.3},  # management skills
-    "S5": {"technical": 1.0},  # working with computers
-    # --- K: knowledge (ISCED-F fields) → domain -----------------------------
-    "00": {"domain": 1.0},
-    "01": {"domain": 1.0},  # education
-    "02": {"domain": 0.8, "creativity": 0.2},  # arts and humanities
-    "03": {"domain": 0.7, "communication": 0.3},  # social sci, journalism, info
-    "04": {"domain": 0.8, "leadership": 0.2},  # business, admin, law
-    "05": {"domain": 0.8, "technical": 0.2},  # natural sci, math, statistics
-    "06": {"domain": 0.5, "technical": 0.5},  # ICT
-    "07": {"domain": 0.6, "technical": 0.4},  # engineering, manufacturing
-    "08": {"domain": 1.0},  # agriculture
-    "09": {"domain": 1.0},  # health and welfare
-    "10": {"domain": 1.0},  # services
-}
+# Configuration
+# ======================================================================
 
-# Roots to traverse: (uri, default weights or None to require a mapped ancestor,
-# per-root entry budget). Per-root budgets keep any one branch from starving the
-# rest (S1 alone can fill a global cap); the highest-JD-value branches go first
-# so they can never get squeezed out. High-value ISCED fields (ICT, business,
-# science, journalism) get their own roots because broad-K traversal visits
-# fields in arbitrary API order and can spend its budget on low-value ones.
-ROOTS: tuple[tuple[str, Optional[dict[str, float]], int], ...] = (
-    # programming languages (Python, SQL, ...) hang under this group, which
-    # deep broad-K traversal only reaches after its budget is spent.
-    (
-        "http://data.europa.eu/esco/skill/21d2f96d-35f7-4e3f-9745-c533d2dd6e97",
-        {"technical": 1.0},
-        150,
-    ),  # computer programming
-    ("http://data.europa.eu/esco/skill/S5", GROUP_WEIGHTS["S5"], 500),
-    ("http://data.europa.eu/esco/isced-f/06", GROUP_WEIGHTS["06"], 200),  # ICT
-    ("http://data.europa.eu/esco/skill/S4", GROUP_WEIGHTS["S4"], 200),
-    ("http://data.europa.eu/esco/isced-f/04", GROUP_WEIGHTS["04"], 150),  # business
-    ("http://data.europa.eu/esco/isced-f/05", GROUP_WEIGHTS["05"], 100),  # sci/math
-    ("http://data.europa.eu/esco/isced-f/03", GROUP_WEIGHTS["03"], 80),  # journalism
-    ("http://data.europa.eu/esco/skill/S2", GROUP_WEIGHTS["S2"], 150),
-    # creativity-weighted S1 subgroups get explicit roots: depth-first broad-S1
-    # traversal spends its whole budget in the early (communication-heavy)
-    # subgroups and starves these.
-    ("http://data.europa.eu/esco/skill/S1.11", GROUP_WEIGHTS["S1.11"], 60),
-    ("http://data.europa.eu/esco/skill/S1.12", GROUP_WEIGHTS["S1.12"], 60),
-    ("http://data.europa.eu/esco/skill/S1.13", GROUP_WEIGHTS["S1.13"], 60),
-    ("http://data.europa.eu/esco/skill/S1.14", GROUP_WEIGHTS["S1.14"], 60),
-    ("http://data.europa.eu/esco/skill/S1", None, 400),
-    ("http://data.europa.eu/esco/skill/K", None, 300),  # remaining fields
-    # Transversal skills/competences tree (attitudes, social interaction,
-    # thinking, application of knowledge). Language branch intentionally
-    # excluded: individual languages add bulk without matching value.
-    (
-        "http://data.europa.eu/esco/skill/7ee746cb-fded-47f5-9652-19ebebbce51b",
-        None,
-        150,
-    ),
-)
 
-# High-value skills that hang OUTSIDE the group hierarchy (no broaderSkill),
-# unreachable by tree traversal (e.g. "project management"). Each is fetched via
-# search (top hit) and seeded directly with these weights.
-SEED_WEIGHTS: dict[str, dict[str, float]] = {
-    "project management": {
-        "leadership": 0.5,
-        "technical": 0.3,
-        "collaboration": 0.2,
-    },
-    "agile project management": {
-        "technical": 0.4,
-        "leadership": 0.4,
-        "collaboration": 0.2,
-    },
-    "machine learning": {"technical": 0.7, "domain": 0.3},
-    "data mining": {"technical": 0.7, "domain": 0.3},
-    "data analytics": {"technical": 0.6, "domain": 0.4},
-    "SQL": {"technical": 1.0},
-    "cloud technologies": {"technical": 1.0},
-    "cyber security": {"technical": 0.7, "domain": 0.3},
-    "quality assurance methodologies": {"technical": 0.6, "domain": 0.4},
-    "business analysis": {"domain": 0.5, "technical": 0.3, "communication": 0.2},
-    "financial analysis": {"domain": 0.7, "technical": 0.3},
-    "product management": {"leadership": 0.4, "domain": 0.3, "technical": 0.3},
-    "graphic design": {"creativity": 0.7, "technical": 0.3},
-    "copywriting": {"communication": 0.7, "creativity": 0.3},
-    "journalism": {"domain": 0.6, "communication": 0.4},
-    "statistics": {"domain": 0.6, "technical": 0.4},
-    "utilise machine learning": {"technical": 1.0},
-}
+@dcs.dataclass(frozen=True)
+class CurationConfig:
+    """Curation constraints loaded from the config TOML.
 
-# Curated alias additions keyed by generated entry id: closes vocabulary gaps
-# where the JD-common term is missing from ESCO's labels. A documented change
-# under the reuse terms (see NOTICE-ESCO.md).
-CURATED_ALIASES: dict[str, list[str]] = {
-    "data_mining": ["machine learning"],
-}
+    Attributes:
+        esco_version: Release recorded in the output metadata.
+        api_base: ESCO API base URL.
+        categories: The fixed category vocabulary.
+        group_weights: Category weights keyed by ESCO group URI suffix.
+        transversal_weights: Weights keyed by transversal group title.
+        excluded_titles: Transversal group titles to skip entirely.
+        roots: (uri, weights-or-None, budget) traversal roots, in order.
+        seed_weights: Search-seeded skills (term -> weights).
+        curated_aliases: Extra aliases keyed by generated entry id.
+    """
 
-# Transversal second-level groups are keyed by title (uuid URIs are unstable
-# to eyeball); resolved during traversal.
-TRANSVERSAL_TITLE_WEIGHTS: dict[str, dict[str, float]] = {
-    "attitudes and values": {
-        "leadership": 0.4,
-        "collaboration": 0.3,
-        "communication": 0.3,
-    },
-    "social interaction": {"collaboration": 0.6, "communication": 0.4},
-    "thinking": {"creativity": 0.6, "technical": 0.2, "domain": 0.2},
-    "application of knowledge": {"domain": 0.5, "technical": 0.5},
-    "language": None,  # excluded
-}
+    esco_version: str
+    api_base: str
+    categories: tuple[str, ...]
+    group_weights: dict[str, dict[str, float]]
+    transversal_weights: dict[str, dict[str, float]]
+    excluded_titles: frozenset[str]
+    roots: tuple[tuple[str, Optional[dict[str, float]], int], ...]
+    seed_weights: dict[str, dict[str, float]]
+    curated_aliases: dict[str, list[str]]
+
+
+def load_config(path: Path) -> CurationConfig:
+    """Load and lightly validate the curation config."""
+    data = tomllib.loads(Path(path).read_text(encoding="utf-8"))
+    group_weights = data.get("group_weights", {})
+
+    roots = []
+    for entry in data.get("roots", []):
+        weights = entry.get("weights")
+        if isinstance(weights, str):  # reference into group_weights
+            weights = group_weights[weights]
+        roots.append((entry["uri"], weights, int(entry["budget"])))
+
+    transversal = data.get("transversal", {})
+    return CurationConfig(
+        esco_version=data["esco"]["version"],
+        api_base=data["esco"]["api_base"],
+        categories=tuple(data["cloud"]["categories"]),
+        group_weights=group_weights,
+        transversal_weights=transversal.get("title_weights", {}),
+        excluded_titles=frozenset(
+            t.lower() for t in transversal.get("excluded_titles", [])
+        ),
+        roots=tuple(roots),
+        seed_weights=data.get("seed_weights", {}),
+        curated_aliases=data.get("curated_aliases", {}),
+    )
 
 
 # API access (disk-cached)
@@ -191,9 +108,10 @@ TRANSVERSAL_TITLE_WEIGHTS: dict[str, dict[str, float]] = {
 class EscoClient:
     """Cached, throttled ESCO API reader."""
 
-    def __init__(self, cache_dir: Path, delay: float = 0.15) -> None:
+    def __init__(self, cache_dir: Path, api_base: str, delay: float = 0.15) -> None:
         self.cache_dir = Path(cache_dir).expanduser().resolve()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.api_base = api_base
         self.delay = delay
         self._client = httpx.Client(timeout=30.0)
 
@@ -204,7 +122,7 @@ class EscoClient:
         if cache_path.is_file():
             return json.loads(cache_path.read_text(encoding="utf-8"))
 
-        url = f"{API_BASE}/resource/skill"
+        url = f"{self.api_base}/resource/skill"
         for attempt in range(4):
             try:
                 resp = self._client.get(url, params={"uri": uri, "language": "en"})
@@ -229,7 +147,7 @@ class EscoClient:
         """Return the URI of the top skill search hit for ``text``."""
         try:
             resp = self._client.get(
-                f"{API_BASE}/search",
+                f"{self.api_base}/search",
                 params={"text": text, "type": "skill", "limit": 1, "language": "en"},
             )
             resp.raise_for_status()
@@ -254,13 +172,15 @@ def _uri_suffix(uri: str) -> str:
     return uri.rsplit("/", 1)[-1]
 
 
-def _weights_for(uri: str, title: str, inherited: Optional[dict]) -> Optional[dict]:
+def _weights_for(
+    uri: str, title: str, inherited: Optional[dict], cfg: CurationConfig
+) -> Optional[dict]:
     """Most-specific weight mapping: exact suffix, then title, then inherited."""
     suffix = _uri_suffix(uri)
-    if suffix in GROUP_WEIGHTS:
-        return GROUP_WEIGHTS[suffix]
-    if title.lower() in TRANSVERSAL_TITLE_WEIGHTS:
-        return TRANSVERSAL_TITLE_WEIGHTS[title.lower()]
+    if suffix in cfg.group_weights:
+        return cfg.group_weights[suffix]
+    if title.lower() in cfg.transversal_weights:
+        return cfg.transversal_weights[title.lower()]
     return inherited
 
 
@@ -270,15 +190,16 @@ def walk(
     weights: Optional[dict],
     max_per_group: int,
     seen: set[str],
+    cfg: CurationConfig,
 ) -> Iterator[tuple[dict, dict]]:
     """Yield (leaf resource, weights) under ``uri``, depth-first."""
     resource = client.get_resource(uri)
     if resource is None:
         return
     title = resource.get("title", "") or ""
-    weights = _weights_for(uri, title, weights)
-    if weights is None and title.lower() in TRANSVERSAL_TITLE_WEIGHTS:
+    if title.lower() in cfg.excluded_titles:
         return  # explicitly excluded branch
+    weights = _weights_for(uri, title, weights, cfg)
 
     leaf_count = 0
     for leaf in _links(resource, "narrowerSkill"):
@@ -300,7 +221,7 @@ def walk(
     for group in _links(resource, "narrowerConcept"):
         group_uri = group.get("uri", "")
         if group_uri:
-            yield from walk(client, group_uri, weights, max_per_group, seen)
+            yield from walk(client, group_uri, weights, max_per_group, seen, cfg)
 
 
 # Entry construction
@@ -314,7 +235,9 @@ def slugify(value: str) -> str:
 
 
 def build_entry(resource: dict, weights: dict, used_ids: set[str]) -> Optional[dict]:
-    name = (resource.get("preferredLabel", {}) or {}).get("en") or resource.get("title")
+    name = (resource.get("preferredLabel", {}) or {}).get("en") or resource.get(
+        "title"
+    )
     if not name:
         return None
     uri = resource.get("uri", "")
@@ -361,7 +284,8 @@ def toml_escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def emit_toml(entries: list[dict], output: Path) -> None:
+def emit_toml(entries: list[dict], output: Path, cfg: CurationConfig) -> None:
+    categories = ", ".join(f'"{c}"' for c in cfg.categories)
     lines = [
         "# jobjob skill cloud -- generated by scripts/curate_skill_cloud.py.",
         "# Do not edit by hand; regenerate against an ESCO release, review the diff.",
@@ -373,9 +297,9 @@ def emit_toml(entries: list[dict], output: Path) -> None:
         "# See jobjob/data/NOTICE-ESCO.md.",
         "",
         "[cloud]",
-        f'esco_version = "{ESCO_VERSION}"',
+        f'esco_version = "{cfg.esco_version}"',
         f'retrieved = "{dt.date.today().isoformat()}"',
-        f'categories = [{", ".join(chr(34) + c + chr(34) for c in CATEGORIES)}]',
+        f"categories = [{categories}]",
         "",
     ]
     for entry in sorted(entries, key=lambda e: e["id"]):
@@ -399,20 +323,22 @@ def emit_toml(entries: list[dict], output: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--cache-dir", type=Path, default=Path(".esco-cache"))
-    parser.add_argument("--max-per-group", type=int, default=60)
-    parser.add_argument("--max-total", type=int, default=2000)
+    parser.add_argument("--max-per-group", type=int, default=80)
+    parser.add_argument("--max-total", type=int, default=2400)
     parser.add_argument("--delay", type=float, default=0.15)
     args = parser.parse_args()
 
-    client = EscoClient(args.cache_dir, delay=args.delay)
+    cfg = load_config(args.config)
+    client = EscoClient(args.cache_dir, cfg.api_base, delay=args.delay)
     seen: set[str] = set()
     used_ids: set[str] = set()
     entries: list[dict] = []
 
     # Seeds first: skills outside the group hierarchy that traversal can't
     # reach; seeding first also guarantees them a slot under any cap.
-    for term, weights in SEED_WEIGHTS.items():
+    for term, weights in cfg.seed_weights.items():
         uri = client.search_top_skill_uri(term)
         if not uri or uri in seen:
             continue
@@ -425,7 +351,7 @@ def main() -> None:
             entries.append(entry)
             LOGGER.info("Seeded %r -> %s", term, entry["id"])
 
-    for root_uri, root_weights, root_budget in ROOTS:
+    for root_uri, root_weights, root_budget in cfg.roots:
         if len(entries) >= args.max_total:
             break
         LOGGER.info(
@@ -436,7 +362,7 @@ def main() -> None:
         )
         root_count = 0
         for resource, weights in walk(
-            client, root_uri, root_weights, args.max_per_group, seen
+            client, root_uri, root_weights, args.max_per_group, seen, cfg
         ):
             entry = build_entry(resource, weights, used_ids)
             if entry:
@@ -450,15 +376,21 @@ def main() -> None:
                 break
 
     for entry in entries:
-        extra = CURATED_ALIASES.get(entry["id"])
+        extra = cfg.curated_aliases.get(entry["id"])
         if extra:
             entry["aliases"] = sorted(set(entry["aliases"]) | set(extra))
 
-    emit_toml(entries, args.output)
+    emit_toml(entries, args.output, cfg)
     LOGGER.info("Wrote %d skills to %s", len(entries), args.output)
 
 
 if __name__ == "__main__":
+    # NOTE: logging configuration stays behind the __main__ guard so importing
+    #   this module (e.g. in tests) never mutates global logging state.
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
     main()
 
 # __END__

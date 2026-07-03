@@ -175,7 +175,7 @@ class TestGenerateApplicationReadme(ThisTestCase):
 
         from docx import Document as DocxDocument
 
-        from jobjob.structure.skillcloud import NormalizedRequirement
+        from jobjob.structure.normalize import NormalizedRequirement
 
         job = self.make_job(
             company_name="Acme",
