@@ -79,11 +79,41 @@ def _add_two_column(
         cells[1].text = right[i] if i < len(right) else ""
 
 
+def _add_axis_table(doc, title: str, score: float, categories, note: str = "") -> None:
+    """Render one quantitative fit axis: score line + category table."""
+    paragraph = doc.add_paragraph()
+    paragraph.add_run(f"{title}: ").bold = True
+    paragraph.add_run(f"{score:.2f}")
+    table = doc.add_table(rows=1, cols=3)
+    table.style = "Table Grid"
+    for cell, header in zip(table.rows[0].cells, ("Category", "Score", "Notes")):
+        cell.paragraphs[0].add_run(header).bold = True
+    for category in categories:
+        cells = table.add_row().cells
+        cells[0].text = category.name
+        cells[1].text = f"{category.score:.2f}"
+        cells[2].text = category.note
+    if note:
+        doc.add_paragraph(note)
+
+
 def _add_fit(doc, fit: Fit) -> None:
     doc.add_heading("Fit", level=1)
     paragraph = doc.add_paragraph()
     paragraph.add_run("Assessment: ").bold = True
     paragraph.add_run(fit.band)
+    # Quantitative axes are additive: rendered only when computable, and the
+    # section is byte-identical to the pre-quantitative layout when absent.
+    if fit.role_fit is not None:
+        _add_axis_table(
+            doc, "Role fit", fit.role_fit, fit.role_fit_categories, fit.role_fit_note
+        )
+    elif fit.role_fit_note:
+        doc.add_paragraph(fit.role_fit_note)
+    if fit.preference_fit is not None:
+        _add_axis_table(
+            doc, "Preference fit", fit.preference_fit, fit.preference_fit_categories
+        )
     _add_two_column(doc, "Strengths", fit.strengths, "Weaknesses", fit.weaknesses)
 
 
