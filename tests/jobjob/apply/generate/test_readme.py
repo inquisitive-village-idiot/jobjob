@@ -165,9 +165,14 @@ class TestScoreRoleFit(ThisTestCase):
         with self.subTest("collaboration = 0.75 (same item, fractional weight)"):
             self.assertEqual(0.75, by_name["collaboration"].score)
 
-        with self.subTest("axis = mean of category scores"):
-            expected = round((0.7 + 0.75 + 0.75) / 3, 2)
+        with self.subTest("axis = mass-weighted mean = matched mass / total mass"):
+            # weighted: technical 1.4, leadership 0.525, collaboration 0.225
+            # mass:     technical 2.0, leadership 0.7,   collaboration 0.3
+            expected = round((1.4 + 0.525 + 0.225) / (2.0 + 0.7 + 0.3), 2)
             self.assertEqual(expected, score)
+            # a sliver-backed category must not count as much as a full one:
+            unweighted_mean = round((0.7 + 0.75 + 0.75) / 3, 2)
+            self.assertNotEqual(unweighted_mean, score)
 
         with self.subTest("full coverage -> empty note"):
             self.assertEqual("", note)

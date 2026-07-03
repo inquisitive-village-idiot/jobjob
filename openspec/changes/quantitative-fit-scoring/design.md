@@ -50,8 +50,12 @@ Per requirement r with match weight m(r):
   counted in a coverage note
 
 Category score = Σ m(r)·w(r, category) / Σ w(r, category) over scoring
-requirements; axis score = mean of category scores over categories with nonzero
-denominator. Constants are module-level (tunable, visible), mirroring
+requirements — the sum-to-1 category split cancels in this ratio, so splitting
+never deflates a category score; it only sets each skill's relative influence
+within the category. Axis score = mass-weighted mean of category scores
+(= total matched mass / total mass), so a category whose entire denominator is
+one 0.2-weight sliver cannot drag the axis as hard as a category backed by many
+full-weight skills. Constants are module-level (tunable, visible), mirroring
 `MODERATE_GAP_THRESHOLD` / `SUPPORT_RATIO` style. The band remains derived by the
 existing rules; band and score share inputs, so disagreement is bounded and
 explainable.

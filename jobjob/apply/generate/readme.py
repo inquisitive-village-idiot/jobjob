@@ -122,7 +122,11 @@ def _score_role_fit(
 
     Each scoring item resolves against the skill cloud; its match weight is
     distributed over the canonical skill's category weights. Category score is
-    the weighted mean; the axis score is the mean of defined category scores.
+    the weighted mean of match weights (the sum-to-1 split cancels in the
+    ratio, so it never deflates a score -- it only sets relative influence).
+    The axis score is the mass-weighted mean of category scores, which reduces
+    to total matched mass / total mass: a category backed by a 0.2-weight
+    sliver cannot drag the axis as hard as one backed by many full skills.
     Unresolvable items are excluded and counted in the coverage note. Band
     derivation is untouched -- this is additive measurement.
     """
@@ -167,7 +171,10 @@ def _score_role_fit(
     )
     if not categories:
         return (), None, note
-    score = round(sum(c.score for c in categories) / len(categories), 2)
+    # Mass-weighted axis: sum(score(c) * mass(c)) / sum(mass(c)) reduces to
+    # total matched mass over total mass (score(c) * denominator(c) is exactly
+    # weighted(c)).
+    score = round(sum(weighted.values()) / sum(denominator.values()), 2)
     return categories, score, note
 
 

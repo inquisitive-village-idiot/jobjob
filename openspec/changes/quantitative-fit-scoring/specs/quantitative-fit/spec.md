@@ -11,7 +11,9 @@ scores MUST be identical across runs. Match weights: critical_supported 1.0,
 important_supported 0.75, stretch gap 0.4, blocking gap 0.0; aspirational gaps and
 UNMAPPED/non-canonical requirements are excluded from scoring. Category score is
 the match-weighted mean over that category's requirements; `Fit.role_fit` is the
-mean of defined category scores.
+mass-weighted mean of category scores (equivalently: total matched mass over
+total category mass), so a category backed only by a small fractional weight
+cannot influence the axis as much as one backed by many full-weight skills.
 
 #### Scenario: Reproducible role-fit scores
 
