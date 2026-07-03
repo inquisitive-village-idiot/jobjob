@@ -24,13 +24,8 @@ from typing import Optional
 
 from jobjob.structure.job_decription import JobDescription
 from jobjob.structure.skill import SkillSet
-from jobjob.structure.skillcloud import (
-    NormalizedRequirement,
-    get_skill_cloud,
-    normalize_requirements,
-)
-
-LOGGER = logging.getLogger(__name__)
+from jobjob.structure.normalize import NormalizedRequirement, normalize_requirements
+from jobjob.structure.skillcloud import get_skill_cloud
 
 # Criticality weights per requirement source (mirrors the fit-scoring stance:
 # key requirements outweigh listed technical skills). PROVISIONAL.
@@ -169,6 +164,7 @@ def assess_ats(
     job: JobDescription,
     skills: Mapping,
     skill_set: Optional[SkillSet] = None,
+    logger: logging.Logger | None = None,
 ) -> AtsAssessment:
     """Assess the rendered resume document against the JD's canonical skills.
 
@@ -179,6 +175,7 @@ def assess_ats(
         skills: The skills-analysis mapping.
         skill_set: The loaded profile skills (declared-skill allowlist for
             recommendations). None degrades to no recommendations.
+        logger: Optional logger for injection.
     Returns:
         An AtsAssessment. Deterministic for fixed inputs and cloud version.
     """
@@ -187,7 +184,8 @@ def assess_ats(
     try:
         cloud = get_skill_cloud()
     except (OSError, ValueError) as exc:
-        LOGGER.warning("Skill cloud unavailable; ATS assessment skipped: %s", exc)
+        _logger = logger or logging.getLogger(__name__)
+        _logger.warning("Skill cloud unavailable; ATS assessment skipped: %s", exc)
         return AtsAssessment(skipped=True)
 
     # Local import avoids a hard dependency for offline/test paths.

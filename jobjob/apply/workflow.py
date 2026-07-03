@@ -253,11 +253,11 @@ def run_application_workflow(
     # skipped section). Uses the declared skills file as the recommendation
     # allowlist -- honesty layer.
     try:
-        skill_set = load_skills()
+        skill_set = load_skills(logger=_logger)
     except (OSError, ValueError) as exc:
         _logger.warning("Skills file unavailable for ATS assessment: %s", exc)
         skill_set = None
-    ats = assess_ats(resume_doc, job, skills, skill_set=skill_set)
+    ats = assess_ats(resume_doc, job, skills, skill_set=skill_set, logger=_logger)
     results["ats_coverage"] = ats.coverage_score
 
     # Step 5: README (summary + folded skills + fit + ATS).
