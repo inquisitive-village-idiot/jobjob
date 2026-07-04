@@ -80,9 +80,11 @@ _CoverageBuckets = dcs.make_dataclass(
     "_CoverageBuckets",
     [
         *(
-            (f.name, list, dcs.field(default_factory=list))
-            if get_origin(f.type) is tuple
-            else (f.name, f.type, f.default)
+            (
+                (f.name, list, dcs.field(default_factory=list))
+                if get_origin(f.type) is tuple
+                else (f.name, f.type, f.default)
+            )
             for f in dcs.fields(AtsAssessment)
         ),
         ("hit_weight", float, 0.0),
