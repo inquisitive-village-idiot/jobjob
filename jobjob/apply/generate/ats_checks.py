@@ -60,8 +60,7 @@ def check_content_in_tables(document: Mapping) -> AtsCheck:
         name="content-in-tables",
         passed=not tables,
         reason=(
-            f"{len(tables)} table(s) in the body; many ATS parsers drop "
-            "table cells."
+            f"{len(tables)} table(s) in the body; many ATS parsers drop " "table cells."
             if tables
             else ""
         ),
@@ -127,8 +126,7 @@ def check_multi_column_layout(document: Mapping) -> AtsCheck:
         name="multi-column-layout",
         passed=not multi_column,
         reason=(
-            "Multi-column section detected; column order confuses many "
-            "ATS parsers."
+            "Multi-column section detected; column order confuses many " "ATS parsers."
             if multi_column
             else ""
         ),

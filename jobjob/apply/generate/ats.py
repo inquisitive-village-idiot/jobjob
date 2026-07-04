@@ -34,7 +34,6 @@ WEIGHT_KEY_REQUIREMENT = 1.0
 WEIGHT_TECHNICAL_SKILL = 0.75
 
 
-
 # Structures
 # ======================================================================
 
