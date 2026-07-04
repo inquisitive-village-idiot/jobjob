@@ -112,9 +112,11 @@ class TestAssessAts(ThisTestCase):
     """Test function."""
 
     def test_skipped_when_no_document(self) -> None:
-        found = MOD.assess_ats(None, make_job(), {})
-        self.assertTrue(found.skipped)
-        self.assertIsNone(found.coverage_score)
+        result = MOD.assess_ats(None, make_job(), {})
+
+        expected = (True, None)
+        found = (result.skipped, result.coverage_score)
+        self.assertEqual(expected, found)
 
     def test_buckets_and_coverage(self) -> None:
         self.patch_cloud(FakeCloud(PYTHON, SQL, KUBERNETES))
@@ -125,18 +127,21 @@ class TestAssessAts(ThisTestCase):
         skills = {"critical_supported": [{"skill": "SQL", "evidence": "STAR: db"}]}
         doc = make_doc("Wrote Python services. Deployed with k8s.")
 
-        found = MOD.assess_ats(doc, job, skills, skill_set=self.declared("sql"))
+        result = MOD.assess_ats(doc, job, skills, skill_set=self.declared("sql"))
 
         with self.subTest("present via name and alias"):
-            self.assertIn("Python (computer programming)", found.present)
-            self.assertIn("Kubernetes", found.present)
+            self.assertIn("Python (computer programming)", result.present)
+            self.assertIn("Kubernetes", result.present)
 
         with self.subTest("missing + evidenced"):
-            self.assertEqual(("SQL",), found.missing_evidenced)
+            expected = ("SQL",)
+            found = result.missing_evidenced
+            self.assertEqual(expected, found)
 
         with self.subTest("coverage = (1.0 + 0.75) / (1.0 + 1.0 + 0.75)"):
             expected = round(1.75 / 2.75, 2)
-            self.assertEqual(expected, found.coverage_score)
+            found = result.coverage_score
+            self.assertEqual(expected, found)
 
     def test_recommendation_requires_evidence_and_declaration(self) -> None:
         self.patch_cloud(FakeCloud(PYTHON, SQL, KUBERNETES))
@@ -149,29 +154,35 @@ class TestAssessAts(ThisTestCase):
         }
         doc = make_doc("A resume that mentions none of the required skills.")
         # Only python is declared in the skills file.
-        found = MOD.assess_ats(doc, job, skills, skill_set=self.declared("python"))
+        result = MOD.assess_ats(doc, job, skills, skill_set=self.declared("python"))
 
         with self.subTest("evidenced + declared -> recommendation with citation"):
-            self.assertEqual(1, len(found.recommendations))
-            self.assertIn("Python (computer programming)", found.recommendations[0])
-            self.assertIn("STAR: automation", found.recommendations[0])
+            found = result.recommendations
+            self.assertEqual(1, len(found))
+            self.assertIn("Python (computer programming)", found[0])
+            self.assertIn("STAR: automation", found[0])
 
         with self.subTest("evidenced + undeclared -> skills-file candidate"):
-            self.assertEqual(("SQL",), found.skills_file_candidates)
+            expected = ("SQL",)
+            found = result.skills_file_candidates
+            self.assertEqual(expected, found)
 
         with self.subTest("unevidenced -> up-skill target, never recommended"):
-            self.assertEqual(("Kubernetes",), found.upskill_targets)
-            self.assertNotIn("Kubernetes", " ".join(found.recommendations))
+            expected = ("Kubernetes",)
+            found = result.upskill_targets
+            self.assertEqual(expected, found)
+            self.assertNotIn("Kubernetes", " ".join(result.recommendations))
 
     def test_unmapped_listed_but_unscored(self) -> None:
         self.patch_cloud(FakeCloud(PYTHON))
         job = make_job(key_requirements=("Python", "quantum telepathy"))
         doc = make_doc("Python everywhere.")
 
-        found = MOD.assess_ats(doc, job, {}, skill_set=None)
+        result = MOD.assess_ats(doc, job, {}, skill_set=None)
 
-        self.assertEqual(("quantum telepathy",), found.unmapped)
-        self.assertEqual(1.0, found.coverage_score)  # scored over canonical only
+        expected = (("quantum telepathy",), 1.0)  # scored over canonical only
+        found = (result.unmapped, result.coverage_score)
+        self.assertEqual(expected, found)
 
     def test_deterministic(self) -> None:
         self.patch_cloud(FakeCloud(PYTHON, SQL))
@@ -189,9 +200,11 @@ class TestAssessAts(ThisTestCase):
         skills = {"strong_supporting": [{"skill": "SQL", "relevance": "adjacent"}]}
         doc = make_doc("Python only.")
 
-        found = MOD.assess_ats(doc, job, skills, skill_set=None)
+        result = MOD.assess_ats(doc, job, skills, skill_set=None)
 
-        self.assertEqual(("SQL",), found.fit_gaps)
+        expected = ("SQL",)
+        found = result.fit_gaps
+        self.assertEqual(expected, found)
 
 
 class TestTermInText(ThisTestCase):
@@ -203,67 +216,15 @@ class TestTermInText(ThisTestCase):
             ("Python", "pythonic code", False),
             ("Python", "PYTHON scripting", True),
             ("C++", "Expert in C++ and Rust", True),
-            ("Go", "Going forward", False),
+            # NOTE: bare "Go" is deliberately not exercised -- word boundaries
+            #   cannot save it from e.g. "go to market"; keeping ambiguous
+            #   short names out of cloud aliases is a curation concern.
+            ("golang", "Services written in golang", True),
             ("", "anything", False),
         ]
         for term, text, expected in cases:
             with self.subTest(term=term, text=text):
                 self.assertEqual(expected, MOD._term_in_text(term, text))
-
-
-class TestParseabilityChecks(ThisTestCase):
-    """Test function."""
-
-    def test_clean_document_passes_all(self) -> None:
-        doc = make_doc("Plain paragraph")
-        doc["body"]["content"].append(
-            {
-                "paragraph": {
-                    "paragraphStyle": {"namedStyleType": "HEADING_1"},
-                    "elements": [{"textRun": {"content": "Experience"}}],
-                }
-            }
-        )
-        checks = MOD.run_parseability_checks(doc)
-        self.assertTrue(all(c.passed for c in checks))
-
-    def test_table_content_warns(self) -> None:
-        doc = make_doc("text")
-        doc["body"]["content"].append({"table": {"rows": 1}})
-        by_name = {c.name: c for c in MOD.run_parseability_checks(doc)}
-        self.assertFalse(by_name["content-in-tables"].passed)
-        self.assertIn("table", by_name["content-in-tables"].reason)
-
-    def test_nonstandard_heading_warns(self) -> None:
-        doc = make_doc("text")
-        doc["body"]["content"].append(
-            {
-                "paragraph": {
-                    "paragraphStyle": {"namedStyleType": "HEADING_1"},
-                    "elements": [{"textRun": {"content": "My Jazz Odyssey"}}],
-                }
-            }
-        )
-        by_name = {c.name: c for c in MOD.run_parseability_checks(doc)}
-        self.assertFalse(by_name["nonstandard-headings"].passed)
-        self.assertIn("My Jazz Odyssey", by_name["nonstandard-headings"].reason)
-
-    def test_images_warn(self) -> None:
-        doc = make_doc("text", inlineObjects={"obj1": {}})
-        by_name = {c.name: c for c in MOD.run_parseability_checks(doc)}
-        self.assertFalse(by_name["images-or-text-boxes"].passed)
-
-    def test_multicolumn_warns(self) -> None:
-        doc = make_doc("text")
-        doc["body"]["content"].append(
-            {
-                "sectionBreak": {
-                    "sectionStyle": {"columnProperties": [{}, {}]},
-                }
-            }
-        )
-        by_name = {c.name: c for c in MOD.run_parseability_checks(doc)}
-        self.assertFalse(by_name["multi-column-layout"].passed)
 
 
 # __END__

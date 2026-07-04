@@ -22,6 +22,7 @@ import re
 from collections.abc import Mapping
 from typing import Optional
 
+from jobjob.apply.generate.ats_checks import AtsCheck, run_parseability_checks
 from jobjob.structure.job_decription import JobDescription
 from jobjob.structure.normalize import NormalizedRequirement, normalize_requirements
 from jobjob.structure.skill import SkillSet
@@ -32,44 +33,10 @@ from jobjob.structure.skillcloud import get_skill_cloud
 WEIGHT_KEY_REQUIREMENT = 1.0
 WEIGHT_TECHNICAL_SKILL = 0.75
 
-# Section headings ATS parsers commonly recognize (casefolded comparison).
-# PROVISIONAL: extend as calibration data comes in.
-STANDARD_HEADINGS = frozenset(
-    {
-        "summary",
-        "objective",
-        "profile",
-        "experience",
-        "work experience",
-        "professional experience",
-        "employment history",
-        "education",
-        "skills",
-        "key skills",
-        "technical skills",
-        "key career highlights",
-        "highlights",
-        "certifications",
-        "projects",
-        "publications",
-        "awards",
-        "contact",
-        "references",
-    }
-)
 
 
 # Structures
 # ======================================================================
-
-
-@dcs.dataclass(frozen=True)
-class AtsCheck:
-    """One parseability check result."""
-
-    name: str
-    passed: bool
-    reason: str = ""
 
 
 @dcs.dataclass(frozen=True)
@@ -193,38 +160,7 @@ def assess_ats(
         s.canonical_id for s in (skill_set.skills if skill_set else ()) if s.canonical
     }
 
-    present, missing_evidenced, missing_unevidenced, unmapped = [], [], [], []
-    recommendations, candidates, upskill = [], [], []
-    hit_weight = total_weight = 0.0
-    seen_ids: set[str] = set()
-    for requirement, weight in _weighted_requirements(job):
-        if requirement.unmapped:
-            unmapped.append(requirement.text)
-            continue
-        canonical_id = requirement.canonical_id
-        if canonical_id in seen_ids:
-            continue  # the same canonical skill may back several requirements
-        seen_ids.add(canonical_id)
-        canonical = cloud.skills[canonical_id]
-        total_weight += weight
-        if _skill_in_text(canonical, text):
-            present.append(canonical.name)
-            hit_weight += weight
-            continue
-        if canonical_id in supported:
-            missing_evidenced.append(canonical.name)
-            evidence = supported[canonical_id]
-            if canonical_id in declared:
-                cite = f" (evidence: {evidence})" if evidence else ""
-                recommendations.append(
-                    f"{canonical.name} is supported by your documentation{cite} "
-                    "but absent from the resume text."
-                )
-            else:
-                candidates.append(canonical.name)
-        else:
-            missing_unevidenced.append(canonical.name)
-            upskill.append(canonical.name)
+    buckets = _classify_coverage(job, text, cloud, supported, declared)
 
     # Fit-vs-ATS gaps: everything the analysis supports that the resume never
     # says -- including skills the JD didn't canonically require.
@@ -234,115 +170,92 @@ def assess_ats(
         if not _skill_in_text(cloud.skills[cid], text)
     )
 
-    score = round(hit_weight / total_weight, 2) if total_weight else None
+    score = (
+        round(buckets.hit_weight / buckets.total_weight, 2)
+        if buckets.total_weight
+        else None
+    )
     return AtsAssessment(
         skipped=False,
         coverage_score=score,
-        present=tuple(present),
-        missing_evidenced=tuple(missing_evidenced),
-        missing_unevidenced=tuple(missing_unevidenced),
-        unmapped=tuple(unmapped),
-        recommendations=tuple(recommendations),
-        skills_file_candidates=tuple(candidates),
-        upskill_targets=tuple(upskill),
+        present=tuple(buckets.present),
+        missing_evidenced=tuple(buckets.missing_evidenced),
+        missing_unevidenced=tuple(buckets.missing_unevidenced),
+        unmapped=tuple(buckets.unmapped),
+        recommendations=tuple(buckets.recommendations),
+        skills_file_candidates=tuple(buckets.skills_file_candidates),
+        upskill_targets=tuple(buckets.upskill_targets),
         checks=run_parseability_checks(document),
         fit_gaps=fit_gaps,
     )
 
 
-# Parseability
-# ======================================================================
+@dcs.dataclass
+class _CoverageBuckets:
+    """Mutable working set for requirement classification.
 
-
-def run_parseability_checks(document: Mapping) -> tuple[AtsCheck, ...]:
-    """Run the named structural checks over a Google Docs JSON document.
-
-    Each check returns pass/warn with a one-line reason. Template-dominated:
-    results are stable across applications sharing a template, but running per
-    application is cheap and catches template edits.
+    The explicit (mutable) contract of ``_classify_coverage``; frozen into the
+    public ``AtsAssessment`` at the assess_ats boundary, keeping the exposed
+    type immutable like the rest of jobjob's structures.
     """
-    content = document.get("body", {}).get("content", [])
-    checks = []
 
-    tables = [e for e in content if "table" in e]
-    checks.append(
-        AtsCheck(
-            name="content-in-tables",
-            passed=not tables,
-            reason=(
-                f"{len(tables)} table(s) in the body; many ATS parsers drop "
-                "table cells."
-                if tables
-                else ""
-            ),
-        )
-    )
+    present: list[str] = dcs.field(default_factory=list)
+    missing_evidenced: list[str] = dcs.field(default_factory=list)
+    missing_unevidenced: list[str] = dcs.field(default_factory=list)
+    unmapped: list[str] = dcs.field(default_factory=list)
+    recommendations: list[str] = dcs.field(default_factory=list)
+    skills_file_candidates: list[str] = dcs.field(default_factory=list)
+    upskill_targets: list[str] = dcs.field(default_factory=list)
+    hit_weight: float = 0.0
+    total_weight: float = 0.0
 
-    headings = []
-    for element in content:
-        paragraph = element.get("paragraph")
-        if not paragraph:
+
+def _classify_coverage(
+    job: JobDescription,
+    text: str,
+    cloud,
+    supported: Mapping,
+    declared: set,
+) -> _CoverageBuckets:
+    """Bucket each canonical JD requirement by resume presence and evidence.
+
+    Recommendations require the skill to be both evidenced (``supported``) and
+    declared in the user's skills file (``declared``) -- the honesty layer.
+    Evidenced-but-undeclared skills become skills-file candidates; unevidenced
+    ones become up-skill targets. Duplicate canonical ids (the same skill
+    backing several requirements) are counted once.
+    """
+    buckets = _CoverageBuckets()
+    seen_ids: set[str] = set()
+    for requirement, weight in _weighted_requirements(job):
+        if requirement.unmapped:
+            buckets.unmapped.append(requirement.text)
             continue
-        style = paragraph.get("paragraphStyle", {}).get("namedStyleType", "")
-        if style.startswith("HEADING"):
-            heading_text = "".join(
-                run.get("textRun", {}).get("content", "")
-                for run in paragraph.get("elements", [])
-            ).strip()
-            if heading_text:
-                headings.append(heading_text)
-    unrecognized = [h for h in headings if h.casefold() not in STANDARD_HEADINGS]
-    checks.append(
-        AtsCheck(
-            name="nonstandard-headings",
-            passed=not unrecognized,
-            reason=(
-                "Headings ATS parsers may not recognize: " + ", ".join(unrecognized[:5])
-                if unrecognized
-                else ""
-            ),
-        )
-    )
-
-    has_objects = bool(document.get("inlineObjects")) or bool(
-        document.get("positionedObjects")
-    )
-    checks.append(
-        AtsCheck(
-            name="images-or-text-boxes",
-            passed=not has_objects,
-            reason=(
-                "Images or positioned objects present; content inside them is "
-                "invisible to ATS parsers."
-                if has_objects
-                else ""
-            ),
-        )
-    )
-
-    multi_column = any(
-        len(
-            e.get("sectionBreak", {})
-            .get("sectionStyle", {})
-            .get("columnProperties", [])
-        )
-        > 1
-        for e in content
-    )
-    checks.append(
-        AtsCheck(
-            name="multi-column-layout",
-            passed=not multi_column,
-            reason=(
-                "Multi-column section detected; column order confuses many "
-                "ATS parsers."
-                if multi_column
-                else ""
-            ),
-        )
-    )
-
-    return tuple(checks)
+        canonical_id = requirement.canonical_id
+        if canonical_id in seen_ids:
+            continue  # the same canonical skill may back several requirements
+        seen_ids.add(canonical_id)
+        canonical = cloud.skills[canonical_id]
+        buckets.total_weight += weight
+        if _skill_in_text(canonical, text):
+            buckets.present.append(canonical.name)
+            buckets.hit_weight += weight
+            continue
+        if canonical_id in supported:
+            buckets.missing_evidenced.append(canonical.name)
+            evidence = supported[canonical_id]
+            if canonical_id in declared:
+                cite = f" (evidence: {evidence})" if evidence else ""
+                buckets.recommendations.append(
+                    f"{canonical.name} is supported by your documentation{cite} "
+                    "but absent from the resume text."
+                )
+            else:
+                buckets.skills_file_candidates.append(canonical.name)
+        else:
+            buckets.missing_unevidenced.append(canonical.name)
+            buckets.upskill_targets.append(canonical.name)
+    return buckets
 
 
 # __END__
