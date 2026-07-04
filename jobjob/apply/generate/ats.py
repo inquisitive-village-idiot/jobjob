@@ -20,7 +20,7 @@ import dataclasses as dcs
 import logging
 import re
 from collections.abc import Mapping
-from typing import Optional
+from typing import Optional, get_origin
 
 from jobjob.apply.generate.ats_checks import AtsCheck, run_parseability_checks
 from jobjob.structure.job_decription import JobDescription
@@ -70,6 +70,44 @@ class AtsAssessment:
     upskill_targets: tuple[str, ...] = ()
     checks: tuple[AtsCheck, ...] = ()
     fit_gaps: tuple[str, ...] = ()
+
+
+# Mutable working counterpart of AtsAssessment, generated from the frozen type
+# so the data contract is defined once: tuple fields become lists (buildable
+# in place), everything else keeps its defined type; the weight accumulators
+# are working-state extras. Frozen back via _freeze at the assess_ats boundary.
+_CoverageBuckets = dcs.make_dataclass(
+    "_CoverageBuckets",
+    [
+        *(
+            (f.name, list, dcs.field(default_factory=list))
+            if get_origin(f.type) is tuple
+            else (f.name, f.type, f.default)
+            for f in dcs.fields(AtsAssessment)
+        ),
+        ("hit_weight", float, 0.0),
+        ("total_weight", float, 0.0),
+    ],
+)
+_CoverageBuckets.__doc__ = (
+    "Mutable working counterpart of AtsAssessment (tuple fields as lists), "
+    "plus coverage-weight accumulators."
+)
+
+
+def _freeze(buckets) -> AtsAssessment:
+    """Freeze a _CoverageBuckets into the public AtsAssessment.
+
+    NOTE: ``dcs.asdict`` is close but wrong here: it recurses into nested
+        dataclasses (AtsCheck would arrive as plain dicts) and it carries the
+        working-only weight accumulators. Mapping AtsAssessment's own fields
+        keeps types intact and drops the extras.
+    """
+    values = {}
+    for field in dcs.fields(AtsAssessment):
+        value = getattr(buckets, field.name)
+        values[field.name] = tuple(value) if isinstance(value, list) else value
+    return AtsAssessment(**values)
 
 
 # Text matching
@@ -163,41 +201,13 @@ def assess_ats(
         job=job, text=text, cloud=cloud, supported=supported, declared=declared
     )
 
-    score = (
+    buckets.coverage_score = (
         round(buckets.hit_weight / buckets.total_weight, 2)
         if buckets.total_weight
         else None
     )
-    return AtsAssessment(
-        skipped=False,
-        coverage_score=score,
-        checks=run_parseability_checks(document),
-        **{name: tuple(getattr(buckets, name)) for name in _BUCKET_FIELDS},
-    )
-
-
-# The bucket fields are exactly AtsAssessment's tuple[str, ...] fields; the
-# mutable working counterpart is generated from the frozen type so the data
-# contract is defined once (on AtsAssessment) rather than maintained twice.
-_BUCKET_FIELDS: tuple[str, ...] = tuple(
-    f.name for f in dcs.fields(AtsAssessment) if f.type == tuple[str, ...]
-)
-_CoverageBuckets = dcs.make_dataclass(
-    "_CoverageBuckets",
-    [
-        *(
-            (name, list[str], dcs.field(default_factory=list))
-            for name in _BUCKET_FIELDS
-        ),
-        ("hit_weight", float, 0.0),
-        ("total_weight", float, 0.0),
-    ],
-)
-_CoverageBuckets.__doc__ = (
-    "Mutable working set for requirement classification: AtsAssessment's "
-    "bucket fields as lists, plus coverage-weight accumulators. Frozen into "
-    "the public AtsAssessment at the assess_ats boundary."
-)
+    buckets.checks.extend(run_parseability_checks(document))
+    return _freeze(buckets)
 
 
 def _classify_coverage(
