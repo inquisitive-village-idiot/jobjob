@@ -74,26 +74,21 @@ class AtsAssessment:
 
 # Mutable working counterpart of AtsAssessment, generated from the frozen type
 # so the data contract is defined once: tuple fields become lists (buildable
-# in place), everything else keeps its defined type; the weight accumulators
-# are working-state extras. Frozen back via _freeze at the assess_ats boundary.
+# in place), everything else keeps its defined type and default. Frozen back
+# via _freeze at the assess_ats boundary.
 _CoverageBuckets = dcs.make_dataclass(
     "_CoverageBuckets",
     [
-        *(
-            (
-                (f.name, list, dcs.field(default_factory=list))
-                if get_origin(f.type) is tuple
-                else (f.name, f.type, f.default)
-            )
-            for f in dcs.fields(AtsAssessment)
-        ),
-        ("hit_weight", float, 0.0),
-        ("total_weight", float, 0.0),
+        (
+            (f.name, list, dcs.field(default_factory=list))
+            if get_origin(f.type) is tuple
+            else (f.name, f.type, f.default)
+        )
+        for f in dcs.fields(AtsAssessment)
     ],
 )
 _CoverageBuckets.__doc__ = (
-    "Mutable working counterpart of AtsAssessment (tuple fields as lists), "
-    "plus coverage-weight accumulators."
+    "Mutable working counterpart of AtsAssessment (tuple fields as lists)."
 )
 
 
@@ -101,9 +96,8 @@ def _freeze(buckets) -> AtsAssessment:
     """Freeze a _CoverageBuckets into the public AtsAssessment.
 
     NOTE: ``dcs.asdict`` is close but wrong here: it recurses into nested
-        dataclasses (AtsCheck would arrive as plain dicts) and it carries the
-        working-only weight accumulators. Mapping AtsAssessment's own fields
-        keeps types intact and drops the extras.
+        dataclasses, so the AtsCheck instances in ``checks`` would arrive as
+        plain dicts. Mapping AtsAssessment's own fields keeps types intact.
     """
     values = {}
     for field in dcs.fields(AtsAssessment):
@@ -203,11 +197,6 @@ def assess_ats(
         job=job, text=text, cloud=cloud, supported=supported, declared=declared
     )
 
-    buckets.coverage_score = (
-        round(buckets.hit_weight / buckets.total_weight, 2)
-        if buckets.total_weight
-        else None
-    )
     buckets.checks.extend(run_parseability_checks(document))
     return _freeze(buckets)
 
@@ -231,6 +220,7 @@ def _classify_coverage(
     skills the JD didn't canonically require.
     """
     buckets = _CoverageBuckets()
+    hit_weight = total_weight = 0.0
     buckets.fit_gaps.extend(
         cloud.skills[cid].name
         for cid in supported
@@ -246,10 +236,10 @@ def _classify_coverage(
             continue  # the same canonical skill may back several requirements
         seen_ids.add(canonical_id)
         canonical = cloud.skills[canonical_id]
-        buckets.total_weight += weight
+        total_weight += weight
         if _skill_in_text(canonical, text):
             buckets.present.append(canonical.name)
-            buckets.hit_weight += weight
+            hit_weight += weight
             continue
         if canonical_id in supported:
             buckets.missing_evidenced.append(canonical.name)
@@ -265,6 +255,9 @@ def _classify_coverage(
         else:
             buckets.missing_unevidenced.append(canonical.name)
             buckets.upskill_targets.append(canonical.name)
+    buckets.coverage_score = (
+        round(hit_weight / total_weight, 2) if total_weight else None
+    )
     return buckets
 
 
