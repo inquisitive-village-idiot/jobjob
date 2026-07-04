@@ -18,7 +18,9 @@ Using the resume, STAR examples, highlights, and background in your context, cat
 - "important_supported": Nice-to-have skills with documented evidence
 - "strong_supporting": Additional relevant skills from my background
 
-Return JSON with keys critical_gaps, critical_supported, important_supported, strong_supporting. Each critical_gaps item has skill/why_critical/mitigation/severity; supported items have skill/evidence; strong_supporting items have skill/relevance.
+Return JSON with keys critical_gaps, critical_supported, important_supported, strong_supporting, preference_fit. Each critical_gaps item has skill/why_critical/mitigation/severity; supported items have skill/evidence; strong_supporting items have skill/relevance.
+
+For preference_fit, judge how well this ROLE fits what I am looking for, based on my background document (career narrative, goals, location/relocation intent). Return a list of 3-5 categories, each {"name", "score", "note"}: name is a short label you choose (e.g. role type, domain interest, location, growth trajectory); score is a float 0.0-1.0; note is one line of reasoning grounded in my background document. This judges the role against my stated preferences -- not my qualifications.
 
 RULES:
 1. Only mark a skill as supported if there is EXPLICIT evidence in the documentation
