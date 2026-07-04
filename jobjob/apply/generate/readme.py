@@ -11,6 +11,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Optional
 
+from jobjob.apply.generate.ats import AtsAssessment
 from jobjob.apply.output.readme_docx import create_readme_docx
 from jobjob.structure.fit import BAND_MODERATE, BAND_STRONG, BAND_WEAK, Fit, FitCategory
 from jobjob.structure.job_decription import JobDescription
@@ -217,6 +218,7 @@ def generate_application_readme(
     template_name: Optional[str] = None,
     template_archetype: Optional[str] = None,
     resume_changes: Optional[Iterable[str]] = None,
+    ats: Optional["AtsAssessment"] = None,
     logger: logging.Logger | None = None,
 ) -> Path:
     """Assess fit and render the application README to ``output_path`` (DOCX).
@@ -229,6 +231,7 @@ def generate_application_readme(
         template_name: Resume template used (None when Drive was skipped).
         template_archetype: Human-readable archetype of the template.
         resume_changes: Edits applied to the template (empty = used as-is).
+        ats: ATS assessment of the rendered resume (None = omit the section).
         logger: Optional logger for injection.
     Returns:
         The output path.
@@ -246,6 +249,7 @@ def generate_application_readme(
         template_archetype=template_archetype,
         resume_changes=resume_changes,
         unmapped=unmapped,
+        ats=ats,
     )
 
 

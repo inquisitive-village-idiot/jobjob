@@ -3,7 +3,7 @@
 
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from docx import Document as DocxDocument
 
@@ -117,6 +117,57 @@ def _add_fit(doc, fit: Fit) -> None:
     _add_two_column(doc, "Strengths", fit.strengths, "Weaknesses", fit.weaknesses)
 
 
+def _add_bullet_list(doc, heading: str, items: Iterable[str], level: int = 2) -> None:
+    items = list(items)
+    if not items:
+        return
+    doc.add_heading(heading, level=level)
+    for item in items:
+        doc.add_paragraph(item, style="List Bullet")
+
+
+def _add_ats(doc, ats) -> None:
+    """Render the ATS assessment section.
+
+    Skipped assessments state that and nothing else; side lists (skills-file
+    candidates, up-skill targets) are informational only and never feed
+    generation.
+    """
+    doc.add_heading("ATS assessment", level=1)
+    if ats.skipped:
+        doc.add_paragraph("Skipped — no resume document was generated (Drive skipped).")
+        return
+
+    paragraph = doc.add_paragraph()
+    paragraph.add_run("Keyword coverage: ").bold = True
+    score = ats.coverage_score
+    paragraph.add_run("—" if score is None else f"{score:.2f}")
+
+    _add_bullet_list(doc, "Present in resume", ats.present)
+    _add_bullet_list(doc, "Missing (evidenced)", ats.missing_evidenced)
+    _add_bullet_list(doc, "Missing (unevidenced)", ats.missing_unevidenced)
+    _add_bullet_list(doc, "Recommendations", ats.recommendations)
+    _add_bullet_list(
+        doc,
+        "Skills-file candidates (evidenced but not in your skills file)",
+        ats.skills_file_candidates,
+    )
+    _add_bullet_list(
+        doc,
+        "Possible up-skill targets (not for the resume or cover letter)",
+        ats.upskill_targets,
+    )
+    _add_bullet_list(doc, "Fit vs. ATS gaps (supported but not rendered)", ats.fit_gaps)
+
+    warnings = [f"{c.name}: {c.reason}" for c in ats.checks if not c.passed]
+    doc.add_heading("Parseability", level=2)
+    if warnings:
+        for warning in warnings:
+            doc.add_paragraph(warning, style="List Bullet")
+    else:
+        doc.add_paragraph("All checks passed.")
+
+
 def _add_issues(doc, issues: Iterable[str]) -> None:
     doc.add_heading("Issues", level=1)
     issues = list(issues)
@@ -178,6 +229,7 @@ def create_readme_docx(
     template_archetype: Optional[str] = None,
     resume_changes: Optional[Iterable[str]] = None,
     unmapped: Optional[Iterable[str]] = None,
+    ats: Optional[Any] = None,
 ) -> Path:
     """Render the application README to a DOCX.
 
@@ -191,6 +243,7 @@ def create_readme_docx(
         template_archetype: Human-readable archetype of the template.
         resume_changes: Edits applied to the template (empty = used as-is).
         unmapped: JD requirements with no skill-cloud match (omitted when empty).
+        ats: ATS assessment (AtsAssessment); None omits the section entirely.
     Returns:
         The output path.
     """
@@ -202,6 +255,8 @@ def create_readme_docx(
     _add_overview(doc, job)
     _add_resume(doc, template_name, template_archetype, resume_changes)
     _add_fit(doc, fit)
+    if ats is not None:
+        _add_ats(doc, ats)
     _add_issues(doc, issues)
     _add_skills(doc, skills, unmapped=unmapped)
     doc.save(str(output_path))
