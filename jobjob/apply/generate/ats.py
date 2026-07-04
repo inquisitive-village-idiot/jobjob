@@ -159,14 +159,8 @@ def assess_ats(
         s.canonical_id for s in (skill_set.skills if skill_set else ()) if s.canonical
     }
 
-    buckets = _classify_coverage(job, text, cloud, supported, declared)
-
-    # Fit-vs-ATS gaps: everything the analysis supports that the resume never
-    # says -- including skills the JD didn't canonically require.
-    fit_gaps = tuple(
-        cloud.skills[cid].name
-        for cid in supported
-        if not _skill_in_text(cloud.skills[cid], text)
+    buckets = _classify_coverage(
+        job=job, text=text, cloud=cloud, supported=supported, declared=declared
     )
 
     score = (
@@ -177,54 +171,59 @@ def assess_ats(
     return AtsAssessment(
         skipped=False,
         coverage_score=score,
-        present=tuple(buckets.present),
-        missing_evidenced=tuple(buckets.missing_evidenced),
-        missing_unevidenced=tuple(buckets.missing_unevidenced),
-        unmapped=tuple(buckets.unmapped),
-        recommendations=tuple(buckets.recommendations),
-        skills_file_candidates=tuple(buckets.skills_file_candidates),
-        upskill_targets=tuple(buckets.upskill_targets),
         checks=run_parseability_checks(document),
-        fit_gaps=fit_gaps,
+        **{name: tuple(getattr(buckets, name)) for name in _BUCKET_FIELDS},
     )
 
 
-@dcs.dataclass
-class _CoverageBuckets:
-    """Mutable working set for requirement classification.
-
-    The explicit (mutable) contract of ``_classify_coverage``; frozen into the
-    public ``AtsAssessment`` at the assess_ats boundary, keeping the exposed
-    type immutable like the rest of jobjob's structures.
-    """
-
-    present: list[str] = dcs.field(default_factory=list)
-    missing_evidenced: list[str] = dcs.field(default_factory=list)
-    missing_unevidenced: list[str] = dcs.field(default_factory=list)
-    unmapped: list[str] = dcs.field(default_factory=list)
-    recommendations: list[str] = dcs.field(default_factory=list)
-    skills_file_candidates: list[str] = dcs.field(default_factory=list)
-    upskill_targets: list[str] = dcs.field(default_factory=list)
-    hit_weight: float = 0.0
-    total_weight: float = 0.0
+# The bucket fields are exactly AtsAssessment's tuple[str, ...] fields; the
+# mutable working counterpart is generated from the frozen type so the data
+# contract is defined once (on AtsAssessment) rather than maintained twice.
+_BUCKET_FIELDS: tuple[str, ...] = tuple(
+    f.name for f in dcs.fields(AtsAssessment) if f.type == tuple[str, ...]
+)
+_CoverageBuckets = dcs.make_dataclass(
+    "_CoverageBuckets",
+    [
+        *(
+            (name, list[str], dcs.field(default_factory=list))
+            for name in _BUCKET_FIELDS
+        ),
+        ("hit_weight", float, 0.0),
+        ("total_weight", float, 0.0),
+    ],
+)
+_CoverageBuckets.__doc__ = (
+    "Mutable working set for requirement classification: AtsAssessment's "
+    "bucket fields as lists, plus coverage-weight accumulators. Frozen into "
+    "the public AtsAssessment at the assess_ats boundary."
+)
 
 
 def _classify_coverage(
+    *,
     job: JobDescription,
     text: str,
     cloud,
     supported: Mapping,
     declared: set,
-) -> _CoverageBuckets:
+) -> "_CoverageBuckets":
     """Bucket each canonical JD requirement by resume presence and evidence.
 
     Recommendations require the skill to be both evidenced (``supported``) and
     declared in the user's skills file (``declared``) -- the honesty layer.
     Evidenced-but-undeclared skills become skills-file candidates; unevidenced
     ones become up-skill targets. Duplicate canonical ids (the same skill
-    backing several requirements) are counted once.
+    backing several requirements) are counted once. Fit-vs-ATS gaps are
+    everything the analysis supports that the resume never says -- including
+    skills the JD didn't canonically require.
     """
     buckets = _CoverageBuckets()
+    buckets.fit_gaps.extend(
+        cloud.skills[cid].name
+        for cid in supported
+        if not _skill_in_text(cloud.skills[cid], text)
+    )
     seen_ids: set[str] = set()
     for requirement, weight in _weighted_requirements(job):
         if requirement.unmapped:
