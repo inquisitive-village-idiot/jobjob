@@ -181,6 +181,39 @@ class TestScoreRoleFit(ThisTestCase):
             self.assertIn("Python", by_name["technical"].note)
             self.assertIn("Kubernetes", by_name["technical"].note)
 
+    def test_sliver_category_cannot_drag_the_axis(self) -> None:
+        """The motivating property of the mass-weighted axis: a weak category
+        backed only by a small fractional weight barely moves the axis."""
+        hits = {
+            "Python": FakeCloudSkill("python", {"technical": 1.0}),
+            "SQL": FakeCloudSkill("sql", {"technical": 1.0}),
+            "Advising": FakeCloudSkill(
+                "advising", {"communication": 0.8, "domain": 0.2}
+            ),
+        }
+        self.patch_cloud(hits)
+        skills = {
+            # heavy, fully-supported technical mass...
+            "critical_supported": [{"skill": "Python"}, {"skill": "SQL"}],
+            # ...vs a blocking gap whose only domain presence is a 0.2 sliver
+            "critical_gaps": [{"skill": "Advising", "severity": "blocking"}],
+        }
+
+        categories, score, _ = MOD._score_role_fit(skills)
+        by_name = {c.name: c for c in categories}
+
+        with self.subTest("the sliver category itself scores 0"):
+            expected = 0.0
+            found = by_name["domain"].score
+            self.assertEqual(expected, found)
+
+        with self.subTest("axis stays near the heavy mass, not the naive mean"):
+            # mass-weighted: (2.0 + 0 + 0) / (2.0 + 0.8 + 0.2) = 0.67
+            # naive mean would be (1.0 + 0 + 0) / 3 = 0.33
+            expected = 0.67
+            found = score
+            self.assertEqual(expected, found)
+
     def test_reproducible(self) -> None:
         self.patch_cloud(self.HITS)
         skills = {
