@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from jobjob.apply.recheck import assessment_as_dict, reassess_application
 from security import safe_path
 from services.application_metadata import (
     ApplicationStatus,
@@ -19,8 +20,6 @@ from services.tracking_service import (
     list_completed,
     list_queue,
 )
-
-from jobjob.apply.recheck import assessment_as_dict, reassess_application
 
 router = APIRouter()
 

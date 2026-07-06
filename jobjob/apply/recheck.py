@@ -145,9 +145,7 @@ def render_ats_report(assessment: AtsAssessment) -> str:
             "Up-skill targets (not for the resume or cover letter)",
             assessment.upskill_targets,
         ),
-        *_section(
-            "Fit vs. ATS gaps (supported but not rendered)", assessment.fit_gaps
-        ),
+        *_section("Fit vs. ATS gaps (supported but not rendered)", assessment.fit_gaps),
     ]
     warnings = [f"{c.name}: {c.reason}" for c in assessment.checks if not c.passed]
     lines.extend(
