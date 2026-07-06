@@ -20,6 +20,8 @@ from services.tracking_service import (
     list_queue,
 )
 
+from jobjob.apply.recheck import assessment_as_dict, reassess_application
+
 router = APIRouter()
 
 
@@ -165,6 +167,23 @@ def get_application_notes(folder_name: str, request: Request) -> dict:
 
 class NoteCreate(BaseModel):
     text: str
+
+
+@router.get("/applications/{folder_name}/ats")
+def get_application_ats(folder_name: str, request: Request) -> dict:
+    """Re-run the ATS assessment for a processed application, from saved
+    artifacts + one Docs read. Zero AI calls; nothing is mutated.
+
+    Raises:
+        HTTPException: 404 for an unknown folder; 409 when the saved
+            artifacts are missing/invalid (e.g. pre-ATS application).
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    try:
+        assessment = reassess_application(folder)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return assessment_as_dict(assessment)
 
 
 @router.post("/applications/{folder_name}/notes")
