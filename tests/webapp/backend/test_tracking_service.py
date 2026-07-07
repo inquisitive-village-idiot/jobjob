@@ -106,6 +106,37 @@ class TestApplicationItemsLocalMirror:
         (item,) = self._items(tmp_path)
         assert item["status"] == "completed"
 
+    def test_insights_read_from_summary(self, tmp_path):
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (folder / "summary.json").write_text(
+            json.dumps(
+                {
+                    "fit": {"band": "Strong", "role_fit": 0.72, "preference_fit": None},
+                    "ats_coverage": 0.64,
+                }
+            )
+        )
+        (item,) = self._items(tmp_path)
+        assert item["fit"] == {
+            "band": "Strong",
+            "role_fit": 0.72,
+            "preference_fit": None,
+        }
+        assert item["ats_coverage"] == 0.64
+
+    def test_missing_summary_degrades_to_empty_insights(self, tmp_path):
+        _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (item,) = self._items(tmp_path)
+        assert item["fit"] is None
+        assert item["ats_coverage"] is None
+
+    def test_corrupt_summary_degrades_to_empty_insights(self, tmp_path):
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (folder / "summary.json").write_text("{not json")
+        (item,) = self._items(tmp_path)
+        assert item["fit"] is None
+        assert item["ats_coverage"] is None
+
 
 class TestProfileCompletedItem:
     def test_parses_structured_filename(self, tmp_path):

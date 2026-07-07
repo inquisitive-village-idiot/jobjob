@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { APP_STATUSES } from "../types";
 import type { AppStatus, CompletedItem, ConfigSchema, QueueItem } from "../types";
 import { useJobs } from "../hooks/useJobs";
+import AtsReportModal from "../components/AtsReportModal";
 import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
 import NotesModal from "../components/NotesModal";
@@ -18,6 +19,7 @@ export default function DashboardPage() {
   const [confirming, setConfirming] = useState<QueueItem | null>(null);
   const [rerunningApp, setRerunningApp] = useState<CompletedItem | null>(null);
   const [notesApp, setNotesApp] = useState<CompletedItem | null>(null);
+  const [atsApp, setAtsApp] = useState<CompletedItem | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
 
@@ -183,6 +185,7 @@ export default function DashboardPage() {
               onRerun={setRerunningApp}
               onStatusChange={setAppStatus}
               onNotes={setNotesApp}
+              onAts={setAtsApp}
             />
           ) : (
             <CompletedProfilesTable
@@ -233,6 +236,8 @@ export default function DashboardPage() {
           onCountChange={setNoteCount}
         />
       )}
+
+      {atsApp && <AtsReportModal item={atsApp} onClose={() => setAtsApp(null)} />}
     </div>
   );
 }
@@ -330,6 +335,57 @@ const byCompanyThenRole = (a: CompletedItem, b: CompletedItem) =>
   (a.company || a.folder_name).localeCompare(b.company || b.folder_name) ||
   (a.title || "").localeCompare(b.title || "");
 
+// ── Insight chip + sorting ─────────────────────────────────────────────────────
+
+type SortMode = "company" | "fit" | "ats";
+
+// Score-descending; rows without a score sort last. Ties fall back to company.
+const byScoreDesc =
+  (score: (item: CompletedItem) => number | null | undefined) =>
+  (a: CompletedItem, b: CompletedItem) => {
+    const sa = score(a) ?? -1;
+    const sb = score(b) ?? -1;
+    return sb - sa || byCompanyThenRole(a, b);
+  };
+
+const APP_SORTS: Record<SortMode, (a: CompletedItem, b: CompletedItem) => number> = {
+  company: byCompanyThenRole,
+  fit: byScoreDesc((i) => i.fit?.role_fit),
+  ats: byScoreDesc((i) => i.ats_coverage),
+};
+
+const BAND_STYLES: Record<string, string> = {
+  Strong: "bg-green-100 text-green-800 border-green-200",
+  Moderate: "bg-amber-100 text-amber-800 border-amber-200",
+  Weak: "bg-red-100 text-red-700 border-red-200",
+};
+
+// Compact per-row insight: band badge + whichever scores exist. Older
+// applications (no persisted fit, no coverage) render an em-dash.
+function InsightChip({ item }: { item: CompletedItem }) {
+  const band = item.fit?.band;
+  const scores = [
+    typeof item.fit?.role_fit === "number" && `role ${item.fit.role_fit.toFixed(2)}`,
+    typeof item.ats_coverage === "number" && `ATS ${item.ats_coverage.toFixed(2)}`,
+  ].filter(Boolean);
+  if (!band && scores.length === 0) return <span className="text-gray-300">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      {band && (
+        <span
+          className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+            border ${BAND_STYLES[band] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}
+        >
+          {band}
+        </span>
+      )}
+      {scores.length > 0 && (
+        <span className="text-xs text-gray-500 tabular-nums">{scores.join(" · ")}</span>
+      )}
+    </span>
+  );
+}
+
 // Profiles: company ascending, then person ascending.
 const byCompanyThenPerson = (a: CompletedItem, b: CompletedItem) =>
   (a.company || a.folder_name).localeCompare(b.company || b.folder_name) ||
@@ -340,11 +396,13 @@ function AppRow({
   onRerun,
   onStatusChange,
   onNotes,
+  onAts,
 }: {
   item: CompletedItem;
   onRerun: (item: CompletedItem) => void;
   onStatusChange: (item: CompletedItem, status: AppStatus) => Promise<void>;
   onNotes: (item: CompletedItem) => void;
+  onAts: (item: CompletedItem) => void;
 }) {
   return (
     <tr className="bg-white hover:bg-gray-50">
@@ -355,6 +413,9 @@ function AppRow({
         {item.company || item.folder_name}
       </td>
       <td className="px-4 py-2 align-top text-gray-700">{item.title || "—"}</td>
+      <td className="px-4 py-2 align-top">
+        <InsightChip item={item} />
+      </td>
       <td className="px-4 py-2 align-top">
         <StatusCell item={item} onChange={onStatusChange} />
       </td>
@@ -373,6 +434,16 @@ function AppRow({
           >
             Drive
           </a>
+        )}
+        {item.status_writable && (
+          <button
+            onClick={() => onAts(item)}
+            className="px-2 py-0.5 text-xs font-medium text-gray-700 border
+              border-gray-200 rounded hover:bg-gray-50 mr-2"
+            title="ATS report — re-check the current resume against the JD"
+          >
+            ATS
+          </button>
         )}
         {item.status_writable && (
           <button
@@ -402,12 +473,15 @@ function CompletedAppsTable({
   onRerun,
   onStatusChange,
   onNotes,
+  onAts,
 }: {
   items: CompletedItem[] | null;
   onRerun: (item: CompletedItem) => void;
   onStatusChange: (item: CompletedItem, status: AppStatus) => Promise<void>;
   onNotes: (item: CompletedItem) => void;
+  onAts: (item: CompletedItem) => void;
 }) {
+  const [sortMode, setSortMode] = useState<SortMode>("company");
   const groups =
     items === null
       ? null
@@ -415,14 +489,30 @@ function CompletedAppsTable({
           status,
           rows: items
             .filter((i) => (i.app_status ?? "GENERATED") === status)
-            .sort(byCompanyThenRole),
+            .sort(APP_SORTS[sortMode]),
         })).filter((g) => g.rows.length > 0);
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        Completed Applications {items && `— ${items.length}`}
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+          Completed Applications {items && `— ${items.length}`}
+        </h2>
+        <label className="text-xs text-gray-500">
+          Sort{" "}
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="px-1.5 py-0.5 text-xs border border-gray-200 rounded
+              focus:outline-none focus:ring-2 focus:ring-blue-500"
+            title="Order rows within each status group"
+          >
+            <option value="company">Company</option>
+            <option value="fit">Role fit</option>
+            <option value="ats">ATS coverage</option>
+          </select>
+        </label>
+      </div>
 
       {groups === null ? (
         <p className="text-gray-400 text-sm">Loading…</p>
@@ -436,8 +526,9 @@ function CompletedAppsTable({
                 <th className="px-4 py-2 w-28">Date</th>
                 <th className="px-4 py-2">Company</th>
                 <th className="px-4 py-2">Title</th>
+                <th className="px-4 py-2 w-40">Fit</th>
                 <th className="px-4 py-2 w-32">Status</th>
-                <th className="px-4 py-2 w-32 text-right"></th>
+                <th className="px-4 py-2 w-40 text-right"></th>
               </tr>
             </thead>
             {groups.map((g) => (
@@ -446,7 +537,7 @@ function CompletedAppsTable({
                 className="divide-y divide-gray-100 border-t border-gray-200"
               >
                 <tr id={`db-status-${g.status}`} className="scroll-mt-16">
-                  <td colSpan={5} className="px-4 py-1.5 bg-gray-50/70">
+                  <td colSpan={6} className="px-4 py-1.5 bg-gray-50/70">
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs
                         font-medium border ${STATUS_STYLES[g.status]}`}
@@ -463,6 +554,7 @@ function CompletedAppsTable({
                     onRerun={onRerun}
                     onStatusChange={onStatusChange}
                     onNotes={onNotes}
+                    onAts={onAts}
                   />
                 ))}
               </tbody>

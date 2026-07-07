@@ -61,4 +61,18 @@ class Fit:
     role_fit_note: str = ""
 
 
+def fit_summary(fit: Fit) -> dict:
+    """Compact, JSON-ready view of a fit for persistence (``summary.json``).
+
+    Deliberately excludes the category tables — the README carries the detail;
+    this block exists for machine-readable triage (listing, sorting). Absent
+    axes stay ``None`` so consumers render what exists.
+    """
+    return {
+        "band": fit.band,
+        "role_fit": fit.role_fit,
+        "preference_fit": fit.preference_fit,
+    }
+
+
 # __END__

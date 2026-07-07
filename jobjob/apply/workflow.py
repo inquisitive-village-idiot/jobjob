@@ -26,7 +26,7 @@ from jobjob.apply.generate.ats import assess_ats
 from jobjob.apply.generate.coverletter import generate_cover_letter_text
 from jobjob.apply.generate.highlights import select_highlights
 from jobjob.apply.generate.parse import parse_job_description
-from jobjob.apply.generate.readme import generate_application_readme
+from jobjob.apply.generate.readme import assess_fit, generate_application_readme
 from jobjob.apply.generate.resume import tailor_resume
 from jobjob.apply.generate.skills import analyze_skills
 from jobjob.apply.output.cover_letter_docx import create_cover_letter_docx
@@ -39,6 +39,7 @@ from jobjob.loader.auth import get_google_credentials
 from jobjob.loader.loadcontent import load_highlights, load_skills, load_templates
 from jobjob.loader.loadreference import load_reference_documents
 from jobjob.structure.applicant import Applicant
+from jobjob.structure.fit import fit_summary
 from jobjob.structure.highlight import Highlight, HighlightSet
 from jobjob.structure.job_decription import JobDescription
 from jobjob.structure.reference import ReferenceDocs
@@ -260,6 +261,11 @@ def run_application_workflow(
     ats = assess_ats(resume_doc, job, skills, skill_set=skill_set, logger=_logger)
     results["ats_coverage"] = ats.coverage_score
 
+    # Fit is computed once here so the machine-readable summary block and the
+    # README render the same assessment.
+    fit = assess_fit(skills, logger=_logger)
+    results["fit"] = fit_summary(fit)
+
     # Step 5: README (summary + folded skills + fit + ATS).
     readme_path = generate_application_readme(
         job,
@@ -270,6 +276,7 @@ def run_application_workflow(
         template_archetype=results.get("template_archetype"),
         resume_changes=results.get("resume_changes"),
         ats=ats,
+        fit=fit,
     )
     results["readme"] = str(readme_path)
 

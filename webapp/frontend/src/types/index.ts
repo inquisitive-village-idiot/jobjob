@@ -93,6 +93,36 @@ export interface AppNote {
   text: string;
 }
 
+// Compact fit block persisted in summary.json — mirrors fit_summary() in
+// jobjob/structure/fit.py; keep in sync. Null axes = not computable.
+export interface FitSummary {
+  band?: string;
+  role_fit?: number | null;
+  preference_fit?: number | null;
+}
+
+// ATS assessment payload from GET /tracking/applications/{folder}/ats —
+// mirrors AtsAssessment (assessment_as_dict) in jobjob/apply/recheck.py.
+export interface AtsCheckResult {
+  name: string;
+  passed: boolean;
+  reason: string;
+}
+
+export interface AtsReport {
+  skipped: boolean;
+  coverage_score: number | null;
+  present: string[];
+  missing_evidenced: string[];
+  missing_unevidenced: string[];
+  unmapped: string[];
+  recommendations: string[];
+  skills_file_candidates: string[];
+  upskill_targets: string[];
+  checks: AtsCheckResult[];
+  fit_gaps: string[];
+}
+
 export interface CompletedItem {
   name: string;
   path: string;
@@ -107,6 +137,9 @@ export interface CompletedItem {
   app_status?: AppStatus; // metadata.json > folder-name prefix > GENERATED
   status_writable?: boolean; // false when only the Drive API fallback is in use
   note_count?: number; // changelog notes recorded for the application
+  // Insights from summary.json (local mirror only; absent on older applications).
+  fit?: FitSummary | null;
+  ats_coverage?: number | null;
   // Profiles only — parsed from "<created>-<processed>-<Company>-<Person>" (sidecar preferred).
   person?: string;
   date_created?: string;
