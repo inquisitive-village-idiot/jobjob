@@ -57,6 +57,22 @@ Example — local only, custom output folder::
 
    jobjob apply path/to/job.pdf --skip-drive -o ./out
 
+Re-checking a resume
+--------------------
+
+::
+
+   jobjob ats <output_dir>
+
+Re-assesses a processed application's résumé against its job description — keyword
+coverage plus parseability checks — and prints a plain-text report. Point it at the
+application's output directory (the one containing ``summary.json``).
+
+Use it while iterating: edit the résumé Google Doc, run ``jobjob ats``, repeat. The
+assessment is rebuilt from the saved artifacts plus one Google Docs read of the current
+résumé — **no AI calls**, so the loop is free. Applications generated with
+``--skip-drive`` have no résumé Doc to read and report a skipped assessment.
+
 What you need
 -------------
 

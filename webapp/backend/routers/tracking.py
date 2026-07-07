@@ -101,8 +101,8 @@ def _resolve_app_folder(request: Request, folder_name: str) -> Path:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Local applications mirror not configured; status writes "
-                "unavailable."
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
             ),
         )
     # folder_name must be a plain directory name — no separators or traversal.

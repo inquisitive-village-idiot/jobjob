@@ -39,6 +39,8 @@ classifiers = [
 # Assisted browser auto-fill (`jobjob autofill`). After installing, run
 # `playwright install chromium` once to fetch the browser.
 autofill = [
+    # Runtime dependency of the autofill feature — distinct from the test
+    # group's playwright, which drives the frontend e2e suite.
     "playwright>=1.40",
 ]
 
@@ -61,6 +63,8 @@ test = [
     "coverage>=7.2.0",
     "fastapi>=0.136.3",
     "httpx>=0.28.1",
+    # Frontend e2e tests — intentionally duplicates the `autofill` extra's
+    # runtime pin; tests must not depend on an optional feature being installed.
     "playwright>=1.40",
 ]
 docs = [
