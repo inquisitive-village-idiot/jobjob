@@ -128,3 +128,53 @@ class TestApplicationNotes:
     def test_missing_folder_404(self, client):
         resp = client.post(_notes_url("2026-09-09 - Nope - Role"), json={"text": "x"})
         assert resp.status_code == 404
+
+
+class TestGetApplicationAts:
+    def _url(self, folder):
+        return f"/api/tracking/applications/{urllib.parse.quote(folder)}/ats"
+
+    def test_returns_assessment_json(self, client, monkeypatch):
+        from jobjob.apply.generate.ats import AtsAssessment
+        from jobjob.apply.generate.ats_checks import AtsCheck
+
+        assessment = AtsAssessment(
+            coverage_score=0.75,
+            present=("Python",),
+            missing_evidenced=("SQL",),
+            recommendations=("SQL is supported but absent.",),
+            checks=(AtsCheck(name="content-in-tables", passed=True),),
+            fit_gaps=("SQL",),
+        )
+        monkeypatch.setattr(
+            "routers.tracking.reassess_application", lambda folder: assessment
+        )
+
+        resp = client.get(self._url(_FOLDER))
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["coverage_score"] == 0.75
+        assert body["present"] == ["Python"]
+        assert body["recommendations"] == ["SQL is supported but absent."]
+        # nested dataclasses arrive as JSON objects
+        assert body["checks"][0] == {
+            "name": "content-in-tables",
+            "passed": True,
+            "reason": "",
+        }
+
+    def test_missing_artifacts_409(self, client, monkeypatch):
+        def _raise(folder):
+            raise FileNotFoundError("Missing application artifact: summary.json")
+
+        monkeypatch.setattr("routers.tracking.reassess_application", _raise)
+
+        resp = client.get(self._url(_FOLDER))
+
+        assert resp.status_code == 409
+        assert "summary.json" in resp.json()["detail"]
+
+    def test_missing_folder_404(self, client):
+        resp = client.get(self._url("2026-09-09 - Nope - Role"))
+        assert resp.status_code == 404

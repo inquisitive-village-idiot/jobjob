@@ -12,6 +12,7 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Optional
 
 from jobjob.apply.__main__ import main as apply_main
+from jobjob.apply.recheck import main as ats_main
 from jobjob.auth.__main__ import main as auth_main
 from jobjob.autofill.__main__ import main as autofill_main
 from jobjob.cli import run_main
@@ -23,6 +24,7 @@ COMMANDS: Mapping[str, Callable[..., int]] = {
     "enrich": enrich_main,
     "auth": auth_main,
     "autofill": autofill_main,
+    "ats": ats_main,
 }
 
 
