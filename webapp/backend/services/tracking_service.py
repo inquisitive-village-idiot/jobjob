@@ -44,6 +44,30 @@ def invalidate_completed_cache() -> None:
 _COMPLETED_DIR = "completed"
 _SUPPORTED_EXTENSIONS = frozenset({".pdf", ".png", ".jpg", ".jpeg"})
 
+_SUMMARY_FILENAME = "summary.json"
+
+
+def _read_insights(folder: Path, logger: logging.Logger) -> dict:
+    """Read the fit block and ATS coverage from a folder's ``summary.json``.
+
+    Missing, unreadable, or pre-insight summaries degrade to empty values —
+    older applications must still list.
+    """
+    empty = {"fit": None, "ats_coverage": None}
+    summary_path = Path(folder, _SUMMARY_FILENAME)
+    if not summary_path.is_file():
+        return empty
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.debug("Unreadable summary in %s: %s", folder, exc)
+        return empty
+    fit = summary.get("fit")
+    return {
+        "fit": fit if isinstance(fit, dict) else None,
+        "ats_coverage": summary.get("ats_coverage"),
+    }
+
 
 def _queue_item(f: Path, subfolder: str) -> dict:
     return {
@@ -151,12 +175,14 @@ def _application_item(
     metadata_status: Optional[ApplicationStatus] = None,
     status_writable: bool = False,
     note_count: int = 0,
+    insights: Optional[dict] = None,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
     ``app_status`` precedence: metadata.json > folder-name prefix > GENERATED.
     ``status`` (artifact completeness) is a separate axis and untouched.
     ``note_count`` is the number of changelog notes recorded for the application.
+    ``insights`` carries the summary.json fit block + ATS coverage (mirror only).
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -186,6 +212,7 @@ def _application_item(
         "status_writable": status_writable,
         "note_count": note_count,
         "drive": drive,
+        **(insights or {"fit": None, "ats_coverage": None}),
         **parsed,
     }
 
@@ -243,6 +270,7 @@ def _application_items(
                         metadata_status=metadata_status,
                         status_writable=True,
                         note_count=note_count,
+                        insights=_read_insights(folder, logger),
                         drive=(
                             {
                                 "found": True,

@@ -128,6 +128,28 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
             self.assertEqual("Acme", summary["job_info"]["company_name"])
             self.assertIn("token_usage", summary)
 
+    def test_persists_fit_block_in_summary(self) -> None:
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+
+        MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        summary = json.loads(Path(out, "summary.json").read_text())
+        fit = summary["fit"]
+        with self.subTest("compact shape"):
+            expected = {"band", "role_fit", "preference_fit"}
+            found = set(fit)
+            self.assertEqual(expected, found)
+        with self.subTest("band is a known value"):
+            self.assertIn(fit["band"], ("Strong", "Moderate", "Weak"))
+
     def test_writes_readme_artifact(self) -> None:
         out = self.get_tmpdir()
         jd_pdf = fixture_path("job_description_acme")

@@ -219,6 +219,7 @@ def generate_application_readme(
     template_archetype: Optional[str] = None,
     resume_changes: Optional[Iterable[str]] = None,
     ats: Optional["AtsAssessment"] = None,
+    fit: Optional[Fit] = None,
     logger: logging.Logger | None = None,
 ) -> Path:
     """Assess fit and render the application README to ``output_path`` (DOCX).
@@ -232,12 +233,14 @@ def generate_application_readme(
         template_archetype: Human-readable archetype of the template.
         resume_changes: Edits applied to the template (empty = used as-is).
         ats: ATS assessment of the rendered resume (None = omit the section).
+        fit: Precomputed fit assessment (the workflow computes it once so the
+            summary persistence and the README agree); assessed here when None.
         logger: Optional logger for injection.
     Returns:
         The output path.
     """
     issues = list(issues) if issues is not None else []
-    fit = assess_fit(skills, logger=logger)
+    fit = fit if fit is not None else assess_fit(skills, logger=logger)
     unmapped = _unmapped_requirements(job, logger=logger)
     return create_readme_docx(
         output_path=output_path,
