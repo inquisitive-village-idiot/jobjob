@@ -14,8 +14,10 @@ In the app
 
 #. **Add a job posting** — click **Add JD**, then *paste the text*, *fetch a URL*, or
    *upload a PDF*. (You can also drop a PDF into ``<jobjob folder>/data/jobs/``.)
-#. Open the **Queue** tab, find the posting, and click **Apply**.
-#. Watch progress. The finished application appears on the **Dashboard**.
+#. On the **Applications** page, find the posting (state *Queued*) and choose
+   **Build** from its actions.
+#. Watch progress. The finished application flips to *Built* in the same table;
+   past runs (and any errors) stay on the **Queue** page.
 
 .. warning::
 

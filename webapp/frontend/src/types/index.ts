@@ -93,6 +93,22 @@ export interface AppNote {
   text: string;
 }
 
+// A persisted execution record from GET /jobs — mirrors
+// services/run_history.py. Kinds keep the API vocabulary ("apply"); UI copy
+// renders them as Build etc. (UI-only rename; full rename is a future change).
+export interface RunRecord {
+  run_id: string;
+  kind: "apply" | "enrich" | "batch" | "schedule";
+  label: string;
+  paths: string[];
+  folder_name?: string | null;
+  status: "running" | "completed" | "failed";
+  error?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  has_log: boolean;
+}
+
 // Compact fit block persisted in summary.json — mirrors fit_summary() in
 // jobjob/structure/fit.py; keep in sync. Null axes = not computable.
 export interface FitSummary {

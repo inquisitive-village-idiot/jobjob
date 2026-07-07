@@ -36,7 +36,7 @@ def client(data_dir, monkeypatch):
     # ingestion → snapshot → launch wiring, not model/thread execution.
     monkeypatch.setattr(jobs, "check_budget", lambda **k: None)
     monkeypatch.setattr(jobs, "_make_apply_run", lambda *a, **k: (lambda: {"ok": True}))
-    monkeypatch.setattr(jobs, "_start_job", lambda fn: "job-test-1")
+    monkeypatch.setattr(jobs, "_start_job", lambda fn, **kwargs: "job-test-1")
 
     app = FastAPI()
     app.include_router(jobs.router, prefix="/api/jobs")

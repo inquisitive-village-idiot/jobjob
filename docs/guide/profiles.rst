@@ -26,7 +26,7 @@ The files
 ---------
 
 **content/** — structured TOML that drives résumé customization. Edit these in the
-dashboard's **Static Content** tab.
+**Profiles** page.
 
 .. list-table::
    :header-rows: 1
@@ -99,7 +99,7 @@ Creating your profile
 ---------------------
 
 #. Open **Settings → Profiles**.
-#. **Create blank** (then fill in **Static Content**), **Import a résumé** (jobjob
+#. **Create blank** (then fill in on the **Profiles** page), **Import a résumé** (jobjob
    extracts highlights, skills, objective, and background for you to review), or
    **Register** an existing folder.
 #. Switch to it so it becomes active.
