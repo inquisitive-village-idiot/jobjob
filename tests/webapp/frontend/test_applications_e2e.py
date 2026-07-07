@@ -26,7 +26,9 @@ def test_sort_control_present(page: Page, live_app: str) -> None:
     select = page.locator("//label[contains(., 'Sort')]//select")
     expect(select).to_be_visible()
     for label in ("Company", "Role fit", "ATS coverage"):
-        expect(select.locator(f"//option[normalize-space(text())='{label}']")).to_have_count(1)
+        expect(
+            select.locator(f"//option[normalize-space(text())='{label}']")
+        ).to_have_count(1)
 
 
 def test_add_jd_panel_present(page: Page, live_app: str) -> None:
