@@ -17,6 +17,7 @@ from jobjob.auth.__main__ import main as auth_main
 from jobjob.autofill.__main__ import main as autofill_main
 from jobjob.cli import run_main
 from jobjob.enrich.__main__ import main as enrich_main
+from jobjob.skills.suggest import main as skills_main
 
 # Sub-command name -> ``main(argv) -> int``.
 COMMANDS: Mapping[str, Callable[..., int]] = {
@@ -25,6 +26,7 @@ COMMANDS: Mapping[str, Callable[..., int]] = {
     "auth": auth_main,
     "autofill": autofill_main,
     "ats": ats_main,
+    "skills": skills_main,
 }
 
 

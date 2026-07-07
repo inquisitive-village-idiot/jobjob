@@ -9,6 +9,8 @@ import tomlkit
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from jobjob.loader.loadcontent import load_skills
+from jobjob.skills.suggest import aggregate_candidates, suggestions_as_dicts
 from security import safe_path
 
 router = APIRouter()
@@ -85,6 +87,35 @@ class ConfigUpdate(BaseModel):
 
 class ReferenceUpdate(BaseModel):
     content: str
+
+
+@router.get("/skills/suggestions")
+def get_skill_suggestions(request: Request) -> list[dict]:
+    """Aggregate evidence-backed skills-file candidates across applications.
+
+    Same rules as ``jobjob skills suggest``: evidenced in a saved skills
+    analysis, canonical, and undeclared in the active profile's skills file.
+    """
+    root = request.app.state.settings.get("applications_output_dir")
+    if not root:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
+            ),
+        )
+    skills_path = _toml_path(request, "skills")
+    try:
+        skill_set = load_skills(skills_path) if skills_path.is_file() else None
+    except (OSError, ValueError):
+        # Unreadable skills file degrades to "nothing declared yet".
+        skill_set = None
+    try:
+        suggestions = aggregate_candidates(Path(root), skill_set=skill_set)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return suggestions_as_dicts(suggestions)
 
 
 @router.get("/toml/{name}")

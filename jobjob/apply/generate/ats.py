@@ -127,8 +127,12 @@ def _skill_in_text(canonical, text: str) -> bool:
 # ======================================================================
 
 
-def _supported_canonical_ids(skills: Mapping, cloud) -> dict[str, str]:
-    """Map canonical id -> evidence for analysis-supported skills."""
+def supported_canonical_ids(skills: Mapping, cloud) -> dict[str, str]:
+    """Map canonical id -> evidence for analysis-supported skills.
+
+    Public: the skills-file feedback aggregation (``jobjob.skills.suggest``)
+    applies the same evidence rule to saved analyses.
+    """
     supported = {}
     for bucket in ("critical_supported", "important_supported", "strong_supporting"):
         for entry in skills.get(bucket, []):
@@ -188,7 +192,7 @@ def assess_ats(
     from jobjob.gapi.docs import extract_doc_text
 
     text = extract_doc_text(document.get("body", {}).get("content", []))
-    supported = _supported_canonical_ids(skills, cloud)
+    supported = supported_canonical_ids(skills, cloud)
     declared = {
         s.canonical_id for s in (skill_set.skills if skill_set else ()) if s.canonical
     }
