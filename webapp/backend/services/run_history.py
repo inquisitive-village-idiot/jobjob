@@ -12,6 +12,8 @@ warning log.
 
 import json
 import logging
+import os
+import tempfile
 from collections.abc import Iterable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,10 +50,28 @@ def _now() -> str:
 
 
 def _write_record(runs: Path, record: dict, logger: logging.Logger) -> None:
+    """Persist a run record atomically (temp file + ``os.replace``).
+
+    ``finish_run`` rewrites a record in place; a concurrent reader (the SSE run
+    list, the Applications page's periodic poll) must never observe a truncated,
+    mid-write file. Writing to a temp file in the same directory and renaming it
+    onto the final path makes each update all-or-nothing.
+    """
+    path = record_path(runs, record["run_id"])
     try:
-        record_path(runs, record["run_id"]).write_text(
-            json.dumps(record, indent=2), encoding="utf-8"
+        fd, tmp_name = tempfile.mkstemp(
+            dir=runs, prefix=f"{record['run_id']}.", suffix=".tmp"
         )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(record, fh, indent=2)
+            os.replace(tmp_name, path)
+        except BaseException:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
     except OSError as exc:
         logger.warning("Could not persist run %s: %s", record.get("run_id"), exc)
 
