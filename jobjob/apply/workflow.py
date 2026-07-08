@@ -194,6 +194,8 @@ def run_application_workflow(
     reuse_folder_id: Optional[str] = None,
     allow_overwrite: bool = False,
     industry: Optional[str] = None,
+    applications_output_dir: Optional[Path] = None,
+    entity_dir: Optional[Path] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _drive_builder: Callable[..., Any] = build_drive_service,
@@ -216,6 +218,14 @@ def run_application_workflow(
         reuse_folder_id: Existing Drive folder id to update in place (re-process mode).
         industry: Optional domain/industry context for the active profile, passed to
             the resume-objective prompt so the company is described accurately.
+        applications_output_dir: Root of the local Drive-mirror of application folders.
+            When set, the identity files (metadata.json + source.json) persist into
+            ``<root>/<Company - Role>`` — the same folder ``write_status`` uses — so
+            the entity_id survives across re-builds. ``output_dir`` (often an
+            ephemeral tempdir in the webapp flow) is NOT where identity lives.
+        entity_dir: Explicit persistent identity folder, overriding the resolution
+            from ``applications_output_dir``. Used by a re-run of a possibly-renamed
+            application to target the existing folder so its entity_id is reused.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _drive_builder: Injection point for the Drive service builder (testing).
@@ -366,18 +376,34 @@ def run_application_workflow(
         results["token_usage"] = dcs.asdict(usage)
         _logger.info("%s", usage.summary())
 
-    # Identity core (application-identity, phase 1): mint/reuse this folder's
-    # entity_id and write its parse-once source fields. Best-effort — a
-    # temp-dir/offline run, a read-only output_dir, or the backend layout being
-    # unavailable must never fail the build; it just leaves the folder legacy
-    # (id-less) for this run, exactly like today.
+    # Identity core (application-identity, phase 1): mint/reuse this application's
+    # entity_id and write its parse-once source fields into a PERSISTENT folder —
+    # the local Drive mirror's ``<Company - Role>`` dir, the same place
+    # ``write_status`` persists metadata.json. This must NOT be ``output_dir``,
+    # which in the webapp flow is an ephemeral tempdir: identity written there is
+    # lost, and a re-build would mint a fresh id every time. Resolution order:
+    #   entity_dir (explicit, e.g. a re-run's existing/renamed folder)
+    #   > applications_output_dir / <Company - Role>  (fresh build into the mirror)
+    #   > output_dir  (legacy/offline fallback: CLI with no mirror configured)
+    # Best-effort throughout — a read-only dir or an unavailable backend leaves the
+    # folder legacy (id-less) for this run rather than failing the build.
     app_metadata, app_source = _identity_services()
     if app_metadata is not None and app_source is not None:
         try:
-            entity_id = app_metadata.ensure_entity_id(output_dir)
+            if entity_dir is not None:
+                id_dir = Path(entity_dir)
+            elif applications_output_dir is not None:
+                id_dir = Path(applications_output_dir) / gdrive.application_folder_name(
+                    job.company_name, job.role_title
+                )
+            else:
+                id_dir = Path(output_dir)
+            id_dir.mkdir(parents=True, exist_ok=True)
+
+            entity_id = app_metadata.ensure_entity_id(id_dir)
             results["entity_id"] = entity_id
             app_source.ensure_source(
-                output_dir,
+                id_dir,
                 entity_id=entity_id,
                 company=job.company_name,
                 role=job.role_title,
@@ -587,6 +613,8 @@ def apply_inputs(
     data_dir: Optional[Path] = None,
     allow_overwrite: bool = False,
     industry: Optional[str] = None,
+    applications_output_dir: Optional[Path] = None,
+    entity_dir: Optional[Path] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _classify: Callable[..., str] = classify_file,
@@ -617,6 +645,12 @@ def apply_inputs(
             successfully-applied JD is moved into ``<data_dir>/completed/jobs/``.
         industry: Optional domain/industry context for the active profile, forwarded
             to the resume-objective prompt.
+        applications_output_dir: Local Drive-mirror root; forwarded so each JD's
+            identity (metadata.json + source.json) persists into
+            ``<root>/<Company - Role>`` rather than the ephemeral output dir.
+        entity_dir: Explicit persistent identity folder (a single-application re-run
+            targeting an existing/renamed folder). In directory mode leave it None so
+            each JD resolves its own folder under ``applications_output_dir``.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _classify: Injection point for the file classifier (testing).
@@ -664,6 +698,8 @@ def apply_inputs(
                 parent_id=parent_id,
                 allow_overwrite=allow_overwrite,
                 industry=industry,
+                applications_output_dir=applications_output_dir,
+                entity_dir=entity_dir,
                 logger=_logger,
                 _credentials_loader=_credentials_loader,
             )

@@ -241,6 +241,7 @@ def _make_build_run(
     clear_cache: bool = False,
     allow_overwrite: bool = False,
     model: Optional[str] = None,
+    entity_dir: Optional[Path] = None,
 ):
     """Build the background ``_run`` closure for a build job.
 
@@ -255,6 +256,10 @@ def _make_build_run(
     configured model for this run only. The response cache key is model-scoped, so
     the override is cached under its own entry rather than colliding with -- or
     being forced to bypass -- the configured model's cache.
+
+    ``entity_dir`` pins the persistent identity folder (a re-run of a possibly-renamed
+    application targets its existing mirror folder so the entity_id is reused). Fresh
+    builds leave it None and resolve their folder under ``applications_output_dir``.
     """
 
     def _run() -> dict:
@@ -287,6 +292,8 @@ def _make_build_run(
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
+            entity_dir=entity_dir,
             logger=logging.getLogger("jobjob.apply"),
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -560,8 +567,19 @@ def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
             ),
         )
 
+    # Pin the persistent identity folder to the application's CURRENT (possibly
+    # renamed) mirror folder so the entity_id is reused rather than re-minted —
+    # this is the rename-safe path. Without a mirror root, identity falls back to
+    # the workflow's output_dir (legacy).
+    local_dir = s.get("applications_output_dir")
+    entity_dir = Path(local_dir).expanduser() / body.folder_name if local_dir else None
+
     run = _make_build_run(
-        jd_path, skip_drive=body.skip_drive, move_data_dir=None, model=body.model
+        jd_path,
+        skip_drive=body.skip_drive,
+        move_data_dir=None,
+        model=body.model,
+        entity_dir=entity_dir,
     )
     job_id = _start_job(
         run,
@@ -681,6 +699,7 @@ def launch_build_all(request: Request) -> dict:
             parent_id=settings.applications_output_drive_id,
             data_dir=data_dir,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -872,6 +891,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                     use_cache=settings.cache_enabled,
                     parent_id=settings.applications_output_drive_id,
                     data_dir=data_dir,
+                    applications_output_dir=settings.applications_output_dir,
                     logger=_logger,
                     _credentials_loader=creds_loader,
                 )
