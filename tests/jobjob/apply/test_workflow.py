@@ -166,6 +166,60 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
         )
         self.assertTrue(Path(results["readme"]).is_file())
 
+    def test_mints_entity_id_and_source_on_first_build(self) -> None:
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+
+        results = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        with self.subTest("entity_id present in results"):
+            self.assertIn("entity_id", results)
+            self.assertTrue(results["entity_id"])
+        with self.subTest("entity_id written to metadata.json"):
+            meta = json.loads(Path(out, "metadata.json").read_text())
+            self.assertEqual(results["entity_id"], meta["entity_id"])
+        with self.subTest("source.json written with parsed fields"):
+            source = json.loads(Path(out, "source.json").read_text())
+            self.assertEqual("Acme", source["company"])
+            self.assertEqual("Principal Engineer", source["role"])
+            self.assertEqual(results["entity_id"], source["entity_id"])
+
+    def test_reuses_entity_id_and_does_not_overwrite_source_on_rebuild(self) -> None:
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+        common_kwargs = dict(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        first = MOD.run_application_workflow(
+            query_service=self.make_query_service(), **common_kwargs
+        )
+        # Simulate a user correction to the parse-once source fields between builds.
+        from services import application_source
+
+        application_source.edit_source(out, company="Acme Corrected")
+
+        second = MOD.run_application_workflow(
+            query_service=self.make_query_service(), **common_kwargs
+        )
+
+        with self.subTest("entity_id reused, not regenerated"):
+            self.assertEqual(first["entity_id"], second["entity_id"])
+        with self.subTest("user correction to source survives the rebuild"):
+            source = json.loads(Path(out, "source.json").read_text())
+            self.assertEqual("Acme Corrected", source["company"])
+
     def test_does_not_authenticate_with_google_when_skipping(self) -> None:
         out = self.get_tmpdir()
         jd_pdf = fixture_path("job_description_acme")
@@ -352,6 +406,27 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             self.assertEqual(("Objective",), tuple(s.heading for s in passed))
         with self.subTest("only enabled sections survive the filter"):
             self.assertTrue(all(s.enabled for s in passed))
+
+
+class TestInferWebUri(ThisTestCase):
+    """Best-effort recovery of a URL-snapshot's source URL."""
+
+    def test_recovers_url_from_snapshot_comment(self) -> None:
+        snapshot = Path(self.get_tmpdir(), "jd.md")
+        snapshot.write_text(
+            "<!-- source: https://example.test/jobs/123 -->\n"
+            "<!-- captured: 2026-07-07T00:00:00 -->\n\nRole text.\n"
+        )
+        self.assertEqual("https://example.test/jobs/123", MOD._infer_web_uri(snapshot))
+
+    def test_none_for_paste_snapshot_without_source_comment(self) -> None:
+        snapshot = Path(self.get_tmpdir(), "jd.md")
+        snapshot.write_text("<!-- captured: 2026-07-07T00:00:00 -->\n\nRole text.\n")
+        self.assertIsNone(MOD._infer_web_uri(snapshot))
+
+    def test_none_for_non_md_suffix(self) -> None:
+        pdf = fixture_path("job_description_acme")
+        self.assertIsNone(MOD._infer_web_uri(pdf))
 
 
 class TestApplyInputs(ThisTestCase):

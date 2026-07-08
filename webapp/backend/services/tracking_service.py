@@ -10,7 +10,7 @@ Completed:    ``data/completed/jobs/``   — JDs, verified against Drive (4 arti
 import json
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -20,6 +20,7 @@ from services.application_metadata import (
     DEFAULT_STATUS,
     METADATA_FILENAME,
     ApplicationStatus,
+    entity_id_from_metadata,
     read_metadata,
     status_from_metadata,
 )
@@ -180,6 +181,7 @@ def _application_item(
     status_writable: bool = False,
     note_count: int = 0,
     insights: Optional[dict] = None,
+    entity_id: Optional[str] = None,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
@@ -187,6 +189,8 @@ def _application_item(
     ``status`` (artifact completeness) is a separate axis and untouched.
     ``note_count`` is the number of changelog notes recorded for the application.
     ``insights`` carries the summary.json fit block + ATS coverage (mirror only).
+    ``entity_id`` (application-identity, phase 1) is read from metadata.json; None
+    marks a legacy folder (joins by folder name — see ``run_matches_application``).
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -216,9 +220,25 @@ def _application_item(
         "status_writable": status_writable,
         "note_count": note_count,
         "drive": drive,
+        "entity_id": entity_id,
         **(insights or {"fit": None, "ats_coverage": None}),
         **parsed,
     }
+
+
+def run_matches_application(run: Mapping, item: Mapping) -> bool:
+    """Return whether a run record and a completed-application item are the same.
+
+    Id-preferring join (application-identity, phase 1): prefer ``entity_id``
+    equality when both sides carry one — this is what lets the match survive a
+    folder rename since the run happened. Falls back to ``folder_name`` equality
+    (today's exact behavior) when either side lacks an id, i.e. a legacy record.
+    """
+    run_id = run.get("entity_id")
+    item_id = item.get("entity_id")
+    if run_id and item_id:
+        return run_id == item_id
+    return run.get("folder_name") == item.get("folder_name")
 
 
 def _application_items(
@@ -275,6 +295,7 @@ def _application_items(
                         status_writable=True,
                         note_count=note_count,
                         insights=_read_insights(folder, logger),
+                        entity_id=entity_id_from_metadata(meta),
                         drive=(
                             {
                                 "found": True,

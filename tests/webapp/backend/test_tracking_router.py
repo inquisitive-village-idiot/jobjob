@@ -130,6 +130,61 @@ class TestApplicationNotes:
         assert resp.status_code == 404
 
 
+def _source_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/source"
+
+
+class TestApplicationSource:
+    """GET/PATCH /applications/{folder}/source (application-identity, phase 1)."""
+
+    def test_get_missing_source_returns_empty_dict(self, client):
+        resp = client.get(_source_url(_FOLDER))
+        assert resp.status_code == 200
+        assert resp.json() == {"folder_name": _FOLDER, "source": {}}
+
+    def test_get_missing_folder_404(self, client):
+        resp = client.get(_source_url("2026-09-09 - Nope - Role"))
+        assert resp.status_code == 404
+
+    def test_patch_writes_editable_fields(self, client, mirror):
+        resp = client.patch(
+            _source_url(_FOLDER),
+            json={"company": "Acme Inc", "web_uri": "https://example.test/job"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["source"]["company"] == "Acme Inc"
+        assert body["source"]["web_uri"] == "https://example.test/job"
+        from services import application_source as source_mod
+
+        on_disk = source_mod.read_source(mirror / _FOLDER)
+        assert on_disk["company"] == "Acme Inc"
+
+    def test_patch_rejects_description_field(self, client):
+        resp = client.patch(_source_url(_FOLDER), json={"description": "hijack"})
+        assert resp.status_code == 422
+
+    def test_patch_rejects_entity_id_field(self, client):
+        resp = client.patch(_source_url(_FOLDER), json={"entity_id": "hijack"})
+        assert resp.status_code == 422
+
+    def test_patch_missing_folder_404(self, client):
+        resp = client.patch(
+            _source_url("2026-09-09 - Nope - Role"), json={"company": "X"}
+        )
+        assert resp.status_code == 404
+
+    def test_patch_invalidates_completed_cache(self, client, monkeypatch):
+        from services import tracking_service
+
+        monkeypatch.setattr(
+            tracking_service, "_completed_cache", {"key": "k", "items": []}
+        )
+        resp = client.patch(_source_url(_FOLDER), json={"company": "Acme"})
+        assert resp.status_code == 200
+        assert tracking_service._completed_cache is None
+
+
 class TestGetApplicationAts:
     def _url(self, folder):
         return f"/api/tracking/applications/{urllib.parse.quote(folder)}/ats"

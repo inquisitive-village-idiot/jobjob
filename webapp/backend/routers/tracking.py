@@ -2,12 +2,14 @@
 """Tracking API: input queue, completed jobs, and application status."""
 
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from jobjob.apply.recheck import assessment_as_dict, reassess_application
 from security import safe_path
+from services import application_source
 from services.application_metadata import (
     ApplicationStatus,
     add_note,
@@ -199,4 +201,58 @@ def add_application_note(folder_name: str, body: NoteCreate, request: Request) -
     return {
         "folder_name": folder_name,
         "notes": meta.get("notes") or [],
+    }
+
+
+class SourceUpdate(BaseModel):
+    """Editable source-tier fields (application-identity, phase 1).
+
+    ``extra="forbid"`` is the enforcement point for "``description``/``entity_id``
+    are not editable through this path" — either field on the request body is a
+    422, not a silently-ignored no-op.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    company: Optional[str] = None
+    role: Optional[str] = None
+    web_uri: Optional[str] = None
+    external_ref: Optional[str] = None
+
+
+@router.get("/applications/{folder_name}/source")
+def get_application_source(folder_name: str, request: Request) -> dict:
+    """Return an application's source-tier fields (``source.json``).
+
+    A folder with no ``source.json`` (legacy, or not yet processed under the
+    application-identity model) returns an empty source dict — tolerant, like
+    ``application_source.read_source`` itself.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    return {
+        "folder_name": folder_name,
+        "source": application_source.read_source(folder),
+    }
+
+
+@router.patch("/applications/{folder_name}/source")
+def update_application_source(
+    folder_name: str, body: SourceUpdate, request: Request
+) -> dict:
+    """Correct an application's source fields (company/role/web URI/external ref).
+
+    The motivating case is attaching a posting URL to a PDF drop, or fixing a
+    parse error. ``description`` and ``entity_id`` are not accepted (see
+    ``SourceUpdate``); the parse-once analysis fields and artifacts are untouched.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    fields = body.model_dump(exclude_unset=True)
+    try:
+        source = application_source.edit_source(folder, **fields)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write source: {exc}")
+    invalidate_completed_cache()
+    return {
+        "folder_name": folder_name,
+        "source": source,
     }

@@ -28,6 +28,7 @@ from jobjob.ingest.jd_source import (
 )
 from security import safe_path
 from services import run_history
+from services.application_metadata import read_entity_id
 from services.tracking_service import list_queue
 
 router = APIRouter()
@@ -107,6 +108,7 @@ class RerunRequest(BaseModel):
     folder_name: str
     skip_drive: bool = False
     model: Optional[str] = None  # per-run override; not persisted to config/.env
+    entity_id: Optional[str] = None  # prefer id resolution when the caller has one
 
 
 class EnrichRequest(BaseModel):
@@ -203,11 +205,22 @@ def _start_job(
                 root.removeHandler(file_handler)
                 file_handler.close()
             if runs_dir is not None:
+                # entity_id (application-identity, phase 1): the workflow stamps it
+                # onto the result dict once the build/enrich mints or reuses it, so
+                # it's only ever present here on a real (build/enrich) completion —
+                # batch/schedule results and failures naturally omit it (legacy).
+                completed_result = _jobs[job_id].get("result")
+                entity_id = (
+                    completed_result.get("entity_id")
+                    if isinstance(completed_result, dict)
+                    else None
+                )
                 run_history.finish_run(
                     runs_dir,
                     job_id,
                     status=_jobs[job_id]["status"],
                     error=_jobs[job_id]["error"],
+                    entity_id=entity_id,
                 )
             log_q.put(None)
 
@@ -440,26 +453,64 @@ def launch_build_from_text(body: TextApplyRequest, request: Request) -> dict:
 _JD_GLOBS = ("JD_*.pdf", "JobDescription_*.pdf")
 
 
+def _resolve_folder_name_by_entity_id(
+    applications_local_dir: Optional[str], entity_id: str
+) -> Optional[str]:
+    """Return the current folder name carrying ``entity_id``, if found.
+
+    Scans the synced Drive applications mirror's metadata.json files — the
+    entity tier survives a folder rename, so this is how a rerun request keyed
+    by id (rather than a possibly-stale folder name) finds its target.
+    """
+    if not applications_local_dir:
+        return None
+    local = Path(applications_local_dir).expanduser()
+    if not local.is_dir():
+        return None
+    for folder in local.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            if read_entity_id(folder) == entity_id:
+                return folder.name
+        except (ValueError, OSError):
+            continue
+    return None
+
+
 def _find_rerun_jd(
     data_dir: Path,
     applications_local_dir: Optional[str],
     folder_name: str,
+    *,
+    entity_id: Optional[str] = None,
 ) -> Optional[Path]:
     """Resolve a completed application's source JD for re-running.
+
+    When ``entity_id`` is given, the target application folder is resolved by id
+    first (survives a rename since the last run) — see
+    ``_resolve_folder_name_by_entity_id``; if no folder carries that id (or none
+    was given — the legacy path), falls back to ``folder_name`` unchanged.
 
     Looks first in ``<data_dir>/completed/jobs/<folder_name><ext>`` (where a webapp/CLI
     completion files the JD), then in the synced Drive application folder
     ``<applications_local_dir>/<folder_name>/`` (most completed applications only have
     their JD here). Returns the path, or None when neither location has it.
     """
+    resolved_name = folder_name
+    if entity_id:
+        by_id = _resolve_folder_name_by_entity_id(applications_local_dir, entity_id)
+        if by_id:
+            resolved_name = by_id
+
     jobs_dir = Path(data_dir) / "completed" / "jobs"
     for ext in (".pdf", ".png", ".jpg", ".jpeg", ".md", ".txt"):
-        candidate = jobs_dir / f"{folder_name}{ext}"
+        candidate = jobs_dir / f"{resolved_name}{ext}"
         if candidate.is_file():
             return candidate
 
     if applications_local_dir:
-        app_folder = Path(applications_local_dir).expanduser() / folder_name
+        app_folder = Path(applications_local_dir).expanduser() / resolved_name
         if app_folder.is_dir():
             matches = sorted(
                 m for pattern in _JD_GLOBS for m in app_folder.glob(pattern)
@@ -496,6 +547,7 @@ def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
         Path(s["applications_input_dir"]),
         s.get("applications_output_dir"),
         body.folder_name,
+        entity_id=body.entity_id,
     )
     jd_path = safe_path(found) if found is not None else None
 

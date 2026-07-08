@@ -32,6 +32,24 @@ class TestRunLifecycle:
         assert MOD.read_log(runs, "missing") is None
 
 
+class TestFinishRunEntityId:
+    """entity_id on the run record (application-identity, phase 1)."""
+
+    def test_finish_run_stamps_entity_id_when_given(self, runs):
+        MOD.start_run(runs, "r1", kind="build", label="jd.pdf")
+        MOD.finish_run(runs, "r1", status="completed", entity_id="e1")
+        record = json.loads(MOD.record_path(runs, "r1").read_text())
+        expected = "e1"
+        found = record["entity_id"]
+        assert found == expected
+
+    def test_finish_run_omits_entity_id_when_legacy(self, runs):
+        MOD.start_run(runs, "r1", kind="build", label="jd.pdf")
+        MOD.finish_run(runs, "r1", status="completed")
+        record = json.loads(MOD.record_path(runs, "r1").read_text())
+        assert "entity_id" not in record
+
+
 class TestListRuns:
     def test_merged_newest_first_with_live_override(self, runs):
         old = MOD.start_run(runs, "old", kind="apply", label="a")
@@ -108,6 +126,63 @@ class TestJobsEndpoints:
     def test_log_missing_is_404(self, client):
         http, _ = client
         assert http.get("/api/jobs/nope/log").status_code == 404
+
+
+class TestStartJobRecordsEntityId:
+    """_start_job (routers.jobs) forwards a completed result's entity_id to
+    finish_run — the wiring behind the run-history "carries the entity id"
+    requirement (application-identity, phase 1)."""
+
+    @pytest.fixture(autouse=True)
+    def _reset_jobs(self, monkeypatch):
+        monkeypatch.setattr(jobs, "_jobs", {})
+
+    def _wait(self, job_id, timeout=2.0):
+        import time
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if jobs._jobs[job_id]["status"] != "running":
+                return
+            time.sleep(0.01)
+        raise AssertionError("job did not finish in time")
+
+    def test_entity_id_recorded_on_completion(self, runs):
+        job_id = jobs._start_job(
+            lambda: {"entity_id": "e1", "output_dir": "/tmp/x"},
+            runs_dir=runs,
+            kind="build",
+            label="jd.pdf",
+        )
+        self._wait(job_id)
+        record = json.loads(MOD.record_path(runs, job_id).read_text())
+        expected = "e1"
+        found = record["entity_id"]
+        assert found == expected
+
+    def test_legacy_result_omits_entity_id(self, runs):
+        job_id = jobs._start_job(
+            lambda: {"output_dir": "/tmp/x"},
+            runs_dir=runs,
+            kind="build",
+            label="jd.pdf",
+        )
+        self._wait(job_id)
+        record = json.loads(MOD.record_path(runs, job_id).read_text())
+        assert "entity_id" not in record
+
+    def test_batch_result_shape_does_not_error(self, runs):
+        # Batch/schedule results are {"processed": ..., "items": [...]} — no
+        # top-level entity_id; must not raise trying to read one.
+        job_id = jobs._start_job(
+            lambda: {"processed": 1, "items": []},
+            runs_dir=runs,
+            kind="batch",
+            label="Build all (1)",
+        )
+        self._wait(job_id)
+        record = json.loads(MOD.record_path(runs, job_id).read_text())
+        assert "entity_id" not in record
 
 
 class TestMigrateLegacyKinds:

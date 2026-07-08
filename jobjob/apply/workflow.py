@@ -14,7 +14,9 @@ customized Google Doc), and the cover letter (Google Doc).
 import dataclasses as dcs
 import json
 import logging
+import re
 import shutil
+import sys
 import tempfile
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -106,6 +108,55 @@ def _write_summary(output_dir: Path, results: dict) -> Path:
     payload = {"schema_version": _SUMMARY_SCHEMA_VERSION, **results}
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return path
+
+
+def _identity_services():
+    """Best-effort import of the webapp backend's identity-tier services.
+
+    jobjob core does not depend on the webapp backend as a normal import (the
+    dependency runs the other way — see ``webapp/backend/main.py``), but the two
+    ship side by side (dev checkout and the built wheel both put ``webapp/backend``
+    beside the ``jobjob`` package; see the pyproject force-include and
+    ``jobjob.launcher``'s identical ``sys.path`` trick). Loaded lazily and
+    defensively so a build never fails when the backend layout is unusual —
+    callers treat ``(None, None)`` as "identity bookkeeping unavailable" and skip
+    it, logging rather than raising.
+
+    Returns:
+        ``(application_metadata, application_source)`` modules, or ``(None, None)``.
+    """
+    backend_dir = Path(__file__).resolve().parents[2] / "webapp" / "backend"
+    if backend_dir.is_dir() and str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+    try:
+        from services import application_metadata, application_source
+    except ImportError:
+        return None, None
+    return application_metadata, application_source
+
+
+# A URL-captured JD snapshot (jobjob.ingest.jd_source.write_snapshot) leads with a
+# "<!-- source: URL -->" provenance comment; a paste snapshot or PDF drop has none.
+_SNAPSHOT_SOURCE_RE = re.compile(r"^<!--\s*source:\s*(\S+)\s*-->", re.MULTILINE)
+
+
+def _infer_web_uri(job_description_pdf: Path) -> Optional[str]:
+    """Best-effort: recover the source URL from a URL-captured JD snapshot.
+
+    Only ``.md`` snapshots can carry the provenance comment (a PDF drop has no
+    such thing); anything else (wrong suffix, unreadable/binary content) degrades
+    to None. This is advisory identity metadata, never required for the build to
+    succeed.
+    """
+    path = Path(job_description_pdf)
+    if path.suffix.lower() != ".md":
+        return None
+    try:
+        head = path.read_text(encoding="utf-8")[:500]
+    except (OSError, UnicodeDecodeError):
+        return None
+    match = _SNAPSHOT_SOURCE_RE.search(head)
+    return match.group(1) if match else None
 
 
 class OverwriteConflict(Exception):
@@ -314,6 +365,30 @@ def run_application_workflow(
     if usage is not None:
         results["token_usage"] = dcs.asdict(usage)
         _logger.info("%s", usage.summary())
+
+    # Identity core (application-identity, phase 1): mint/reuse this folder's
+    # entity_id and write its parse-once source fields. Best-effort — a
+    # temp-dir/offline run, a read-only output_dir, or the backend layout being
+    # unavailable must never fail the build; it just leaves the folder legacy
+    # (id-less) for this run, exactly like today.
+    app_metadata, app_source = _identity_services()
+    if app_metadata is not None and app_source is not None:
+        try:
+            entity_id = app_metadata.ensure_entity_id(output_dir)
+            results["entity_id"] = entity_id
+            app_source.ensure_source(
+                output_dir,
+                entity_id=entity_id,
+                company=job.company_name,
+                role=job.role_title,
+                description=job.summary,
+                file_uri=results.get("job_description_pdf"),
+                web_uri=_infer_web_uri(job_description_pdf),
+            )
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 — identity bookkeeping must never fail a build.
+            _logger.warning("Could not record application identity: %s", exc)
 
     _write_summary(output_dir, results)
     return results

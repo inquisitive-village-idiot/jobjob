@@ -101,11 +101,37 @@ export interface RunRecord {
   label: string;
   paths: string[];
   folder_name?: string | null;
+  // application-identity (phase 1): present once the entity id is known
+  // (stamped at finish time); absent on a legacy (id-less) application.
+  entity_id?: string | null;
   status: "running" | "completed" | "failed";
   error?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
   has_log: boolean;
+}
+
+// application-identity (phase 1): the source tier (source.json) — mirrors
+// services/application_source.py. Editable via PATCH .../source is limited to
+// company/role/web_uri/external_ref; description/entity_id are not.
+export interface ApplicationSource {
+  schema_version?: number;
+  entity_id?: string;
+  company?: string;
+  role?: string;
+  description?: string;
+  file_uri?: string | null;
+  web_uri?: string | null;
+  external_ref?: string | null;
+}
+
+// Editable subset of ApplicationSource — mirrors routers/tracking.py's
+// SourceUpdate (extra="forbid": description/entity_id are rejected).
+export interface ApplicationSourceEdit {
+  company?: string;
+  role?: string;
+  web_uri?: string;
+  external_ref?: string;
 }
 
 // Compact fit block persisted in summary.json — mirrors fit_summary() in
@@ -145,6 +171,9 @@ export interface CompletedItem {
   type: "jd" | "profile";
   status: "completed" | "error";
   drive: DriveState | null;
+  // application-identity (phase 1): null marks a legacy (id-less) application —
+  // it joins by folder_name, same as before this field existed.
+  entity_id?: string | null;
   // Parsed from "YYYY-MM-DD - Company - Role" (applications only).
   date?: string;
   company?: string;
