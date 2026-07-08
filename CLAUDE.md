@@ -44,7 +44,7 @@ Output per application:
 ## Caching Architecture
 
 - **Anthropic prompt caching** – Stable context (resume, STAR examples, cover letter examples, background) sent as a cached system message prefix. All five calls reuse this. Cache is ephemeral (5 min, extended by hits).
-- **Local file cache** – SHA256-keyed, stored in `~/.cache/job-apply`. Skips identical prompts on re-runs. Controlled by `CLAUDE_CACHE_ENABLED`.
+- **Local file cache** – SHA256-keyed, stored in `~/.cache/job-apply`. Key is scoped by model, so the same prompt under different models caches separately. Skips identical prompts on re-runs. Controlled by `CLAUDE_CACHE_ENABLED`.
 - **Cost implication** – Stable content should stay at the top of the cached context and not change between calls. Variable content (JD, company name) goes at the end.
 
 ## Reference Docs (active profile's `reference/`)

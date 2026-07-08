@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Query an AI service with retry, response processing, and optional caching."""
 
+import functools
 import logging
 import subprocess
 from collections.abc import Callable
@@ -31,17 +32,28 @@ def clear_cache(logger: logging.Logger | None = None) -> None:
     cachemanager.deregister_cache()
 
 
-def _default_load_cache(prompt: str) -> Any:
-    """Load a processed response from the global cache. Returns None on miss."""
+def _default_load_cache(prompt: str, model: str | None = None) -> Any:
+    """Load a processed response from the global cache. Returns None on miss.
+
+    Arguments:
+        prompt: The prompt string.
+        model: Optional model identifier; scopes the cache key alongside the prompt.
+    """
     try:
-        return cachemanager.get_cache().load_from_cache(prompt)
+        return cachemanager.get_cache().load_from_cache(prompt, model=model)
     except (cachemanager.CacheMissError, cachemanager.InvalidCacheError):
         return None
 
 
-def _default_save_cache(prompt: str, response: Any) -> None:
-    """Save a processed response to the global cache."""
-    cachemanager.get_cache().save_to_cache(prompt, response)
+def _default_save_cache(prompt: str, response: Any, model: str | None = None) -> None:
+    """Save a processed response to the global cache.
+
+    Arguments:
+        prompt: The prompt string.
+        response: The response. Must be JSON encodable.
+        model: Optional model identifier; scopes the cache key alongside the prompt.
+    """
+    cachemanager.get_cache().save_to_cache(prompt, response, model=model)
 
 
 def query_ai_service(
@@ -63,7 +75,11 @@ def query_ai_service(
     the service call. On a miss, the processed response is written via
     ``_save_cache``. When ``use_cache`` is True and no cache callables are
     injected, the global CacheManager is wired in by default; injected callables
-    are always honored regardless of ``use_cache``.
+    are always honored regardless of ``use_cache``. The default cache key is
+    model-scoped: the model is derived from ``_query_service.model`` (``None``
+    if absent) and bound into the default callables, so the same prompt under a
+    different model never collides with -- or is served by -- another model's
+    cached response.
 
     Arguments:
         prompt: The prompt.
@@ -87,12 +103,13 @@ def query_ai_service(
     """
     _logger = logger or logging.getLogger(__name__)
     _process_response = _process_response or process_response_json
+    model = getattr(_query_service, "model", None)
 
     # NOTE: use_cache only gates default-wiring; injected callables always apply.
     if _load_cache is None and use_cache:
-        _load_cache = _default_load_cache
+        _load_cache = functools.partial(_default_load_cache, model=model)
     if _save_cache is None and use_cache:
-        _save_cache = _default_save_cache
+        _save_cache = functools.partial(_default_save_cache, model=model)
 
     if _load_cache is not None:
         cached = _load_cache(prompt)

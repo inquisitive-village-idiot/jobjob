@@ -63,7 +63,8 @@ Caching
 - **Anthropic prompt cache** — stable context is sent as a cached system prefix and
   reused across all five calls (ephemeral, ~5 min, extended by hits). Keep stable content
   at the top; variable content (JD, company) at the end.
-- **Local file cache** — SHA256-keyed under ``CACHE_DIR``; skips identical prompts on
+- **Local file cache** — SHA256-keyed under ``CACHE_DIR``, scoped by model so the
+  same prompt under a different model never collides; skips identical prompts on
   re-runs. Toggle with ``CLAUDE_CACHE_ENABLED``.
 
 Webapp

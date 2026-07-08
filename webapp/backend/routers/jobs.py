@@ -239,10 +239,9 @@ def _make_apply_run(
     ``completed/jobs/``.
 
     ``model`` is an optional per-run override (not persisted): it replaces the
-    configured model for this run only. Because the response cache is keyed on the
-    prompt alone, an
-    override also bypasses the cache — otherwise the configured model's cached response
-    would be served and the override silently ignored.
+    configured model for this run only. The response cache key is model-scoped, so
+    the override is cached under its own entry rather than colliding with -- or
+    being forced to bypass -- the configured model's cache.
     """
 
     def _run() -> dict:
@@ -258,8 +257,7 @@ def _make_apply_run(
             _clear_cache()
 
         effective_model = model or settings.model
-        # A model override must bypass the prompt-keyed cache (see docstring).
-        use_cache = settings.cache_enabled and not no_cache and model is None
+        use_cache = settings.cache_enabled and not no_cache
 
         client = AIClient(
             AnthropicAdapter(model=effective_model, api_key=settings.anthropic_api_key)
