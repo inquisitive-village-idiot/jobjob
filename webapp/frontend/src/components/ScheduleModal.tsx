@@ -208,7 +208,7 @@ export default function ScheduleModal({ items, onClose, onConfirm }: Props) {
                         {item.name}
                       </span>
                       <span className="text-xs text-gray-400 shrink-0">
-                        {item.subfolder === "profiles" ? "Enrich" : "Apply"}
+                        {item.subfolder === "profiles" ? "Enrich" : "Build"}
                       </span>
                     </label>
                   </li>

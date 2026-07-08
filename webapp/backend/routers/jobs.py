@@ -27,6 +27,7 @@ from jobjob.ingest.jd_source import (
     snapshot_from_url,
 )
 from security import safe_path
+from services import run_history
 from services.tracking_service import list_queue
 
 router = APIRouter()
@@ -125,7 +126,26 @@ def _app_settings(request: Request) -> dict:
     return request.app.state.settings
 
 
-def _start_job(fn, *args, **kwargs) -> str:
+def _runs_dir(settings: dict) -> Path:
+    return run_history.runs_dir(Path(settings["applications_input_dir"]))
+
+
+def _start_job(
+    fn,
+    *,
+    runs_dir: Optional[Path] = None,
+    kind: str = "apply",
+    label: str = "",
+    paths: tuple[str, ...] = (),
+    folder_name: Optional[str] = None,
+) -> str:
+    """Run ``fn`` in a background thread with SSE logs and a persisted run.
+
+    The run record + log file land under ``runs_dir`` (see
+    ``services.run_history``) so failures survive restarts; ``runs_dir=None``
+    keeps the job in-memory only (tests). Persistence problems never fail the
+    job.
+    """
     job_id = str(uuid.uuid4())
     log_q: queue.Queue = queue.Queue()
     _jobs[job_id] = {
@@ -136,14 +156,37 @@ def _start_job(fn, *args, **kwargs) -> str:
         "overwrite_conflict": False,
         "folder_name": None,
     }
+    if runs_dir is not None:
+        run_history.start_run(
+            runs_dir,
+            job_id,
+            kind=kind,
+            label=label,
+            paths=paths,
+            folder_name=folder_name,
+        )
 
     def run() -> None:
+        formatter = logging.Formatter("%(name)s: %(message)s")
         handler = _QueueHandler(log_q)
-        handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+        handler.setFormatter(formatter)
         root = logging.getLogger("jobjob")
         root.addHandler(handler)
+        # Tee the same records into the run's log file (persisted history).
+        file_handler: Optional[logging.Handler] = None
+        if runs_dir is not None:
+            try:
+                file_handler = logging.FileHandler(
+                    run_history.log_path(runs_dir, job_id), encoding="utf-8"
+                )
+                file_handler.setFormatter(formatter)
+                root.addHandler(file_handler)
+            except OSError as exc:
+                logging.getLogger(__name__).warning(
+                    "Run log unavailable for %s: %s", job_id, exc
+                )
         try:
-            result = fn(*args, **kwargs)
+            result = fn()
             _jobs[job_id]["result"] = result
             _jobs[job_id]["status"] = "completed"
         except _OverwriteConflictJob as exc:
@@ -156,6 +199,16 @@ def _start_job(fn, *args, **kwargs) -> str:
             _jobs[job_id]["status"] = "failed"
         finally:
             root.removeHandler(handler)
+            if file_handler is not None:
+                root.removeHandler(file_handler)
+                file_handler.close()
+            if runs_dir is not None:
+                run_history.finish_run(
+                    runs_dir,
+                    job_id,
+                    status=_jobs[job_id]["status"],
+                    error=_jobs[job_id]["error"],
+                )
             log_q.put(None)
 
     threading.Thread(target=run, daemon=True).start()
@@ -268,7 +321,14 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
     )
-    return {"job_id": _start_job(run)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(s),
+        kind="apply",
+        label=jd_path.name,
+        paths=(str(jd_path),),
+    )
+    return {"job_id": job_id}
 
 
 def _launch_snapshot_apply(
@@ -296,7 +356,14 @@ def _launch_snapshot_apply(
         clear_cache=clear_cache,
         allow_overwrite=allow_overwrite,
     )
-    return {"job_id": _start_job(run), "snapshot": str(snapshot)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(settings),
+        kind="apply",
+        label=snapshot.name,
+        paths=(str(snapshot),),
+    )
+    return {"job_id": job_id, "snapshot": str(snapshot)}
 
 
 @router.post("/apply/from-url")
@@ -446,7 +513,17 @@ def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
     run = _make_apply_run(
         jd_path, skip_drive=body.skip_drive, move_data_dir=None, model=body.model
     )
-    return {"job_id": _start_job(run)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(s),
+        kind="apply",
+        # NOTE: UI copy calls this "Re-build"; API/stored kinds keep "apply"
+        #   (full rename is a future change).
+        label=f"Re-build: {body.folder_name}",
+        paths=(str(jd_path),),
+        folder_name=body.folder_name,
+    )
+    return {"job_id": job_id}
 
 
 @router.post("/enrich")
@@ -500,7 +577,14 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
             record_run(cost)
         return result
 
-    return {"job_id": _start_job(_run)}
+    job_id = _start_job(
+        _run,
+        runs_dir=_runs_dir(s),
+        kind="enrich",
+        label=profile_path.name,
+        paths=(str(profile_path),),
+    )
+    return {"job_id": job_id}
 
 
 # ── Batch endpoints ────────────────────────────────────────────────────────────
@@ -559,7 +643,15 @@ def launch_apply_all(request: Request) -> dict:
                 record_run(calculate_cost(result["token_usage"], model=settings.model))
         return summary
 
-    return {"job_id": _start_job(_run_all), "count": count}
+    job_id = _start_job(
+        _run_all,
+        runs_dir=_runs_dir(s),
+        kind="batch",
+        # NOTE: UI copy says "Build all"; API/stored kinds keep "apply".
+        label=f"Build all JDs ({count})",
+        paths=tuple(i["path"] for i in items),
+    )
+    return {"job_id": job_id, "count": count}
 
 
 @router.post("/enrich-all")
@@ -611,7 +703,14 @@ def launch_enrich_all(request: Request) -> dict:
                 record_run(calculate_cost(result["token_usage"], model=settings.model))
         return summary
 
-    return {"job_id": _start_job(_run_all), "count": count}
+    job_id = _start_job(
+        _run_all,
+        runs_dir=_runs_dir(s),
+        kind="batch",
+        label=f"Enrich all profiles ({count})",
+        paths=tuple(i["path"] for i in items),
+    )
+    return {"job_id": job_id, "count": count}
 
 
 # ── Schedule endpoint ──────────────────────────────────────────────────────────
@@ -776,7 +875,13 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
 
         return {"processed": len(results), "items": results}
 
-    job_id = _start_job(_run_scheduled)
+    job_id = _start_job(
+        _run_scheduled,
+        runs_dir=_runs_dir(s),
+        kind="schedule",
+        label=f"Schedule ({count})",
+        paths=tuple(str(p) for p in valid_paths),
+    )
     _jobs[job_id]["schedule"] = {
         "mode": body.mode,
         "concurrency": concurrency,
@@ -855,13 +960,39 @@ def job_status(job_id: str) -> dict:
 
 
 @router.get("")
-def list_jobs() -> list[dict]:
-    return [
+def list_jobs(request: Request) -> list[dict]:
+    """Merged run history: persisted records + live in-memory jobs, newest first.
+
+    Live jobs that never persisted (e.g. the runs dir was unwritable) are
+    appended from the in-memory table so nothing running ever hides.
+    """
+    runs = _runs_dir(_app_settings(request))
+    items = run_history.list_runs(runs, _jobs)
+    listed = {i["run_id"] for i in items}
+    items.extend(
         {
-            "job_id": jid,
+            "run_id": jid,
+            "kind": "apply",
+            "label": "",
+            "paths": [],
+            "folder_name": j.get("folder_name"),
             "status": j["status"],
-            "has_result": j.get("result") is not None,
             "error": j.get("error"),
+            "started_at": None,
+            "finished_at": None,
+            "has_log": False,
         }
         for jid, j in reversed(list(_jobs.items()))
-    ]
+        if jid not in listed
+    )
+    return items
+
+
+@router.get("/{job_id}/log")
+def job_log(job_id: str, request: Request) -> dict:
+    """Return a persisted run's stored log text."""
+    runs = _runs_dir(_app_settings(request))
+    log_text = run_history.read_log(runs, job_id)
+    if log_text is None:
+        raise HTTPException(status_code=404, detail="No stored log for this run.")
+    return {"run_id": job_id, "log": log_text}

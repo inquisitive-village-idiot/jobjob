@@ -99,7 +99,7 @@ documented credentials don't support.
 
 The bundled demo profile is a fictional persona, **Tila Mer** (a print science
 correspondent — see `static/example/`), used so the tool ships with a
-coherent, runnable example. Replace it with your own content via the Static Content page.
+coherent, runnable example. Replace it with your own content via the Profiles page.
 
 ## Configuration
 

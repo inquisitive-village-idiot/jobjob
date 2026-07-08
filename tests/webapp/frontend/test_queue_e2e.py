@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""End-to-end tests for the Queue page.
+"""End-to-end tests for the Queue page (executions: run history + scheduling).
 
-Covers: heading renders; empty-state text for each section is visible.
+Covers: heading; run-history section empty state; scheduled section + button.
 """
 
 from playwright.sync_api import Page, expect
@@ -19,41 +19,32 @@ def _go_to_queue(page: Page, live_app: str) -> None:
 
 
 def test_queue_h1_visible(page: Page, live_app: str) -> None:
-    """The Queue page renders its H1 heading."""
     _go_to_queue(page, live_app)
     expect(page.locator("//h1[normalize-space()='Queue']")).to_be_visible()
 
 
 def test_queue_nav_link(page: Page, live_app: str) -> None:
-    """Clicking the Queue nav link navigates to the Queue page."""
     page.goto(live_app + "/")
     _nav_link(page, "Queue").click()
     expect(page.locator("//h1[normalize-space()='Queue']")).to_be_visible()
 
 
-def test_queue_empty_state_apply_section(page: Page, live_app: str) -> None:
-    """With no queued JDs the Apply section shows its empty-state message."""
+def test_run_history_section(page: Page, live_app: str) -> None:
+    """The runs section renders — either persisted runs or its empty state."""
     _go_to_queue(page, live_app)
-    # Either queue items or the empty-state text appears once queue data loads.
+    expect(page.get_by_role("heading", name="Runs", exact=False).first).to_be_visible()
     expect(
         page.locator(
-            "//*[contains(normalize-space(text()), 'No pending JDs') or "
-            "contains(normalize-space(text()), 'data/jobs')]"
+            "//*[contains(normalize-space(text()), 'No runs yet') or "
+            "contains(normalize-space(text()), 'Build')]"
         ).first
     ).to_be_visible()
 
 
-def test_queue_scheduled_section_renders(page: Page, live_app: str) -> None:
-    """The Queued/Scheduled section renders (heading present, empty-state or items)."""
+def test_scheduled_section_renders(page: Page, live_app: str) -> None:
+    """The Scheduled section renders with its Schedule button."""
     _go_to_queue(page, live_app)
-    # The scheduled section h2 has 'Queued' in it (uppercased via CSS).
     expect(
-        page.get_by_role("heading", name="Queued", exact=False).first
+        page.get_by_role("heading", name="Scheduled", exact=False).first
     ).to_be_visible()
-    # After data loads, either items or "No scheduled jobs running." appears.
-    expect(
-        page.locator(
-            "//*[contains(normalize-space(text()), 'No scheduled jobs') or "
-            "contains(normalize-space(text()), 'Schedule')]"
-        ).first
-    ).to_be_visible()
+    expect(page.locator("//button[normalize-space(text())='Schedule']")).to_be_visible()
