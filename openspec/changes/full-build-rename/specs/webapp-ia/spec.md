@@ -2,25 +2,6 @@
 
 ## MODIFIED Requirements
 
-### Requirement: Build vocabulary end to end
-The document-generation pipeline SHALL be named **Build** (its re-run
-**Re-build**) consistently across UI copy, CLI commands, HTTP API routes, and
-stored values, with **Apply** reserved for the autofill step. The CLI
-document-generation command SHALL be `jobjob build`; the API routes SHALL be
-`/jobs/build`, `/jobs/build/rerun`, `/jobs/build/from-url`,
-`/jobs/build/from-text`, and `/jobs/build-all`; document-generation run records
-SHALL store `kind: "build"`; and the default application status SHALL be
-`BUILT`. No `UI-only rename` breadcrumb comments SHALL remain.
-
-#### Scenario: Launch actions say Build
-- **WHEN** the user launches the pipeline for a queued JD or re-runs a built one
-- **THEN** the controls read Build / Re-build rather than Apply / Re-run
-
-#### Scenario: Surfaces agree on Build
-- **WHEN** the CLI, an API route, or a stored run/metadata value names the
-  document-generation pipeline
-- **THEN** it uses Build / build / BUILT vocabulary, not Apply / apply / GENERATED
-
 ### Requirement: Unified Applications table
 The Applications page SHALL present all application records in one
 filterable/sortable table drawing from both sources: pending JDs from the input
@@ -43,6 +24,25 @@ Role fit / ATS coverage sorting apply to the table.
 - **AND** the old file on the Drive mirror is not rewritten in place
 
 ## ADDED Requirements
+
+### Requirement: Build vocabulary end to end
+The document-generation pipeline SHALL be named **Build** (its re-run
+**Re-build**) consistently across UI copy, CLI commands, HTTP API routes, and
+stored values, with **Apply** reserved for the autofill step. The CLI
+document-generation command SHALL be `jobjob build`; the API routes SHALL be
+`/jobs/build`, `/jobs/build/rerun`, `/jobs/build/from-url`,
+`/jobs/build/from-text`, and `/jobs/build-all`; document-generation run records
+SHALL store `kind: "build"`; and the default application status SHALL be
+`BUILT`. No `UI-only rename` breadcrumb comments SHALL remain.
+
+#### Scenario: Launch actions say Build
+- **WHEN** the user launches the pipeline for a queued JD or re-runs a built one
+- **THEN** the controls read Build / Re-build rather than Apply / Re-run
+
+#### Scenario: Surfaces agree on Build
+- **WHEN** the CLI, an API route, or a stored run/metadata value names the
+  document-generation pipeline
+- **THEN** it uses Build / build / BUILT vocabulary, not Apply / apply / GENERATED
 
 ### Requirement: Application metadata schema versioning
 Application `metadata.json` files SHALL carry an integer `schema_version` that
@@ -72,3 +72,10 @@ matched `GENERATED` prefix to `BUILT`, so legacy folder names still resolve.
 #### Scenario: Legacy GENERATED-prefixed folder resolves
 - **WHEN** an application folder name begins with the legacy prefix `GENERATED`
 - **THEN** the parser strips the prefix and resolves the status as BUILT
+
+## REMOVED Requirements
+
+### Requirement: Build vocabulary in UI copy
+**Reason**: Superseded by "Build vocabulary end to end" — the rename is no
+longer UI-copy-only; CLI, API, and stored values now use Build vocabulary and
+the breadcrumb comments are removed.
