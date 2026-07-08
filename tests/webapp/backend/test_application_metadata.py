@@ -135,6 +135,60 @@ class TestStatusFromMetadata:
             MOD.status_from_metadata({"status": "BOGUS"})
 
 
+class TestEntityId:
+    """entity_id mint-once / reuse-on-rebuild (application-identity, phase 1)."""
+
+    def test_mints_and_writes_uuid_when_absent(self, tmp_path):
+        result = MOD.ensure_entity_id(tmp_path)
+        assert result  # a non-empty uuid4 string
+        on_disk = json.loads((tmp_path / MOD.METADATA_FILENAME).read_text())
+        expected = result
+        found = on_disk["entity_id"]
+        assert found == expected
+
+    def test_reuses_existing_id_without_rewriting(self, tmp_path):
+        first = MOD.ensure_entity_id(tmp_path)
+        mtime_before = (tmp_path / MOD.METADATA_FILENAME).stat().st_mtime_ns
+        second = MOD.ensure_entity_id(tmp_path)
+        expected = first
+        found = second
+        assert found == expected
+        # Reuse is a read-only no-op: the file is not rewritten.
+        mtime_after = (tmp_path / MOD.METADATA_FILENAME).stat().st_mtime_ns
+        assert mtime_after == mtime_before
+
+    def test_preserves_status_and_notes_when_minting(self, tmp_path):
+        MOD.write_status(tmp_path, MOD.ApplicationStatus.APPLIED)
+        entity_id = MOD.ensure_entity_id(tmp_path)
+        on_disk = json.loads((tmp_path / MOD.METADATA_FILENAME).read_text())
+        assert on_disk["entity_id"] == entity_id
+        assert on_disk["status"] == "APPLIED"
+        assert len(on_disk["notes"]) == 1
+
+    def test_two_folders_get_different_ids(self, tmp_path):
+        a = tmp_path / "a"
+        b = tmp_path / "b"
+        a.mkdir()
+        b.mkdir()
+        id_a = MOD.ensure_entity_id(a)
+        id_b = MOD.ensure_entity_id(b)
+        assert id_a != id_b
+
+    def test_read_entity_id_none_when_absent(self, tmp_path):
+        assert MOD.read_entity_id(tmp_path) is None
+
+    def test_read_entity_id_returns_minted_value(self, tmp_path):
+        minted = MOD.ensure_entity_id(tmp_path)
+        result = MOD.read_entity_id(tmp_path)
+        expected = minted
+        found = result
+        assert found == expected
+
+    def test_entity_id_from_metadata_ignores_blank_string(self):
+        assert MOD.entity_id_from_metadata({"entity_id": ""}) is None
+        assert MOD.entity_id_from_metadata({}) is None
+
+
 class TestNotes:
     def test_add_note_appends_entry(self, tmp_path):
         written = MOD.add_note(tmp_path, "  recruiter call  ")

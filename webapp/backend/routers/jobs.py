@@ -28,6 +28,7 @@ from jobjob.ingest.jd_source import (
 )
 from security import safe_path
 from services import run_history
+from services.application_metadata import read_entity_id
 from services.tracking_service import list_queue
 
 router = APIRouter()
@@ -107,6 +108,7 @@ class RerunRequest(BaseModel):
     folder_name: str
     skip_drive: bool = False
     model: Optional[str] = None  # per-run override; not persisted to config/.env
+    entity_id: Optional[str] = None  # prefer id resolution when the caller has one
 
 
 class EnrichRequest(BaseModel):
@@ -203,11 +205,22 @@ def _start_job(
                 root.removeHandler(file_handler)
                 file_handler.close()
             if runs_dir is not None:
+                # entity_id (application-identity, phase 1): the workflow stamps it
+                # onto the result dict once the build/enrich mints or reuses it, so
+                # it's only ever present here on a real (build/enrich) completion —
+                # batch/schedule results and failures naturally omit it (legacy).
+                completed_result = _jobs[job_id].get("result")
+                entity_id = (
+                    completed_result.get("entity_id")
+                    if isinstance(completed_result, dict)
+                    else None
+                )
                 run_history.finish_run(
                     runs_dir,
                     job_id,
                     status=_jobs[job_id]["status"],
                     error=_jobs[job_id]["error"],
+                    entity_id=entity_id,
                 )
             log_q.put(None)
 
@@ -228,6 +241,7 @@ def _make_build_run(
     clear_cache: bool = False,
     allow_overwrite: bool = False,
     model: Optional[str] = None,
+    entity_dir: Optional[Path] = None,
 ):
     """Build the background ``_run`` closure for a build job.
 
@@ -242,6 +256,10 @@ def _make_build_run(
     configured model for this run only. The response cache key is model-scoped, so
     the override is cached under its own entry rather than colliding with -- or
     being forced to bypass -- the configured model's cache.
+
+    ``entity_dir`` pins the persistent identity folder (a re-run of a possibly-renamed
+    application targets its existing mirror folder so the entity_id is reused). Fresh
+    builds leave it None and resolve their folder under ``applications_output_dir``.
     """
 
     def _run() -> dict:
@@ -274,6 +292,8 @@ def _make_build_run(
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
+            entity_dir=entity_dir,
             logger=logging.getLogger("jobjob.apply"),
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -440,26 +460,64 @@ def launch_build_from_text(body: TextApplyRequest, request: Request) -> dict:
 _JD_GLOBS = ("JD_*.pdf", "JobDescription_*.pdf")
 
 
+def _resolve_folder_name_by_entity_id(
+    applications_local_dir: Optional[str], entity_id: str
+) -> Optional[str]:
+    """Return the current folder name carrying ``entity_id``, if found.
+
+    Scans the synced Drive applications mirror's metadata.json files — the
+    entity tier survives a folder rename, so this is how a rerun request keyed
+    by id (rather than a possibly-stale folder name) finds its target.
+    """
+    if not applications_local_dir:
+        return None
+    local = Path(applications_local_dir).expanduser()
+    if not local.is_dir():
+        return None
+    for folder in local.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            if read_entity_id(folder) == entity_id:
+                return folder.name
+        except (ValueError, OSError):
+            continue
+    return None
+
+
 def _find_rerun_jd(
     data_dir: Path,
     applications_local_dir: Optional[str],
     folder_name: str,
+    *,
+    entity_id: Optional[str] = None,
 ) -> Optional[Path]:
     """Resolve a completed application's source JD for re-running.
+
+    When ``entity_id`` is given, the target application folder is resolved by id
+    first (survives a rename since the last run) — see
+    ``_resolve_folder_name_by_entity_id``; if no folder carries that id (or none
+    was given — the legacy path), falls back to ``folder_name`` unchanged.
 
     Looks first in ``<data_dir>/completed/jobs/<folder_name><ext>`` (where a webapp/CLI
     completion files the JD), then in the synced Drive application folder
     ``<applications_local_dir>/<folder_name>/`` (most completed applications only have
     their JD here). Returns the path, or None when neither location has it.
     """
+    resolved_name = folder_name
+    if entity_id:
+        by_id = _resolve_folder_name_by_entity_id(applications_local_dir, entity_id)
+        if by_id:
+            resolved_name = by_id
+
     jobs_dir = Path(data_dir) / "completed" / "jobs"
     for ext in (".pdf", ".png", ".jpg", ".jpeg", ".md", ".txt"):
-        candidate = jobs_dir / f"{folder_name}{ext}"
+        candidate = jobs_dir / f"{resolved_name}{ext}"
         if candidate.is_file():
             return candidate
 
     if applications_local_dir:
-        app_folder = Path(applications_local_dir).expanduser() / folder_name
+        app_folder = Path(applications_local_dir).expanduser() / resolved_name
         if app_folder.is_dir():
             matches = sorted(
                 m for pattern in _JD_GLOBS for m in app_folder.glob(pattern)
@@ -496,6 +554,7 @@ def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
         Path(s["applications_input_dir"]),
         s.get("applications_output_dir"),
         body.folder_name,
+        entity_id=body.entity_id,
     )
     jd_path = safe_path(found) if found is not None else None
 
@@ -508,8 +567,19 @@ def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
             ),
         )
 
+    # Pin the persistent identity folder to the application's CURRENT (possibly
+    # renamed) mirror folder so the entity_id is reused rather than re-minted —
+    # this is the rename-safe path. Without a mirror root, identity falls back to
+    # the workflow's output_dir (legacy).
+    local_dir = s.get("applications_output_dir")
+    entity_dir = Path(local_dir).expanduser() / body.folder_name if local_dir else None
+
     run = _make_build_run(
-        jd_path, skip_drive=body.skip_drive, move_data_dir=None, model=body.model
+        jd_path,
+        skip_drive=body.skip_drive,
+        move_data_dir=None,
+        model=body.model,
+        entity_dir=entity_dir,
     )
     job_id = _start_job(
         run,
@@ -629,6 +699,7 @@ def launch_build_all(request: Request) -> dict:
             parent_id=settings.applications_output_drive_id,
             data_dir=data_dir,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -820,6 +891,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                     use_cache=settings.cache_enabled,
                     parent_id=settings.applications_output_drive_id,
                     data_dir=data_dir,
+                    applications_output_dir=settings.applications_output_dir,
                     logger=_logger,
                     _credentials_loader=creds_loader,
                 )

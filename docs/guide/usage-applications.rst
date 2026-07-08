@@ -103,6 +103,20 @@ Where output lands
 ``APPLICATIONS_OUTPUT_DRIVE_ID``, holding the README, JD copy, Résumé, and CoverLetter
 as editable Google Docs.
 
+Identity: entity, source, and executions
+-----------------------------------------
+
+Each application folder now carries a stable ``entity_id`` (a uuid minted once,
+in ``metadata.json``, and reused across re-builds/renames) plus a ``source.json``
+recording the posting itself — company, role, a one-time summary, and any file
+or web URI. The summary/company/role are written **once**, at first build; a
+re-build reads them back rather than overwriting them, so a correction survives.
+Correct a parse mistake (company, role, posting URL, or an external requisition
+id) from the application's row actions (**Edit source**) — this never touches
+the résumé, cover letter, or any other artifact. A folder built before this
+change has neither field; it behaves exactly as it always has (joined by folder
+name) until its next build, when the id is added automatically.
+
 See also
 --------
 

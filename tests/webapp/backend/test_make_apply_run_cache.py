@@ -28,6 +28,7 @@ def _settings(**overrides) -> Settings:
 def _stub_apply_inputs(monkeypatch, captured):
     def _fake(jd_path, *, use_cache, **kwargs):
         captured["use_cache"] = use_cache
+        captured.update(kwargs)
         return {"items": [{"status": "ok", "result": {}}]}
 
     monkeypatch.setattr(workflow, "apply_inputs", _fake)
@@ -95,6 +96,60 @@ class TestMakeApplyRunCaching:
         run()
 
         assert captured["use_cache"] is False
+
+
+class TestMakeApplyRunIdentityForwarding:
+    """_make_build_run forwards the persistent-identity kwargs to apply_inputs
+    (application-identity, phase 1): identity must land in the mirror, not the
+    ephemeral output dir."""
+
+    def test_forwards_applications_output_dir_and_entity_dir(
+        self, monkeypatch, tmp_path
+    ):
+        captured: dict = {}
+        _stub_apply_inputs(monkeypatch, captured)
+        mirror = tmp_path / "mirror"
+        monkeypatch.setattr(
+            config_mod,
+            "load_settings",
+            lambda: _settings(applications_output_dir=mirror),
+        )
+        monkeypatch.setattr(anthropic_mod, "AnthropicAdapter", lambda **k: object())
+
+        jd_path = tmp_path / "jd.pdf"
+        jd_path.write_text("x")
+        entity_dir = mirror / "Acme - Role"
+
+        run = jobs._make_build_run(
+            jd_path,
+            skip_drive=True,
+            move_data_dir=None,
+            entity_dir=entity_dir,
+        )
+        run()
+
+        assert captured["applications_output_dir"] == mirror
+        assert captured["entity_dir"] == entity_dir
+
+    def test_fresh_build_forwards_none_entity_dir(self, monkeypatch, tmp_path):
+        captured: dict = {}
+        _stub_apply_inputs(monkeypatch, captured)
+        mirror = tmp_path / "mirror"
+        monkeypatch.setattr(
+            config_mod,
+            "load_settings",
+            lambda: _settings(applications_output_dir=mirror),
+        )
+        monkeypatch.setattr(anthropic_mod, "AnthropicAdapter", lambda **k: object())
+
+        jd_path = tmp_path / "jd.pdf"
+        jd_path.write_text("x")
+
+        run = jobs._make_build_run(jd_path, skip_drive=True, move_data_dir=None)
+        run()
+
+        assert captured["applications_output_dir"] == mirror
+        assert captured["entity_dir"] is None
 
 
 # __END__

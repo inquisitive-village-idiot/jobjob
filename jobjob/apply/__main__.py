@@ -144,6 +144,7 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
         parent_id=settings.applications_output_drive_id,
         data_dir=settings.applications_input_dir,
         industry=settings.industry,
+        applications_output_dir=settings.applications_output_dir,
         logger=_logger,
         _credentials_loader=build_credentials_loader(settings),
     )

@@ -143,6 +143,59 @@ class TestApplicationItemsLocalMirror:
         assert item["ats_coverage"] is None
 
 
+class TestApplicationItemEntityId:
+    """entity_id surfaced on completed-application items (application-identity)."""
+
+    def _items(self, local_dir):
+        with mock.patch.object(MOD, "list_application_folders", return_value=[]):
+            return MOD._application_items(local_dir, None, None, None, _LOGGER)
+
+    def test_entity_id_present_when_in_metadata(self, tmp_path):
+        _make_app_folder(
+            tmp_path,
+            "2026-01-01 - Acme - Engineer",
+            metadata={"entity_id": "e1", "status": "APPLIED"},
+        )
+        (item,) = self._items(tmp_path)
+        expected = "e1"
+        found = item["entity_id"]
+        assert found == expected
+
+    def test_entity_id_none_for_legacy_folder(self, tmp_path):
+        _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (item,) = self._items(tmp_path)
+        assert item["entity_id"] is None
+
+
+class TestRunMatchesApplication:
+    """Id-preferring join across a rename, falling back to folder name."""
+
+    def test_id_join_survives_a_rename(self):
+        run = {"folder_name": "2026-01-01 - Old Name - Role", "entity_id": "e1"}
+        item = {"folder_name": "2026-01-01 - New Name - Role", "entity_id": "e1"}
+        assert MOD.run_matches_application(run, item) is True
+
+    def test_id_mismatch_is_not_a_match_even_if_names_agree(self):
+        run = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": "e1"}
+        item = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": "e2"}
+        assert MOD.run_matches_application(run, item) is False
+
+    def test_legacy_falls_back_to_folder_name(self):
+        run = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": None}
+        item = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": None}
+        assert MOD.run_matches_application(run, item) is True
+
+    def test_legacy_folder_name_mismatch_is_not_a_match(self):
+        run = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": None}
+        item = {"folder_name": "2026-01-01 - Beta - Role", "entity_id": None}
+        assert MOD.run_matches_application(run, item) is False
+
+    def test_one_sided_id_falls_back_to_name(self):
+        run = {"folder_name": "2026-01-01 - Acme - Role", "entity_id": "e1"}
+        item = {"folder_name": "2026-01-01 - Acme - Role"}  # no entity_id key
+        assert MOD.run_matches_application(run, item) is True
+
+
 class TestProfileCompletedItem:
     def test_parses_structured_filename(self, tmp_path):
         f = tmp_path / "20260521-20260612-AcmeCorp-JaneDoe.pdf"

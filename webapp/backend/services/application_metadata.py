@@ -15,6 +15,13 @@ the metadata travels with the application folder. Schema (version 2)::
 ``notes`` is reserved for changelog-style annotations (future work); unknown
 keys are preserved verbatim on every write so newer schemas survive round-trips.
 
+``entity_id`` (application-identity, phase 1) is this module's entity-tier
+field: a uuid4 minted once (``ensure_entity_id``) and reused on every rebuild.
+It is additive and round-tripped like any other unknown key — it does **not**
+bump ``schema_version``. Its absence marks a folder as legacy: joins fall back
+to the folder name, and the id is minted lazily on the folder's next natural
+write (no backfill, no mirror rewrite).
+
 Schema versioning: ``schema_version`` is stamped on every write and is the
 single source of truth reads key off; it increments only on format changes.
 Absence of the stamp is a valid ``v0`` (the entire pre-versioning mirror is
@@ -32,6 +39,7 @@ skip; single-item callers (the status endpoint) surface the failure.
 import json
 import os
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -80,6 +88,64 @@ def status_from_metadata(meta: dict) -> Optional[ApplicationStatus]:
     """
     raw = meta.get("status")
     return ApplicationStatus(raw) if raw is not None else None
+
+
+def entity_id_from_metadata(meta: dict) -> Optional[str]:
+    """Return the ``entity_id`` recorded in a metadata dict, if any.
+
+    Arguments:
+        meta: A parsed metadata dict (e.g. from :func:`read_metadata`).
+    Returns:
+        The entity id, or None when absent (a legacy record — see
+        ``ensure_entity_id``).
+    """
+    value = meta.get("entity_id")
+    return value if isinstance(value, str) and value else None
+
+
+def read_entity_id(folder: Path) -> Optional[str]:
+    """Return the entity id recorded for an application folder, if any.
+
+    Arguments:
+        folder: The application folder in the local mirror.
+    Returns:
+        The entity id, or None when no metadata file or no ``entity_id`` field
+        exists (a legacy folder — joins by name, per the application-identity
+        design).
+    Raises:
+        ValueError: The metadata file is corrupt.
+        OSError: The metadata file cannot be read.
+    """
+    return entity_id_from_metadata(read_metadata(folder))
+
+
+def ensure_entity_id(folder: Path) -> str:
+    """Read-or-mint-and-write the folder's stable ``entity_id``.
+
+    Mint-once / reuse-on-rebuild: an existing ``entity_id`` is always reused
+    (no write happens); only a folder with none gets a freshly minted uuid4,
+    written back with ``status``/``notes``/other keys preserved unchanged. This
+    is the entity tier's home (``metadata.json``) — called at build/enrich time
+    so a legacy (id-less) folder gains an id lazily, on its next natural write,
+    per the application-identity design (no backfill, no mirror rewrite).
+
+    Arguments:
+        folder: The application folder in the local mirror.
+    Returns:
+        The entity id (existing or freshly minted).
+    Raises:
+        ValueError: An existing metadata file is corrupt (not overwritten).
+        OSError: The file cannot be read or written.
+    """
+    data = read_metadata(folder)
+    existing = entity_id_from_metadata(data)
+    if existing:
+        return existing
+    new_id = str(uuid.uuid4())
+    data["schema_version"] = _SCHEMA_VERSION
+    data["entity_id"] = new_id
+    _write_metadata(folder, data)
+    return new_id
 
 
 def _migrate(data: dict) -> dict:

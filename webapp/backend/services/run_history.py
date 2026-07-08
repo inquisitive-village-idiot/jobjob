@@ -102,12 +102,22 @@ def finish_run(
     *,
     status: str,
     error: Optional[str] = None,
+    entity_id: Optional[str] = None,
     logger: logging.Logger | None = None,
 ) -> None:
-    """Mark a run finished (``completed`` / ``failed``) with its error, if any."""
+    """Mark a run finished (``completed`` / ``failed``) with its error, if any.
+
+    ``entity_id`` (application-identity, phase 1) is the id of the application
+    (or contact) this run processed — stamped at finish time since the id is
+    minted during the build itself. Omitted (not written as ``None``) when the
+    run's entity has no id (legacy), so the record stays exactly as it is today
+    for id-less applications.
+    """
     _logger = logger or _LOGGER
     record = _read_record(runs, run_id, _logger) or {"run_id": run_id}
     record.update(status=status, error=error, finished_at=_now())
+    if entity_id is not None:
+        record["entity_id"] = entity_id
     _write_record(runs, record, _logger)
 
 

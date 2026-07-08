@@ -41,6 +41,19 @@ Output per application:
 - Resume PDF uploaded to Drive
 - All stored in `YYYY-MM-DD - Company Name - Role Title` directory under `APPLICATIONS_OUTPUT_DRIVE_ID`
 
+### Application identity (entity / source / execution)
+
+Each application (and contact) folder carries a stable `entity_id` (uuid4, minted
+once and reused on every re-build/rename) alongside the existing `metadata.json`
+status. A sibling `source.json` records the posting itself — `company`, `role`,
+`description`, and `file_uri`/`web_uri`/`external_ref` — written **once** at
+first processing; a re-build reads these back rather than overwriting them, so
+a user's correction (via the source-edit endpoint/UI) survives. Absence of an
+`entity_id`/`source.json` marks a legacy folder: it joins by folder name exactly
+as before, with the id minted lazily on its next natural write (no backfill).
+See `openspec/changes/application-identity/` for the full design; dedup and
+versioned/archived executions are later phases, not yet implemented.
+
 ## Caching Architecture
 
 - **Anthropic prompt caching** – Stable context (resume, STAR examples, cover letter examples, background) sent as a cached system message prefix. All five calls reuse this. Cache is ephemeral (5 min, extended by hits).

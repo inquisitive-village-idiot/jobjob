@@ -15,6 +15,7 @@ import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
 import NotesModal from "../components/NotesModal";
 import RowActions from "../components/RowActions";
+import SourceEditModal from "../components/SourceEditModal";
 import type { RowAction } from "../components/RowActions";
 
 // One application record — from the input dir while queued, from the output
@@ -175,6 +176,7 @@ export default function ApplicationsPage() {
   const [rebuilding, setRebuilding] = useState<CompletedItem | null>(null);
   const [notesApp, setNotesApp] = useState<CompletedItem | null>(null);
   const [atsApp, setAtsApp] = useState<CompletedItem | null>(null);
+  const [sourceApp, setSourceApp] = useState<CompletedItem | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
 
@@ -255,11 +257,20 @@ export default function ApplicationsPage() {
   const appLabel = (item: CompletedItem) =>
     item.company ? `${item.company} — ${item.title || ""}`.trim() : item.folder_name;
 
+  // Id-preferring join (application-identity, phase 1): prefer entity_id
+  // equality (survives a folder rename since the run happened), falling back
+  // to folder_name when either side lacks an id — mirrors
+  // services/tracking_service.run_matches_application; keep in sync.
+  const runMatchesApplication = (r: RunRecord, item: CompletedItem): boolean =>
+    r.entity_id && item.entity_id
+      ? r.entity_id === item.entity_id
+      : r.folder_name === item.folder_name;
+
   // Latest run touching this row; the list from /jobs is newest-first.
   const latestRunFor = (row: Row): RunRecord | undefined =>
     runs.find((r) =>
       row.built
-        ? r.folder_name === row.built.folder_name
+        ? runMatchesApplication(r, row.built)
         : r.paths.includes(row.queued.path)
     );
 
@@ -365,7 +376,8 @@ export default function ApplicationsPage() {
         {
           label: `Notes${item.note_count ? ` (${item.note_count})` : ""}`,
           onClick: () => setNotesApp(item),
-        }
+        },
+        { label: "Edit source", onClick: () => setSourceApp(item) }
       );
     }
     if (item.drive?.web_link) {
@@ -470,6 +482,11 @@ export default function ApplicationsPage() {
                       </td>
                       <td className="px-4 py-2 align-top font-medium text-gray-900">
                         {rowCompany(row)}
+                        {row.built?.entity_id && (
+                          <p className="font-mono font-normal text-[10px] text-gray-300">
+                            {row.built.entity_id.slice(0, 8)}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-2 align-top text-gray-700">
                         {row.built?.title || "—"}
@@ -583,6 +600,10 @@ export default function ApplicationsPage() {
       )}
 
       {atsApp && <AtsReportModal item={atsApp} onClose={() => setAtsApp(null)} />}
+
+      {sourceApp && (
+        <SourceEditModal item={sourceApp} onClose={() => setSourceApp(null)} />
+      )}
     </div>
   );
 }
