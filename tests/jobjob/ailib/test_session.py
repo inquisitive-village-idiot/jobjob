@@ -68,6 +68,20 @@ class TestCall(ThisTestCase):
         self.assertEqual(0, client.usage.input_tokens)
 
 
+class TestModel(ThisTestCase):
+    """Test the model property."""
+
+    def test_returns_adapter_model(self) -> None:
+        adapter = SimpleNamespace(model="claude-x")
+        client = MOD.AIClient(adapter)
+        self.assertEqual("claude-x", client.model)
+
+    def test_returns_none_when_adapter_lacks_model(self) -> None:
+        adapter = SimpleNamespace()  # no .model attribute
+        client = MOD.AIClient(adapter)
+        self.assertIsNone(client.model)
+
+
 class TestCompleteDocument(ThisTestCase):
     """Test method."""
 

@@ -180,7 +180,7 @@ class TestCacheManagerLoadFromCache(ThisTestCase):
     def test_raises_if_error_loading_invalid_cache_encoding(self) -> None:
         instance = self.get_clean_cache()
         prompt = "foo"
-        prompt_hash = MOD.get_cache_hash(prompt)
+        prompt_hash = instance._key(prompt, None)
 
         cache_path = Path(instance.cache_path, f"{prompt_hash}.json")
         cache_path.write_text("foo-bar")
@@ -192,7 +192,7 @@ class TestCacheManagerLoadFromCache(ThisTestCase):
     def test_raises_if_error_loading_invalid_cache_structure(self) -> None:
         instance = self.get_clean_cache()
         prompt = "foo"
-        prompt_hash = MOD.get_cache_hash(prompt)
+        prompt_hash = instance._key(prompt, None)
 
         cache_path = Path(instance.cache_path, f"{prompt_hash}.json")
         cache_path.write_text(json.dumps({"foo": "bar"}))
@@ -220,6 +220,92 @@ class TestCacheManagerLoadFromCache(ThisTestCase):
 
             expected = content["response"]
             found = instance.load_from_cache(key)
+            self.assertEqual(expected, found)
+
+
+class TestCacheManagerModelScoping(ThisTestCase):
+    """Test the model dimension of the cache key."""
+
+    def test_same_prompt_different_models_are_distinct_entries(self) -> None:
+        instance = self.get_clean_cache()
+        prompt = "shared prompt"
+
+        instance.save_to_cache(prompt, "response-a", model="model-a")
+        instance.save_to_cache(prompt, "response-b", model="model-b")
+
+        with self.subTest("model-a returns its own response"):
+            expected = "response-a"
+            found = instance.load_from_cache(prompt, model="model-a")
+            self.assertEqual(expected, found)
+
+        with self.subTest("model-b returns its own response"):
+            expected = "response-b"
+            found = instance.load_from_cache(prompt, model="model-b")
+            self.assertEqual(expected, found)
+
+        with self.subTest("two distinct files on disk"):
+            expected = 2
+            found = len(list(instance.cache_path.iterdir()))
+            self.assertEqual(expected, found)
+
+    def test_no_model_is_its_own_namespace(self) -> None:
+        instance = self.get_clean_cache()
+        prompt = "shared prompt"
+
+        instance.save_to_cache(prompt, "response-scoped", model="model-a")
+
+        with self.subTest("no-model lookup misses when only a scoped entry exists"):
+            with self.assertRaises(KeyError):
+                instance.load_from_cache(prompt)
+
+        instance.save_to_cache(prompt, "response-unscoped")
+
+        with self.subTest("no-model entry does not shadow the scoped one"):
+            expected = "response-scoped"
+            found = instance.load_from_cache(prompt, model="model-a")
+            self.assertEqual(expected, found)
+
+        with self.subTest("no-model entry is independently retrievable"):
+            expected = "response-unscoped"
+            found = instance.load_from_cache(prompt)
+            self.assertEqual(expected, found)
+
+    def test_scoped_lookup_misses_when_only_unscoped_entry_exists(self) -> None:
+        instance = self.get_clean_cache()
+        prompt = "shared prompt"
+
+        instance.save_to_cache(prompt, "response-unscoped")
+
+        with self.assertRaises(KeyError):
+            instance.load_from_cache(prompt, model="model-a")
+
+    def test_stored_json_includes_model(self) -> None:
+        instance = self.get_clean_cache()
+        prompt = "shared prompt"
+        key = instance._key(prompt, "model-a")
+
+        instance.save_to_cache(prompt, "response-a", model="model-a")
+
+        expected = {"model": "model-a", "prompt": prompt, "response": "response-a"}
+        found = json.loads(instance._cache_path_for(key).read_text())
+        self.assertEqual(expected, found)
+
+    def test_delete_cache_entry_is_model_scoped(self) -> None:
+        instance = self.get_clean_cache()
+        prompt = "shared prompt"
+
+        instance.save_to_cache(prompt, "response-a", model="model-a")
+        instance.save_to_cache(prompt, "response-b", model="model-b")
+
+        instance.delete_cache_entry(prompt, model="model-a")
+
+        with self.subTest("deleted entry misses"):
+            with self.assertRaises(KeyError):
+                instance.load_from_cache(prompt, model="model-a")
+
+        with self.subTest("other model untouched"):
+            expected = "response-b"
+            found = instance.load_from_cache(prompt, model="model-b")
             self.assertEqual(expected, found)
 
 
@@ -268,11 +354,11 @@ class TestCacheManagerSaveToCache(ThisTestCase):
 
             prompt = "foo bar baz"
             response = "... some data ..."
-            key = instance._get_cache_hash(prompt)
+            key = instance._key(prompt, None)
 
             instance.save_to_cache(prompt, response)
 
-            expected = {"prompt": prompt, "response": response}
+            expected = {"model": None, "prompt": prompt, "response": response}
             found = json.loads(instance._cache_path_for(key).read_text())
             self.assertEqual(expected, found)
 
@@ -283,12 +369,12 @@ class TestCacheManagerSaveToCache(ThisTestCase):
         response1 = "... some data ..."
         response2 = "... other data ..."
 
-        cache_path = instance._cache_path_for(instance._get_cache_hash(prompt))
+        cache_path = instance._cache_path_for(instance._key(prompt, None))
 
         instance.save_to_cache(prompt, response1)
         instance.save_to_cache(prompt, response2)
 
-        expected = {"prompt": prompt, "response": response2}
+        expected = {"model": None, "prompt": prompt, "response": response2}
         found = json.loads(cache_path.read_text())
         self.assertEqual(expected, found)
 
@@ -296,7 +382,7 @@ class TestCacheManagerSaveToCache(ThisTestCase):
         instance = self.get_clean_cache()
 
         prompt = "foo bar baz"
-        key = instance._get_cache_hash(prompt)
+        key = instance._key(prompt, None)
 
         instance.save_to_cache(prompt, "... some data ...")
 
@@ -309,7 +395,7 @@ class TestCacheManagerSaveToCache(ThisTestCase):
 
         prompt = "foo bar baz"
         response1 = "... some data ..."
-        cache_path = instance._cache_path_for(instance._get_cache_hash(prompt))
+        cache_path = instance._cache_path_for(instance._key(prompt, None))
         instance.save_to_cache(prompt, response1)
 
         err = OSError("disk full")
@@ -332,7 +418,7 @@ class TestCacheManagerSaveToCache(ThisTestCase):
         instance = self.get_clean_cache()
 
         prompt = "foo bar baz"
-        key = instance._get_cache_hash(prompt)
+        key = instance._key(prompt, None)
         orphan = Path(instance.cache_path, f"{key}.orphan.tmp")
         orphan.write_text("{ partial garbage")
 
