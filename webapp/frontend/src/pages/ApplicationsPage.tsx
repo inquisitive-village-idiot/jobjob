@@ -202,6 +202,7 @@ export default function ApplicationsPage() {
     launchApply,
     launchApplyFromSource,
     launchApplyRerun,
+    launchAutofill,
     launchBatch,
     relaunchApply,
     deleteQueued,
@@ -364,11 +365,28 @@ export default function ApplicationsPage() {
     const item = row.built;
     const actions: RowAction[] = [
       { label: "Re-build", onClick: () => setRebuilding(item) },
-      {
-        label: "Apply",
-        disabled: true,
-        title: "Autofill (Playwright) — arrives in a follow-up change.",
-      },
+      item.posting_url
+        ? {
+            label: "Apply",
+            onClick: async () => {
+              try {
+                const jobId = await launchAutofill({
+                  folder_name: item.folder_name,
+                  entity_id: item.entity_id,
+                });
+                setViewingJobId(jobId);
+              } catch (e) {
+                setError(String(e));
+              }
+            },
+            title: "Autofill (Playwright): fill contact basics, then finish by hand.",
+          }
+        : {
+            label: "Apply",
+            disabled: true,
+            title:
+              "Needs a posting URL — attach one via Edit source before applying.",
+          },
     ];
     if (item.status_writable) {
       actions.push(

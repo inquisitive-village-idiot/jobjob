@@ -10,7 +10,7 @@ export interface LogLine {
 
 export interface Job {
   id: string;
-  kind: "build" | "enrich" | "batch";
+  kind: "build" | "enrich" | "batch" | "apply";
   label: string;
   path?: string; // queue-item path (single jobs); undefined for batch
   count?: number; // batch item count
@@ -182,6 +182,32 @@ export function useJobs(onSettled?: () => void) {
     [track]
   );
 
+  // Launch the assisted autofill (Playwright) step for a built application —
+  // gated by the caller on posting_url being set. Runs as a detached backend
+  // subprocess; this job only tracks the (early) fill-report step, not the
+  // human finishing in the browser (see design.md).
+  const launchAutofill = useCallback(
+    async (item: {
+      folder_name: string;
+      entity_id?: string | null;
+    }): Promise<string> => {
+      const res = await api.post<{ job_id: string }>("/jobs/apply", {
+        folder_name: item.folder_name,
+        entity_id: item.entity_id ?? undefined,
+      });
+      track({
+        id: res.job_id,
+        kind: "apply",
+        label: item.folder_name,
+        folderName: item.folder_name,
+        status: "running",
+        lines: [],
+      });
+      return res.job_id;
+    },
+    [track]
+  );
+
   const launchEnrich = useCallback(
     async (item: QueueItem): Promise<string> => {
       const res = await api.post<{ job_id: string }>("/jobs/enrich", {
@@ -260,6 +286,7 @@ export function useJobs(onSettled?: () => void) {
     relaunchApply,
     deleteQueued,
     launchApplyRerun,
+    launchAutofill,
     launchEnrich,
     launchBatch,
     launchSchedule,

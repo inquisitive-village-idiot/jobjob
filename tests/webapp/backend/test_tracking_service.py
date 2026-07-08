@@ -167,6 +167,29 @@ class TestApplicationItemEntityId:
         assert item["entity_id"] is None
 
 
+class TestApplicationItemPostingUrl:
+    """posting_url surfaced on completed-application items (autofill-apply-wiring)."""
+
+    def _items(self, local_dir):
+        with mock.patch.object(MOD, "list_application_folders", return_value=[]):
+            return MOD._application_items(local_dir, None, None, None, _LOGGER)
+
+    def test_posting_url_from_source_json(self, tmp_path):
+        from services import application_source
+
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        application_source.write_source(
+            folder, {"web_uri": "https://example.test/jobs/123"}
+        )
+        (item,) = self._items(tmp_path)
+        assert item["posting_url"] == "https://example.test/jobs/123"
+
+    def test_posting_url_none_when_no_source(self, tmp_path):
+        _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (item,) = self._items(tmp_path)
+        assert item["posting_url"] is None
+
+
 class TestRunMatchesApplication:
     """Id-preferring join across a rename, falling back to folder name."""
 

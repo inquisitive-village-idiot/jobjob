@@ -97,7 +97,7 @@ export interface AppNote {
 // services/run_history.py.
 export interface RunRecord {
   run_id: string;
-  kind: "build" | "enrich" | "batch" | "schedule";
+  kind: "build" | "enrich" | "batch" | "schedule" | "apply";
   label: string;
   paths: string[];
   folder_name?: string | null;
@@ -174,6 +174,9 @@ export interface CompletedItem {
   // application-identity (phase 1): null marks a legacy (id-less) application —
   // it joins by folder_name, same as before this field existed.
   entity_id?: string | null;
+  // autofill-apply-wiring: the source tier's web_uri, or null/absent when no
+  // posting URL is attached — gates the row-menu Apply action.
+  posting_url?: string | null;
   // Parsed from "YYYY-MM-DD - Company - Role" (applications only).
   date?: string;
   company?: string;

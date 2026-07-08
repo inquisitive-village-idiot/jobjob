@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from jobjob.classify.classify import JD, LINKEDIN_PROFILE, classify_file
+from services import application_source
 from services.application_metadata import (
     DEFAULT_STATUS,
     METADATA_FILENAME,
@@ -182,6 +183,7 @@ def _application_item(
     note_count: int = 0,
     insights: Optional[dict] = None,
     entity_id: Optional[str] = None,
+    posting_url: Optional[str] = None,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
@@ -191,6 +193,8 @@ def _application_item(
     ``insights`` carries the summary.json fit block + ATS coverage (mirror only).
     ``entity_id`` (application-identity, phase 1) is read from metadata.json; None
     marks a legacy folder (joins by folder name — see ``run_matches_application``).
+    ``posting_url`` (autofill-apply-wiring) is the source tier's ``web_uri``, or
+    None when absent — the webapp's Apply row action is gated on this being set.
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -221,6 +225,7 @@ def _application_item(
         "note_count": note_count,
         "drive": drive,
         "entity_id": entity_id,
+        "posting_url": posting_url,
         **(insights or {"fit": None, "ats_coverage": None}),
         **parsed,
     }
@@ -286,6 +291,10 @@ def _application_items(
                     meta, metadata_status = {}, None
                 note_count = len(meta.get("notes") or [])
                 match = links.get(folder.name)
+                # application-identity phase 1's source tier (source.json);
+                # tolerant read — a missing/legacy folder just yields no URL,
+                # same posture as application_source.read_source itself.
+                posting_url = application_source.read_source(folder).get("web_uri")
                 items.append(
                     _application_item(
                         folder.name,
@@ -296,6 +305,7 @@ def _application_items(
                         note_count=note_count,
                         insights=_read_insights(folder, logger),
                         entity_id=entity_id_from_metadata(meta),
+                        posting_url=posting_url,
                         drive=(
                             {
                                 "found": True,
