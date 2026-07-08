@@ -95,9 +95,16 @@ def build_cached_context(
     return "\n\n".join(parts)
 
 
+# summary.json format version; bump only on a breaking shape change. No reader
+# migration exists yet — the file is written fresh on every run rather than
+# read back and updated in place.
+_SUMMARY_SCHEMA_VERSION = 1
+
+
 def _write_summary(output_dir: Path, results: dict) -> Path:
     path = Path(output_dir, "summary.json")
-    path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    payload = {"schema_version": _SUMMARY_SCHEMA_VERSION, **results}
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return path
 
 

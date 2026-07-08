@@ -3,10 +3,10 @@
 
 Each application folder in the locally-synced Drive mirror may hold a
 ``metadata.json`` written by this module; the Drive sync client uploads it, so
-the metadata travels with the application folder. Schema (version 1)::
+the metadata travels with the application folder. Schema (version 2)::
 
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "status": "APPLIED",
       "status_updated_at": "2026-06-10T18:24:31+00:00",
       "notes": []
@@ -14,6 +14,15 @@ the metadata travels with the application folder. Schema (version 1)::
 
 ``notes`` is reserved for changelog-style annotations (future work); unknown
 keys are preserved verbatim on every write so newer schemas survive round-trips.
+
+Schema versioning: ``schema_version`` is stamped on every write and is the
+single source of truth reads key off; it increments only on format changes.
+Absence of the stamp is a valid ``v0`` (the entire pre-versioning mirror is
+retroactively versioned without touching a byte). ``read_metadata`` runs
+``_migrate`` on every read: files at ``schema_version < 2`` have a stored
+``status: "GENERATED"`` normalized to ``"BUILT"`` (the v1 status vocabulary
+was renamed in the full-build-rename change) — the source file is never
+rewritten by a read; only the next write stamps ``2``.
 
 Errors raise: a corrupt or unreadable metadata file raises ``ValueError`` /
 ``OSError``. Callers iterating many folders (the tracking list) catch, log, and
@@ -33,7 +42,7 @@ from typing import Optional
 class ApplicationStatus(str, Enum):
     """Lifecycle status of a job application."""
 
-    GENERATED = "GENERATED"  # default: artifacts produced, nothing submitted
+    BUILT = "BUILT"  # default: artifacts produced, nothing submitted
     APPLIED = "APPLIED"
     IGNORED = "IGNORED"
     INTERVIEWING = "INTERVIEWING"
@@ -43,9 +52,9 @@ class ApplicationStatus(str, Enum):
     WITHDRAWN = "WITHDRAWN"
 
 
-DEFAULT_STATUS = ApplicationStatus.GENERATED
+DEFAULT_STATUS = ApplicationStatus.BUILT
 METADATA_FILENAME = "metadata.json"
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 # Kinds of changelog note. "status" entries are auto-logged on a status transition;
 # "note" entries are free-text annotations the user adds. Mirrored by NOTE_KINDS in
@@ -73,10 +82,28 @@ def status_from_metadata(meta: dict) -> Optional[ApplicationStatus]:
     return ApplicationStatus(raw) if raw is not None else None
 
 
+def _migrate(data: dict) -> dict:
+    """Normalize a metadata dict read from disk to the current in-memory shape.
+
+    Keyed on ``schema_version`` (absent ⇒ ``0``), not on the app version. A file
+    at ``schema_version < 2`` (the full-build-rename cutover) has a stored
+    ``status: "GENERATED"`` normalized to ``"BUILT"``; a ``v2`` file is already
+    post-rename and passed through unchanged. This is a read-only shim — the
+    source file is never rewritten here, only the next write stamps the new
+    version. Shaped as a single migration step now (YAGNI on a full registry),
+    but structured so later non-trivial format changes can grow it into a chain.
+    """
+    if data.get("schema_version", 0) < 2 and data.get("status") == "GENERATED":
+        data = {**data, "status": "BUILT"}
+    return data
+
+
 def read_metadata(folder: Path) -> dict:
     """Return the metadata dict for an application folder.
 
     A missing file is the normal state for most folders and returns ``{}``.
+    The returned dict is migrated to the current schema (see :func:`_migrate`);
+    the file on disk is left untouched by a read.
 
     Arguments:
         folder: The application folder in the local mirror.
@@ -92,7 +119,7 @@ def read_metadata(folder: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"{path} does not contain a JSON object")
-    return data
+    return _migrate(data)
 
 
 def read_status(folder: Path) -> Optional[ApplicationStatus]:

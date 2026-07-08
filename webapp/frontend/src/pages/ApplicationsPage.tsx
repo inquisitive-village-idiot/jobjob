@@ -29,7 +29,7 @@ type SortMode = "company" | "fit" | "ats";
 // Tint per state; QUEUED joins the stored statuses.
 const STATE_STYLES: Record<string, string> = {
   QUEUED: "bg-sky-100 text-sky-800 border-sky-200",
-  GENERATED: "bg-white text-gray-500 border-gray-200",
+  BUILT: "bg-white text-gray-500 border-gray-200",
   APPLIED: "bg-green-100 text-green-800 border-green-200",
   IGNORED: "bg-gray-100 text-gray-600 border-gray-200",
   INTERVIEWING: "bg-blue-100 text-blue-800 border-blue-200",
@@ -39,14 +39,11 @@ const STATE_STYLES: Record<string, string> = {
   WITHDRAWN: "bg-amber-100 text-amber-800 border-amber-200",
 };
 
-// NOTE: UI-only rename — the stored status stays GENERATED; the UI says
-// "Built" (pipeline vocabulary: Build / Re-build; Apply is reserved for
-// autofill). Full rename is a future change.
 const stateLabel = (s: string) =>
-  s === "GENERATED" ? "Built" : s.charAt(0) + s.slice(1).toLowerCase();
+  s === "BUILT" ? "Built" : s.charAt(0) + s.slice(1).toLowerCase();
 
 // Pipeline order for the filter chips.
-const STATE_ORDER: string[] = ["QUEUED", "GENERATED", ...APP_STATUSES.slice(1)];
+const STATE_ORDER: string[] = ["QUEUED", "BUILT", ...APP_STATUSES.slice(1)];
 
 const rowCompany = (r: Row) =>
   r.built ? r.built.company || r.built.folder_name : r.queued.name;
@@ -115,7 +112,7 @@ function StateCell({
     return (
       <span
         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
-          border ${STATE_STYLES[state] ?? STATE_STYLES.GENERATED}`}
+          border ${STATE_STYLES[state] ?? STATE_STYLES.BUILT}`}
         title={
           row.built
             ? "Status and notes need a local applications mirror — set APPLICATIONS_OUTPUT_DIR in Settings to enable them."
@@ -128,7 +125,7 @@ function StateCell({
   }
 
   const item = row.built;
-  const status: AppStatus = item.app_status ?? "GENERATED";
+  const status: AppStatus = item.app_status ?? "BUILT";
   const change = async (next: AppStatus) => {
     setSaving(true);
     setError(null);
@@ -230,7 +227,7 @@ export default function ApplicationsPage() {
       `/tracking/applications/${encodeURIComponent(item.folder_name)}/status`,
       { status }
     );
-    const changed = (item.app_status ?? "GENERATED") !== status;
+    const changed = (item.app_status ?? "BUILT") !== status;
     setCompleted((prev) =>
       prev === null
         ? prev
@@ -275,7 +272,7 @@ export default function ApplicationsPage() {
       ...completed.map(
         (c): Row => ({
           key: `built:${c.folder_name}`,
-          state: c.app_status ?? "GENERATED",
+          state: c.app_status ?? "BUILT",
           built: c,
         })
       ),
@@ -331,8 +328,7 @@ export default function ApplicationsPage() {
 
   const buildAll = async () => {
     try {
-      // NOTE: UI-only rename — the endpoint is still /jobs/apply-all.
-      const jobId = await launchBatch("/jobs/apply-all", "Build all JDs");
+      const jobId = await launchBatch("/jobs/build-all", "Build all JDs");
       setViewingJobId(jobId);
     } catch (e) {
       setError(String(e));
@@ -556,7 +552,7 @@ export default function ApplicationsPage() {
           job={viewingJob}
           onClose={() => setViewingJobId(null)}
           onRelaunch={
-            viewingJob.kind === "apply" && viewingJob.path
+            viewingJob.kind === "build" && viewingJob.path
               ? async (allowOverwrite) => {
                   const id = await relaunchApply(viewingJob, {
                     skipDrive: false,
@@ -567,7 +563,7 @@ export default function ApplicationsPage() {
               : undefined
           }
           onClearDelete={
-            viewingJob.kind === "apply" && viewingJob.path
+            viewingJob.kind === "build" && viewingJob.path
               ? async () => {
                   await deleteQueued(viewingJob.path!);
                   setViewingJobId(null);

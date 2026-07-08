@@ -51,8 +51,7 @@ export default function JobProgressModal({
   const title =
     job.kind === "batch"
       ? job.label
-      : // NOTE: UI-only rename — the pipeline is "Build" in copy; API/CLI names unchanged (full rename is a future change).
-        `${job.kind === "enrich" ? "Enrich" : "Build"} — ${job.label}`;
+      : `${job.kind === "enrich" ? "Enrich" : "Build"} — ${job.label}`;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

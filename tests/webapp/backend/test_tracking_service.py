@@ -71,10 +71,15 @@ class TestApplicationItemsLocalMirror:
         assert item["app_status"] == "APPLIED"
         assert item["status_writable"] is True
 
-    def test_bare_folder_defaults_to_generated(self, tmp_path):
+    def test_bare_folder_defaults_to_built(self, tmp_path):
         _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
         (item,) = self._items(tmp_path)
-        assert item["app_status"] == "GENERATED"
+        assert item["app_status"] == "BUILT"
+
+    def test_legacy_generated_prefix_normalizes_to_built(self, tmp_path):
+        _make_app_folder(tmp_path, "GENERATED 2026-01-03 - Gamma - Analyst")
+        (item,) = self._items(tmp_path)
+        assert item["app_status"] == "BUILT"
 
     def test_metadata_overrides_prefix(self, tmp_path):
         _make_app_folder(

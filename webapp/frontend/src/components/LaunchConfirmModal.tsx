@@ -42,7 +42,6 @@ export default function LaunchConfirmModal({
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <h2 className="text-base font-semibold text-gray-900">
-            {/* NOTE: UI-only rename — the pipeline is "Build" in copy; API/CLI names unchanged (full rename is a future change). */}
             {isEnrich ? "Enrich profile" : "Build application"}
           </h2>
           <button

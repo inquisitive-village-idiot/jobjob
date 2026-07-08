@@ -110,4 +110,36 @@ class TestJobsEndpoints:
         assert http.get("/api/jobs/nope/log").status_code == 404
 
 
+class TestMigrateLegacyKinds:
+    """One-time kind:"apply" -> "build" fixup (full-build-rename)."""
+
+    def _kind(self, runs, run_id):
+        return json.loads(MOD.record_path(runs, run_id).read_text())["kind"]
+
+    def test_rewrites_apply_to_build_and_leaves_others(self, runs):
+        MOD.start_run(runs, "gen", kind="apply", label="jd.pdf")
+        MOD.start_run(runs, "enr", kind="enrich", label="profile")
+
+        MOD.migrate_legacy_kinds(runs)
+
+        assert self._kind(runs, "gen") == "build"
+        assert self._kind(runs, "enr") == "enrich"
+        assert (runs / MOD._KIND_MIGRATION_MARKER).is_file()
+
+    def test_marker_guards_future_autofill_apply_records(self, runs):
+        MOD.start_run(runs, "old", kind="apply", label="a")
+        MOD.migrate_legacy_kinds(runs)
+        # After the one-time fixup, a NEW apply record (autofill) must survive.
+        MOD.start_run(runs, "autofill", kind="apply", label="b")
+
+        MOD.migrate_legacy_kinds(runs)
+
+        assert self._kind(runs, "old") == "build"
+        assert self._kind(runs, "autofill") == "apply"
+
+    def test_empty_runs_dir_does_not_raise(self, runs):
+        MOD.migrate_legacy_kinds(runs)
+        assert (runs / MOD._KIND_MIGRATION_MARKER).is_file()
+
+
 # __END__

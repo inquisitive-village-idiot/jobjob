@@ -65,8 +65,8 @@ and response shapes.
        ``save`` them into a profile.
    * - jobs
      - ``/api/jobs``
-     - Launch work: ``apply`` (and ``apply/from-url``, ``apply/from-text``,
-       ``apply/rerun``), ``enrich``, batch ``apply-all`` / ``enrich-all``, ``schedule``
+     - Launch work: ``build`` (and ``build/from-url``, ``build/from-text``,
+       ``build/rerun``), ``enrich``, batch ``build-all`` / ``enrich-all``, ``schedule``
        runs, and poll a job's ``progress`` / ``status``.
    * - tracking
      - ``/api/tracking``

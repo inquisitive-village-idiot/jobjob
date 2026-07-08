@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`jobjob autofill` — assisted Playwright auto-fill of a job application.
+"""`jobjob apply` — assisted Playwright auto-fill of a job application.
 
 Opens the posting in a real browser, fills the fields it can map from the active
 profile (contact basics + work history), and hands the open window back to you to
@@ -27,7 +27,7 @@ NAME = "jobjob.autofill"
 def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        prog="jobjob autofill",
+        prog="jobjob apply",
         description=(
             "Assisted auto-fill of a job application in a real browser. "
             "Fills what it can confidently map, flags the rest, and never submits."

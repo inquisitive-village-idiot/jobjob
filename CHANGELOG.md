@@ -6,6 +6,9 @@ the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — foll
 
 ## [Unreleased]
 
+- [MAJOR] Renamed the document-generation pipeline's CLI verb, HTTP routes, and stored vocabulary from "apply" to "build", completing the `webapp-restructure` UI-only rename: `jobjob apply` is now `jobjob build`; `jobjob apply` is repurposed to mean assisted auto-fill (formerly `jobjob autofill`, which is dropped as a subcommand); `/jobs/apply*` routes become `/jobs/build*`; the application status `GENERATED` becomes `BUILT` (legacy `GENERATED` values and folder-name prefixes are still read and normalized on the fly — no data is rewritten); run records now use `kind: "build"` for document generation (a one-time startup fixup migrates existing `kind: "apply"` records)
+- [PATCH] `metadata.json` and `summary.json` now stamp a `schema_version` on write, enabling future format migrations without touching existing files
+
 ## [2.8.0] - 2026-06-24
 
 - [MINOR] Auto-fill now recognizes more application sites: dedicated adapters for Greenhouse, Lever, Ashby, Workable, and SmartRecruiters fill your name, email, phone, and LinkedIn from the active profile, and a generic fallback fills the contact basics on any other standards-compliant form (so `jobjob autofill <url>` does something useful even on an unrecognized board). Workday remains the one that also fills your structured work history. Selectors are best-effort per site; the résumé upload and submit are always left to you

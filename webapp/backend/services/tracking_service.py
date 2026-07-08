@@ -135,9 +135,10 @@ _APP_NAME_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s*-\s*(.+?)\s*-\s*(.+)$")
 # A status marker the user (or the status endpoint's seed convention) prepends to
 # the folder name, e.g. "APPLIED 2026-01-02 - Acme - Role". Matched
 # case-sensitively at the start so a word like "Applied" inside a role title
-# (e.g. "Applied Research") is not mistaken for the marker.
+# (e.g. "Applied Research") is not mistaken for the marker. "GENERATED" is kept
+# as a legacy alias for "BUILT" (pre-rename folders) and normalized below.
 _STATUS_PREFIX_RE = re.compile(
-    rf"^({'|'.join(s.value for s in ApplicationStatus)})\b[\s-]*"
+    rf"^({'|'.join([*(s.value for s in ApplicationStatus), 'GENERATED'])})\b[\s-]*"
 )
 
 
@@ -145,10 +146,13 @@ def _parse_app_name(name: str) -> dict:
     """Split an application folder name into date/company/title (best-effort).
 
     Also detects a leading status marker (``APPLIED``, ``IGNORED``, …) and strips
-    it before parsing, exposing it as ``prefix_status`` (None when absent).
+    it before parsing, exposing it as ``prefix_status`` (None when absent). A
+    legacy ``GENERATED`` marker is normalized to ``BUILT``.
     """
     match = _STATUS_PREFIX_RE.match(name)
     prefix_status = match.group(1) if match else None
+    if prefix_status == "GENERATED":
+        prefix_status = ApplicationStatus.BUILT.value
     cleaned = _STATUS_PREFIX_RE.sub("", name) if match else name
     match = _APP_NAME_RE.match(cleaned)
     if not match:
@@ -179,7 +183,7 @@ def _application_item(
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
-    ``app_status`` precedence: metadata.json > folder-name prefix > GENERATED.
+    ``app_status`` precedence: metadata.json > folder-name prefix > BUILT.
     ``status`` (artifact completeness) is a separate axis and untouched.
     ``note_count`` is the number of changelog notes recorded for the application.
     ``insights`` carries the summary.json fit block + ATS coverage (mirror only).

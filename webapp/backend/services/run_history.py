@@ -20,6 +20,10 @@ from typing import Any, Optional
 RUNS_DIRNAME = "runs"
 # Retention bound: newest records kept, older ones pruned with their logs.
 MAX_RUNS = 200
+# Sentinel marking the one-time kind:"apply"->"build" fixup (full-build-rename)
+# as done, so it never touches a legitimate autofill "apply" record recorded
+# afterward.
+_KIND_MIGRATION_MARKER = ".kind_migrated_v1"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,8 +71,7 @@ def start_run(
     Arguments:
         runs: The runs directory (see ``runs_dir``).
         run_id: The job id (shared with the in-memory job table).
-        kind: Machine kind — apply / enrich / batch / schedule. (UI copy says
-            "Build"; the stored vocabulary keeps the API names.)
+        kind: Machine kind — build / apply (autofill) / enrich / batch / schedule.
         label: Human-readable run label.
         paths: Input paths the run covers.
         folder_name: Target application folder when known (re-runs).
@@ -174,6 +177,33 @@ def prune(runs: Path, *, keep: int = MAX_RUNS, logger: logging.Logger | None = N
             path.unlink(missing_ok=True)
         except OSError as exc:
             _logger.warning("Could not prune run %s: %s", path.stem, exc)
+
+
+def migrate_legacy_kinds(
+    runs: Path, *, logger: logging.Logger | None = None
+) -> None:
+    """One-time fixup: rewrite legacy ``kind: "apply"`` records to ``"build"``.
+
+    Pre-full-build-rename runs recorded document-generation jobs as
+    ``kind: "apply"``; that word now means autofill. Guarded by a
+    ``.kind_migrated_v1`` sentinel in ``runs`` so it runs at most once — once
+    ``autofill-apply-wiring`` lands, autofill runs will legitimately record
+    ``kind: "apply"``, and a forever read-map (rather than a one-time rewrite)
+    would corrupt them. Call at startup; never raises.
+    """
+    _logger = logger or _LOGGER
+    marker = runs / _KIND_MIGRATION_MARKER
+    if marker.is_file():
+        return
+    for path in runs.glob("*.json"):
+        record = _read_record(runs, path.stem, _logger)
+        if record and record.get("kind") == "apply":
+            record["kind"] = "build"
+            _write_record(runs, record, _logger)
+    try:
+        marker.touch()
+    except OSError as exc:
+        _logger.warning("Could not write kind-migration marker %s: %s", marker, exc)
 
 
 # __END__
