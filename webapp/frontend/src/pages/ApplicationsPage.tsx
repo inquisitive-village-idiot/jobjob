@@ -384,8 +384,7 @@ export default function ApplicationsPage() {
         : {
             label: "Apply",
             disabled: true,
-            title:
-              "Needs a posting URL — attach one via Edit source before applying.",
+            title: "Needs a posting URL — attach one via Edit source before applying.",
           },
     ];
     if (item.status_writable) {
