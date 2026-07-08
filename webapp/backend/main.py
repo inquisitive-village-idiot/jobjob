@@ -36,6 +36,7 @@ from routers import (
     update,
 )
 from security import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, SAFE_METHODS, configure_sandbox
+from services import run_history
 
 # Add the backend dir to sys.path so ``from routers import ...`` works when
 # uvicorn is launched from the webapp/backend directory.
@@ -185,6 +186,12 @@ def _background_update_check() -> None:
 @app.on_event("startup")
 def _startup() -> None:
     reload_state()
+    # One-time fixup (full-build-rename): rewrite legacy run records' kind
+    # "apply" -> "build" so old document-generation runs match current
+    # vocabulary; marker-guarded so it runs exactly once.
+    run_history.migrate_legacy_kinds(
+        run_history.runs_dir(app.state.settings["applications_input_dir"])
+    )
     _background_update_check()
 
 

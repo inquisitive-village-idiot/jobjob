@@ -127,6 +127,9 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
             summary = json.loads(Path(out, "summary.json").read_text())
             self.assertEqual("Acme", summary["job_info"]["company_name"])
             self.assertIn("token_usage", summary)
+        with self.subTest("summary carries a schema version stamp"):
+            summary = json.loads(Path(out, "summary.json").read_text())
+            self.assertEqual(MOD._SUMMARY_SCHEMA_VERSION, summary["schema_version"])
 
     def test_persists_fit_block_in_summary(self) -> None:
         out = self.get_tmpdir()

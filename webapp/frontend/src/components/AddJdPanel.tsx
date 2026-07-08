@@ -97,7 +97,6 @@ export default function AddJdPanel({
           className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded
             hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          {/* NOTE: UI-only rename — the pipeline is "Build" in copy; API/CLI names unchanged (full rename is a future change). */}
           {busy ? "Capturing…" : "Capture & Build"}
         </button>
       </div>

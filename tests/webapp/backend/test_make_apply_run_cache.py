@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the ``_make_apply_run`` cache wiring (routers.jobs).
+"""Tests for the ``_make_build_run`` cache wiring (routers.jobs).
 
 Regression for the removed model-override cache bypass: a per-run model override
 must still populate ``use_cache`` from ``settings.cache_enabled`` / ``no_cache``,
@@ -46,7 +46,7 @@ class TestMakeApplyRunCaching:
         jd_path = tmp_path / "jd.pdf"
         jd_path.write_text("x")
 
-        run = jobs._make_apply_run(
+        run = jobs._make_build_run(
             jd_path, skip_drive=True, move_data_dir=None, model="override-model"
         )
         run()
@@ -65,7 +65,7 @@ class TestMakeApplyRunCaching:
         jd_path = tmp_path / "jd.pdf"
         jd_path.write_text("x")
 
-        run = jobs._make_apply_run(
+        run = jobs._make_build_run(
             jd_path,
             skip_drive=True,
             move_data_dir=None,
@@ -89,7 +89,7 @@ class TestMakeApplyRunCaching:
         jd_path = tmp_path / "jd.pdf"
         jd_path.write_text("x")
 
-        run = jobs._make_apply_run(
+        run = jobs._make_build_run(
             jd_path, skip_drive=True, move_data_dir=None, model="override-model"
         )
         run()

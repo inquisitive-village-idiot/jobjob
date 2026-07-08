@@ -70,7 +70,7 @@ export interface DriveState {
 // Mirrors ApplicationStatus in webapp/backend/services/application_metadata.py —
 // keep in sync.
 export const APP_STATUSES = [
-  "GENERATED",
+  "BUILT",
   "APPLIED",
   "IGNORED",
   "INTERVIEWING",
@@ -94,11 +94,10 @@ export interface AppNote {
 }
 
 // A persisted execution record from GET /jobs — mirrors
-// services/run_history.py. Kinds keep the API vocabulary ("apply"); UI copy
-// renders them as Build etc. (UI-only rename; full rename is a future change).
+// services/run_history.py.
 export interface RunRecord {
   run_id: string;
-  kind: "apply" | "enrich" | "batch" | "schedule";
+  kind: "build" | "enrich" | "batch" | "schedule";
   label: string;
   paths: string[];
   folder_name?: string | null;
@@ -150,7 +149,7 @@ export interface CompletedItem {
   date?: string;
   company?: string;
   title?: string;
-  app_status?: AppStatus; // metadata.json > folder-name prefix > GENERATED
+  app_status?: AppStatus; // metadata.json > folder-name prefix > BUILT
   status_writable?: boolean; // false when only the Drive API fallback is in use
   note_count?: number; // changelog notes recorded for the application
   // Insights from summary.json (local mirror only; absent on older applications).

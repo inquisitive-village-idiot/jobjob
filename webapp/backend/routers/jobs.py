@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jobs API: launch apply/enrich jobs with SSE progress streaming.
+"""Jobs API: launch build/enrich jobs with SSE progress streaming.
 
 Runs each job in a background thread and streams log records as SSE events.
 The cost guard is checked before launch; successful runs are moved to the
@@ -134,7 +134,7 @@ def _start_job(
     fn,
     *,
     runs_dir: Optional[Path] = None,
-    kind: str = "apply",
+    kind: str = "build",
     label: str = "",
     paths: tuple[str, ...] = (),
     folder_name: Optional[str] = None,
@@ -218,7 +218,7 @@ def _start_job(
 # ── Single-item endpoints ──────────────────────────────────────────────────────
 
 
-def _make_apply_run(
+def _make_build_run(
     jd_path: Path,
     *,
     skip_drive: bool,
@@ -229,12 +229,12 @@ def _make_apply_run(
     allow_overwrite: bool = False,
     model: Optional[str] = None,
 ):
-    """Build the background ``_run`` closure for an apply job.
+    """Build the background ``_run`` closure for a build job.
 
     Routes through ``apply_inputs`` (the shared CLI entry point), using the current
     configuration (``load_settings`` → model, applicant, credentials). ``move_data_dir``
     is passed straight through as ``apply_inputs``'s ``data_dir``: a real path moves
-    the JD into ``<data_dir>/completed/`` on success (normal apply); ``None`` skips
+    the JD into ``<data_dir>/completed/`` on success (normal build); ``None`` skips
     the move, which is what a re-run wants since its JD already lives in
     ``completed/jobs/``.
 
@@ -294,9 +294,9 @@ def _make_apply_run(
     return _run
 
 
-@router.post("/apply")
-def launch_apply(body: ApplyRequest, request: Request) -> dict:
-    """Start an apply job for one JD. Returns {job_id}."""
+@router.post("/build")
+def launch_build(body: ApplyRequest, request: Request) -> dict:
+    """Start a build job for one JD. Returns {job_id}."""
     s = _app_settings(request)
 
     budget_error = check_budget(
@@ -310,7 +310,7 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
     if not jd_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {jd_path}")
 
-    run = _make_apply_run(
+    run = _make_build_run(
         jd_path,
         skip_drive=body.skip_drive,
         move_data_dir=Path(s["applications_input_dir"]),
@@ -322,14 +322,14 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
     job_id = _start_job(
         run,
         runs_dir=_runs_dir(s),
-        kind="apply",
+        kind="build",
         label=jd_path.name,
         paths=(str(jd_path),),
     )
     return {"job_id": job_id}
 
 
-def _launch_snapshot_apply(
+def _launch_snapshot_build(
     snapshot: Path,
     *,
     settings: dict,
@@ -339,13 +339,13 @@ def _launch_snapshot_apply(
     clear_cache: bool,
     allow_overwrite: bool,
 ) -> dict:
-    """Feed a freshly-written snapshot into the shared apply pipeline.
+    """Feed a freshly-written snapshot into the shared build pipeline.
 
-    Mirrors :func:`launch_apply`: the snapshot is just another JD input under
+    Mirrors :func:`launch_build`: the snapshot is just another JD input under
     ``data/jobs/``, so it flows through ``apply_inputs`` unchanged and is moved into
     ``completed/`` on success.
     """
-    run = _make_apply_run(
+    run = _make_build_run(
         snapshot,
         skip_drive=skip_drive,
         move_data_dir=Path(settings["applications_input_dir"]),
@@ -357,21 +357,21 @@ def _launch_snapshot_apply(
     job_id = _start_job(
         run,
         runs_dir=_runs_dir(settings),
-        kind="apply",
+        kind="build",
         label=snapshot.name,
         paths=(str(snapshot),),
     )
     return {"job_id": job_id, "snapshot": str(snapshot)}
 
 
-@router.post("/apply/from-url")
-def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
-    """Capture a job posting from a URL, then apply. Returns {job_id, snapshot}.
+@router.post("/build/from-url")
+def launch_build_from_url(body: UrlApplyRequest, request: Request) -> dict:
+    """Capture a job posting from a URL, then build. Returns {job_id, snapshot}.
 
     A server-side GET + readability extraction writes a durable snapshot into
     ``data/jobs/``; when the cheap fetch is thin (a JS-rendered board) and the
     browser extra is installed, it falls back to a headless render before
-    extracting. The snapshot then runs through the normal apply pipeline. Only when
+    extracting. The snapshot then runs through the normal build pipeline. Only when
     both paths come up short is it rejected with a 422 so the user can fall back to
     PDF upload or paste-text.
     """
@@ -390,7 +390,7 @@ def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
     except JDIngestError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    return _launch_snapshot_apply(
+    return _launch_snapshot_build(
         snapshot,
         settings=s,
         skip_drive=body.skip_drive,
@@ -401,12 +401,12 @@ def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
     )
 
 
-@router.post("/apply/from-text")
-def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
-    """Capture a job posting from pasted text, then apply. Returns {job_id, snapshot}.
+@router.post("/build/from-text")
+def launch_build_from_text(body: TextApplyRequest, request: Request) -> dict:
+    """Capture a job posting from pasted text, then build. Returns {job_id, snapshot}.
 
     The reliable fallback for boards a plain GET can't read: the pasted text is
-    snapshotted into ``data/jobs/`` and runs through the normal apply pipeline.
+    snapshotted into ``data/jobs/`` and runs through the normal build pipeline.
     """
     s = _app_settings(request)
 
@@ -423,7 +423,7 @@ def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
     except JDIngestError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    return _launch_snapshot_apply(
+    return _launch_snapshot_build(
         snapshot,
         settings=s,
         skip_drive=body.skip_drive,
@@ -469,9 +469,9 @@ def _find_rerun_jd(
     return None
 
 
-@router.post("/apply/rerun")
-def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
-    """Re-run apply for a completed application, reusing its JD in place.
+@router.post("/build/rerun")
+def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
+    """Re-run build for a completed application, reusing its JD in place.
 
     The JD is resolved from ``folder_name`` in one of two places, then re-run with
     ``move_data_dir=None`` so it is *not* moved — it stays put. Current config and
@@ -508,15 +508,13 @@ def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
             ),
         )
 
-    run = _make_apply_run(
+    run = _make_build_run(
         jd_path, skip_drive=body.skip_drive, move_data_dir=None, model=body.model
     )
     job_id = _start_job(
         run,
         runs_dir=_runs_dir(s),
-        kind="apply",
-        # NOTE: UI copy calls this "Re-build"; API/stored kinds keep "apply"
-        #   (full rename is a future change).
+        kind="build",
         label=f"Re-build: {body.folder_name}",
         paths=(str(jd_path),),
         folder_name=body.folder_name,
@@ -588,9 +586,9 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
 # ── Batch endpoints ────────────────────────────────────────────────────────────
 
 
-@router.post("/apply-all")
-def launch_apply_all(request: Request) -> dict:
-    """Start apply jobs for every JD in the queue, sequentially (returns
+@router.post("/build-all")
+def launch_build_all(request: Request) -> dict:
+    """Start build jobs for every JD in the queue, sequentially (returns
     ``{job_id, count}``)."""
     s = _app_settings(request)
     data_dir = Path(s["applications_input_dir"])
@@ -645,7 +643,6 @@ def launch_apply_all(request: Request) -> dict:
         _run_all,
         runs_dir=_runs_dir(s),
         kind="batch",
-        # NOTE: UI copy says "Build all"; API/stored kinds keep "apply".
         label=f"Build all JDs ({count})",
         paths=tuple(i["path"] for i in items),
     )
@@ -970,7 +967,7 @@ def list_jobs(request: Request) -> list[dict]:
     items.extend(
         {
             "run_id": jid,
-            "kind": "apply",
+            "kind": "build",
             "label": "",
             "paths": [],
             "folder_name": j.get("folder_name"),

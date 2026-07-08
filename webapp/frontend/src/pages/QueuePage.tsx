@@ -10,10 +10,8 @@ import ScheduleModal from "../components/ScheduleModal";
 // the persisted run history (with logs, surviving restarts) and scheduling.
 const POLL_MS = 5000;
 
-// NOTE: UI-only rename — stored kinds keep the API vocabulary ("apply");
-//   the UI presents the pipeline as Build (full rename is a future change).
 const KIND_LABELS: Record<RunRecord["kind"], string> = {
-  apply: "Build",
+  build: "Build",
   enrich: "Enrich",
   batch: "Batch",
   schedule: "Schedule",

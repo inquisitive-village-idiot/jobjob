@@ -30,7 +30,13 @@ On the command line
 
 ::
 
-   jobjob apply <job_description.pdf> [options]
+   jobjob build <job_description.pdf> [options]
+
+.. note::
+
+   ``jobjob apply`` means something different than it used to — it now runs
+   assisted browser auto-fill (formerly ``jobjob autofill``), not document
+   generation. Document generation is ``jobjob build``.
 
 The positional argument is a job-description PDF, or a directory of mixed inputs (only
 job descriptions are processed; other files are skipped).
@@ -57,7 +63,7 @@ job descriptions are processed; other files are skipped).
 
 Example — local only, custom output folder::
 
-   jobjob apply path/to/job.pdf --skip-drive -o ./out
+   jobjob build path/to/job.pdf --skip-drive -o ./out
 
 Re-checking a resume
 --------------------

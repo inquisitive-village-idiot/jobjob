@@ -41,11 +41,38 @@ class TestReadStatus:
             MOD.read_status(tmp_path)
 
 
+class TestReadMigration:
+    """Legacy GENERATED status normalizes to BUILT on read (schema v0/v1 → v2)."""
+
+    def _write(self, folder, meta):
+        (folder / MOD.METADATA_FILENAME).write_text(json.dumps(meta))
+
+    def test_v1_generated_reads_as_built(self, tmp_path):
+        self._write(tmp_path, {"schema_version": 1, "status": "GENERATED"})
+        assert MOD.read_metadata(tmp_path)["status"] == "BUILT"
+        assert MOD.read_status(tmp_path) is MOD.ApplicationStatus.BUILT
+
+    def test_unstamped_generated_reads_as_built(self, tmp_path):
+        # Absence of schema_version is a valid v0.
+        self._write(tmp_path, {"status": "GENERATED"})
+        assert MOD.read_status(tmp_path) is MOD.ApplicationStatus.BUILT
+
+    def test_read_does_not_rewrite_source(self, tmp_path):
+        self._write(tmp_path, {"schema_version": 1, "status": "GENERATED"})
+        MOD.read_metadata(tmp_path)
+        on_disk = json.loads((tmp_path / MOD.METADATA_FILENAME).read_text())
+        assert on_disk == {"schema_version": 1, "status": "GENERATED"}
+
+    def test_current_version_status_passes_through(self, tmp_path):
+        self._write(tmp_path, {"schema_version": 2, "status": "APPLIED"})
+        assert MOD.read_status(tmp_path) is MOD.ApplicationStatus.APPLIED
+
+
 class TestWriteStatus:
     def test_round_trip(self, tmp_path):
         written = MOD.write_status(tmp_path, MOD.ApplicationStatus.INTERVIEWING)
         assert written["status"] == "INTERVIEWING"
-        assert written["schema_version"] == 1
+        assert written["schema_version"] == 2
         # The first status set is auto-logged to the changelog.
         assert len(written["notes"]) == 1
         assert written["notes"][0]["kind"] == "status"
@@ -116,7 +143,7 @@ class TestNotes:
         assert entry["kind"] == "note"
         assert entry["text"] == "recruiter call"  # trimmed
         assert entry["ts"]
-        assert written["schema_version"] == 1
+        assert written["schema_version"] == 2
 
     def test_add_note_empty_raises(self, tmp_path):
         with pytest.raises(ValueError):

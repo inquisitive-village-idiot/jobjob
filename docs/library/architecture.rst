@@ -31,14 +31,17 @@ Package layout
    * - ``jobjob/structure/``
      - Typed domain models (job description, highlight, skill, template, …).
    * - ``jobjob/apply/``
-     - The application workflow; ``generate/`` holds the five AI-call steps and
+     - The application-generation workflow (CLI verb ``jobjob build``; the module
+       keeps its historical name); ``generate/`` holds the five AI-call steps and
        ``output/`` the PDF/DOCX builders.
+   * - ``jobjob/autofill/``
+     - Assisted browser auto-fill of a job application (CLI verb ``jobjob apply``).
    * - ``jobjob/enrich/``
      - LinkedIn-profile ingestion into the contacts Sheet.
    * - ``jobjob/gapi/``
      - Google Drive/Docs/Sheets I/O.
    * - ``jobjob/__main__.py``
-     - CLI dispatcher (``apply``, ``enrich``, ``auth``).
+     - CLI dispatcher (``build``, ``apply``, ``enrich``, ``auth``, ``ats``, ``skills``).
    * - ``jobjob/launcher.py``
      - The ``jobjob-app`` entry: scaffolds the working dir and serves the webapp.
 

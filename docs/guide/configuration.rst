@@ -92,7 +92,7 @@ App config keys (``config/.env``)
      - Path to the saved OAuth token (default: ``~/.config/jobjob/token.pickle``).
      - Drive/Sheets
 
-.. rubric:: Applications (``apply``)
+.. rubric:: Applications (``build``)
 
 .. list-table::
    :header-rows: 1
