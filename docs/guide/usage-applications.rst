@@ -16,8 +16,12 @@ In the app
    *upload a PDF*. (You can also drop a PDF into ``<jobjob folder>/data/jobs/``.)
 #. On the **Applications** page, find the posting (state *Queued*) and choose
    **Build** from its actions.
-#. Watch progress. The finished application flips to *Built* in the same table;
-   past runs (and any errors) stay on the **Queue** page.
+#. Watch progress. While a document-generation run is in flight the row shows a
+   live **Building…** indicator — even if the build was launched from a batch,
+   a schedule, or another browser tab — and clears automatically (the page
+   refreshes the run listing every few seconds). The finished application
+   flips to *Built* in the same table; past runs (and any errors) stay on the
+   **Queue** page.
 
 .. warning::
 
