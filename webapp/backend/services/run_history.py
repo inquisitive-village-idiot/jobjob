@@ -179,9 +179,7 @@ def prune(runs: Path, *, keep: int = MAX_RUNS, logger: logging.Logger | None = N
             _logger.warning("Could not prune run %s: %s", path.stem, exc)
 
 
-def migrate_legacy_kinds(
-    runs: Path, *, logger: logging.Logger | None = None
-) -> None:
+def migrate_legacy_kinds(runs: Path, *, logger: logging.Logger | None = None) -> None:
     """One-time fixup: rewrite legacy ``kind: "apply"`` records to ``"build"``.
 
     Pre-full-build-rename runs recorded document-generation jobs as
