@@ -31,6 +31,20 @@ class TestRunLifecycle:
         assert MOD.read_log(runs, "r1") == "jobjob.apply: hello\n"
         assert MOD.read_log(runs, "missing") is None
 
+    def test_writes_are_atomic_no_temp_remnants(self, runs):
+        # finish_run rewrites the record in place; a concurrent reader (the run
+        # list / the Applications poll) must never see a truncated file, so the
+        # write goes via a temp file + os.replace. After start+finish exactly one
+        # {run_id}.json exists (no *.tmp leftovers) and it is complete JSON.
+        MOD.start_run(runs, "r1", kind="build", label="jd.pdf")
+        MOD.finish_run(runs, "r1", status="completed", entity_id="e1")
+
+        files = sorted(p.name for p in runs.iterdir())
+        assert files == ["r1.json"]
+        record = json.loads(MOD.record_path(runs, "r1").read_text())
+        assert record["status"] == "completed"
+        assert record["entity_id"] == "e1"
+
 
 class TestFinishRunEntityId:
     """entity_id on the run record (application-identity, phase 1)."""
