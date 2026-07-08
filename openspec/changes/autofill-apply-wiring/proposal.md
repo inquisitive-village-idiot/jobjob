@@ -3,7 +3,9 @@
 > Follow-up to `webapp-restructure` (PR #58), which reserved the disabled
 > **Apply** action in the Applications row menu. Decisions below were settled
 > in the 2026-07-06 explore session; this change is ready for design/specs
-> once #58 merges.
+> once #58 merges. **Depends on `application-identity` phase 1** — the
+> posting URL and the gating read the source tier (`source.json`); this
+> change no longer carries its own URL persistence.
 
 ## Why
 
@@ -15,10 +17,11 @@ runs recorded in the Queue history.
 
 ## What Changes
 
-- **Posting-URL persistence**: the application record persists its source
-  posting URL (URL/text ingests know it; PDF drops don't). `summary.json`
-  field + tracking-listing exposure. This is the gate: the Apply action
-  enables **only** when the record carries a URL.
+- **Posting-URL gating via the source tier**: the web URI lives in
+  `source.json` (`application-identity` phase 1) — captured automatically
+  for URL/text ingests, attachable later via source editing for PDF drops.
+  The Apply action enables **only** when the entity's source carries a web
+  URI.
 - **Backend launch endpoint**: start autofill as a background job through the
   existing jobs framework (so it lands in the persistent run history),
   **non-blocking** — `wait_for_human` in `jobjob/autofill/runner.py` is the
@@ -49,8 +52,6 @@ runs recorded in the Queue history.
 
 ## Impact
 
-- `jobjob/apply/workflow.py` (persist posting URL when known) +
-  `jobjob/ingest/jd_source.py` (carry the URL through snapshots).
 - `webapp/backend/routers/jobs.py` (+ possibly a small autofill service):
   launch endpoint, run-history kind.
 - `webapp/frontend`: ApplicationsPage row actions, job modal reuse.

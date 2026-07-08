@@ -2,7 +2,9 @@
 
 > Follow-up to `webapp-restructure` (PR #58). The approved status vocabulary
 > is QUEUED → **BUILDING** → BUILT → APPLIED → …, but #58 shipped without the
-> BUILDING display state. **Backlog record — design required** (see below).
+> BUILDING display state. **Depends on `application-identity` phase 1**,
+> which answers the hardest design question here (join by `entity_id`).
+> Remaining design questions below.
 
 ## Why
 
@@ -23,11 +25,11 @@ the approved vocabulary.
 
 ## Design Required — resolve before implementation
 
-- [ ] **Join semantics**: a fresh build's run knows only the queued input
-      path; the output folder name doesn't exist until the JD is parsed. When
-      the run finishes, the queued row disappears and a built row appears —
-      define the identity across that transition (path → folder mapping,
-      or persist the eventual folder onto the run record at completion).
+- [x] **Join semantics** — RESOLVED by `application-identity` phase 1: run
+      records carry `entity_id` (written once the parse mints/resolves the
+      entity); rows join by entity id across the queued→built transition,
+      immune to folder renames. Pre-parse (first seconds of a fresh build),
+      the queued-path join covers the gap.
 - [ ] **Batch/schedule runs** cover many records: does every covered row show
       Building for the whole batch, or only the item currently processing
       (requires per-item progress the batch summary doesn't expose today)?
