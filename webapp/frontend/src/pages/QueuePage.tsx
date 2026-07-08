@@ -15,6 +15,7 @@ const KIND_LABELS: Record<RunRecord["kind"], string> = {
   enrich: "Enrich",
   batch: "Batch",
   schedule: "Schedule",
+  apply: "Apply",
 };
 
 const STATUS_STYLES: Record<RunRecord["status"], string> = {

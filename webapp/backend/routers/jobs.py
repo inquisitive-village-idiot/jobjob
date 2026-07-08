@@ -10,6 +10,8 @@ import asyncio
 import json
 import logging
 import queue
+import subprocess
+import sys
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -21,13 +23,15 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from budget import calculate_cost, check_budget, record_run
+from jobjob.autofill.adapters import select_adapter
+from jobjob.autofill.runner import FILL_COMPLETE_SENTINEL
 from jobjob.ingest.jd_source import (
     JDIngestError,
     snapshot_from_text,
     snapshot_from_url,
 )
 from security import safe_path
-from services import run_history
+from services import application_source, run_history
 from services.application_metadata import read_entity_id
 from services.tracking_service import list_queue
 
@@ -114,6 +118,15 @@ class RerunRequest(BaseModel):
 class EnrichRequest(BaseModel):
     profile_path: str
     dry_run: bool = False
+
+
+class ApplyAutofillRequest(BaseModel):
+    """Identifies the application to autofill. At least one field is required;
+    ``entity_id`` is preferred (survives a folder rename) — see
+    ``_resolve_apply_folder``."""
+
+    folder_name: Optional[str] = None
+    entity_id: Optional[str] = None
 
 
 class ScheduleRequest(BaseModel):
@@ -588,6 +601,193 @@ def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
         label=f"Re-build: {body.folder_name}",
         paths=(str(jd_path),),
         folder_name=body.folder_name,
+    )
+    return {"job_id": job_id}
+
+
+# ── Autofill (apply) launch — detached subprocess, never blocks a worker ──────
+
+
+def _resolve_apply_folder(
+    request: Request, folder_name: Optional[str], entity_id: Optional[str]
+) -> Path:
+    """Resolve the target application's mirror folder for an autofill launch.
+
+    Prefers ``entity_id`` (survives a folder rename since the last run) via
+    :func:`_resolve_folder_name_by_entity_id` when given and found; falls back
+    to ``folder_name``. Validation mirrors ``routers.tracking._resolve_app_folder``
+    (no separators/traversal) — this endpoint reads (not writes) the folder but
+    must stay inside the configured mirror root all the same.
+
+    Raises:
+        HTTPException: 400 when the mirror is unconfigured, neither identifier
+            resolves to a name, or the name is unsafe; 404 when the folder
+            doesn't exist.
+    """
+    s = _app_settings(request)
+    local_dir = s.get("applications_output_dir")
+    if not local_dir:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
+            ),
+        )
+
+    resolved_name = folder_name
+    if entity_id:
+        by_id = _resolve_folder_name_by_entity_id(local_dir, entity_id)
+        if by_id:
+            resolved_name = by_id
+
+    if (
+        not resolved_name
+        or resolved_name != Path(resolved_name).name
+        or "\\" in resolved_name
+        or resolved_name.startswith(".")
+    ):
+        raise HTTPException(
+            status_code=400, detail="folder_name or entity_id is required."
+        )
+
+    try:
+        folder = safe_path(Path(local_dir).expanduser() / resolved_name)
+    except PermissionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="Application folder not found.")
+    return folder
+
+
+# How long to wait for the fill report before giving up on *this job* (the
+# detached subprocess and its browser are left running regardless — see
+# design.md; killing it here would defeat the point of detaching it).
+_APPLY_REPORT_TIMEOUT = 30.0
+
+
+def _spawn_autofill_subprocess(url: str) -> subprocess.Popen:
+    """Launch ``python -m jobjob apply <url> --assisted-detached`` detached.
+
+    ``start_new_session=True`` puts the child in its own session/process group
+    so it outlives this request/thread — it is never joined or waited on here.
+    ``--assisted-detached`` forces the runner's non-TTY "wait for window close"
+    mode (this process's own stdin isn't a TTY either since stdout is piped, but
+    the flag makes the intent explicit regardless).
+    """
+    return subprocess.Popen(
+        [sys.executable, "-m", "jobjob", "apply", url, "--assisted-detached"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    )
+
+
+def _pump_autofill_stdout(
+    process: subprocess.Popen,
+    report_seen: threading.Event,
+    state: dict,
+    logger: logging.Logger,
+) -> None:
+    """Drain the detached subprocess's stdout into the log, in its own thread.
+
+    Runs as a daemon thread that outlives the launching job: each line is logged
+    through ``logger`` (a child of "jobjob", so it's captured by ``_start_job``'s
+    handler wiring into both the SSE stream and the persisted run log — no extra
+    plumbing needed here). The runner prints a machine sentinel
+    (``FILL_COMPLETE_SENTINEL``) right after the fill report on the detached
+    path; seeing it sets the event so the launching job can complete without
+    waiting for the subprocess to exit (which may be long after, once the human
+    closes the browser). The sentinel line itself is not logged — it's a marker,
+    not output. If the stream ends before the sentinel ever appeared (e.g.
+    Playwright not installed, no adapter), the event is still set so the waiting
+    job doesn't hang for the full timeout.
+    """
+    try:
+        stdout = process.stdout
+        assert stdout is not None
+        for line in iter(stdout.readline, ""):
+            text = line.rstrip("\n")
+            if text == FILL_COMPLETE_SENTINEL:
+                state["seen"] = True
+                report_seen.set()
+                continue
+            if text:
+                logger.info(text)
+    finally:
+        state["exited"] = True
+        report_seen.set()
+
+
+@router.post("/apply")
+def launch_autofill(body: ApplyAutofillRequest, request: Request) -> dict:
+    """Launch the assisted autofill (Playwright) step for a built application.
+
+    Resolves the application's posting URL from its source tier
+    (``source.json``'s ``web_uri``) — 400s when absent, or when no adapter
+    recognizes the host (a cheap pre-check; no browser involved). On success,
+    spawns the autofill CLI as a **detached** subprocess (see
+    ``_spawn_autofill_subprocess``) and records the run with ``kind="apply"``.
+    The job is marked complete once the fill report is captured from the
+    subprocess's stdout (see ``_pump_autofill_stdout``) — the human finishing in
+    the browser is never awaited by a worker thread (see design.md).
+    """
+    s = _app_settings(request)
+    folder = _resolve_apply_folder(request, body.folder_name, body.entity_id)
+
+    source = application_source.read_source(folder)
+    url = source.get("web_uri")
+    if not url:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No posting URL on this application — attach one via source "
+                "editing before applying."
+            ),
+        )
+    if select_adapter(url) is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No auto-fill adapter recognizes this URL: {url}.",
+        )
+
+    try:
+        entity_id = read_entity_id(folder)
+    except (ValueError, OSError):
+        entity_id = None
+
+    def _run() -> dict:
+        process = _spawn_autofill_subprocess(url)
+        report_seen = threading.Event()
+        state = {"seen": False, "exited": False}
+        threading.Thread(
+            target=_pump_autofill_stdout,
+            args=(process, report_seen, state, logging.getLogger("jobjob.autofill")),
+            daemon=True,
+        ).start()
+
+        got_event = report_seen.wait(timeout=_APPLY_REPORT_TIMEOUT)
+        if not got_event or not state["seen"]:
+            detail = (
+                "Auto-fill exited before filling anything; see the run log."
+                if state["exited"]
+                else "Auto-fill did not report back in time; see the run log."
+            )
+            raise RuntimeError(detail)
+
+        result: dict = {"posting_url": url, "pid": process.pid}
+        if entity_id:
+            result["entity_id"] = entity_id
+        return result
+
+    job_id = _start_job(
+        _run,
+        runs_dir=_runs_dir(s),
+        kind="apply",
+        label=f"Apply: {folder.name}",
+        paths=(url,),
+        folder_name=folder.name,
     )
     return {"job_id": job_id}
 

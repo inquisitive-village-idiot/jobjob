@@ -117,6 +117,19 @@ the résumé, cover letter, or any other artifact. A folder built before this
 change has neither field; it behaves exactly as it always has (joined by folder
 name) until its next build, when the id is added automatically.
 
+Applying from the dashboard
+----------------------------
+
+The Applications table's row actions include **Apply** — assisted browser
+auto-fill (``jobjob apply``, see above) launched for that application, gated on
+a posting URL: it's disabled with a tooltip until one is present (a URL/text
+ingest captures it automatically; a PDF drop needs one attached via **Edit
+source** first). Launching it starts a detached background process — the run
+shows up in the Queue like any other job, with the fill report in its log —
+and opens a real browser window on the machine running the dashboard for you
+to finish account creation, custom widgets, screening questions, and the
+submit.
+
 See also
 --------
 
