@@ -10,9 +10,8 @@ from fastapi.testclient import TestClient
 
 import routers.jobs as jobs
 import security
-from services.application_metadata import METADATA_FILENAME
-
 from routers.jobs import _find_rerun_jd
+from services.application_metadata import METADATA_FILENAME
 
 _FOLDER = "2026-02-26 - Thomson Reuters - Sr Director Applied Research"
 
