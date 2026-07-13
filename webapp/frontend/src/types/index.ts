@@ -177,6 +177,9 @@ export interface CompletedItem {
   // autofill-apply-wiring: the source tier's web_uri, or null/absent when no
   // posting URL is attached — gates the row-menu Apply action.
   posting_url?: string | null;
+  // application-identity (phase 6b): count of archived (superseded)
+  // executions under archive/ — 0 for most applications.
+  execution_count?: number;
   // Parsed from "YYYY-MM-DD - Company - Role" (applications only).
   date?: string;
   company?: string;
@@ -191,6 +194,14 @@ export interface CompletedItem {
   person?: string;
   date_created?: string;
   date_processed?: string;
+}
+
+// One archived (superseded) execution — mirrors GET .../executions in
+// routers/tracking.py (application-identity, phase 6b).
+export interface ExecutionRecord {
+  timestamp: string;
+  note: string | null;
+  locked: boolean;
 }
 
 export interface TomlFile {
