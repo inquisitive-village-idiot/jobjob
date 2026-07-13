@@ -1,0 +1,199 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free option (experimental) &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Library Reference" href="../library/index.html" />
+    <link rel="prev" title="Profile content in a Git/GitHub repository" href="github-repo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">User Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="credentials.html">Credentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiles.html">Profiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage-applications.html">Applications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage-enrichment.html">Enrichment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="google-project.html">Google Drive/Docs setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="github-repo.html">Profile content in a Git/GitHub repository</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Free option (experimental)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#get-a-free-google-ai-studio-key">1. Get a free Google AI Studio key</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#install-node-js-and-a-proxy">2. Install Node.js and a proxy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#point-jobjob-at-the-proxy">3. Point jobjob at the proxy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#run">4. Run</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">User Guide</a></li>
+      <li class="breadcrumb-item active">Free option (experimental)</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/guide/free-option.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="free-option-experimental">
+<h1>Free option (experimental)<a class="headerlink" href="#free-option-experimental" title="Link to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Experimental.</strong> This routes jobjob’s AI calls to a <strong>free Google AI Studio</strong> key
+through a community proxy instead of a paid Anthropic key. It has a real limitation
+(see the caveat). For the simplest reliable path, use a paid Anthropic key — about
+<strong>$0.20–0.50 per application</strong> (see <a class="reference internal" href="credentials.html"><span class="doc">Credentials</span></a>).</p>
+</div>
+<p><strong>How it works:</strong> jobjob talks to Claude through the official <code class="docutils literal notranslate"><span class="pre">anthropic</span></code> library,
+which supports a configurable base URL. jobjob reads <code class="docutils literal notranslate"><span class="pre">ANTHROPIC_BASE_URL</span></code> from your app
+config and points the client at it. Aim that at a local <strong>proxy</strong> that speaks Claude’s
+API format but forwards to Google’s free Gemini models, and jobjob runs on the free key.</p>
+<p><strong>Cost:</strong> free, within Google AI Studio’s free-tier limits.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>PDF job descriptions won’t work.</strong> jobjob normally reads a posting from a <strong>PDF</strong>
+using Claude’s document support. The Gemini proxy does not forward PDFs, so with this
+setup add job postings with <strong>Paste text</strong> or a <strong>URL</strong> instead of a PDF. Quality and
+behavior differ from real Claude.</p>
+</div>
+<section id="get-a-free-google-ai-studio-key">
+<h2>1. Get a free Google AI Studio key<a class="headerlink" href="#get-a-free-google-ai-studio-key" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Go to <a class="reference external" href="https://aistudio.google.com/">https://aistudio.google.com/</a> and sign in with any Google account.</p></li>
+<li><p>Click <strong>Get API key → Create API key</strong>, and copy the key string.</p></li>
+</ol>
+</section>
+<section id="install-node-js-and-a-proxy">
+<h2>2. Install Node.js and a proxy<a class="headerlink" href="#install-node-js-and-a-proxy" title="Link to this heading"></a></h2>
+<p>The proxy needs <strong>Node.js</strong> (<a class="reference external" href="https://nodejs.org/">https://nodejs.org/</a> — install the LTS build for your OS).
+Then, in a terminal (macOS/Linux) or PowerShell (Windows):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">install</span> <span class="o">-</span><span class="n">g</span> <span class="nd">@musistudio</span><span class="o">/</span><span class="n">claude</span><span class="o">-</span><span class="n">code</span><span class="o">-</span><span class="n">router</span>
+</pre></div>
+</div>
+<p>(On macOS/Linux, prefix with <code class="docutils literal notranslate"><span class="pre">sudo</span></code> if you hit a permission error.) Configure the
+router to use your Google AI Studio key and a Gemini model per its README.</p>
+</section>
+<section id="point-jobjob-at-the-proxy">
+<h2>3. Point jobjob at the proxy<a class="headerlink" href="#point-jobjob-at-the-proxy" title="Link to this heading"></a></h2>
+<p>Add these to your <code class="docutils literal notranslate"><span class="pre">config/.env</span></code> (see <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> for where that file lives and
+how to edit it). The key can be any placeholder — the proxy uses your Google key, not
+this one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ANTHROPIC_API_KEY</span><span class="o">=</span><span class="s2">&quot;local-proxy&quot;</span>
+<span class="n">ANTHROPIC_BASE_URL</span><span class="o">=</span><span class="s2">&quot;http://localhost:3000&quot;</span>
+</pre></div>
+</div>
+<p>Match the host/port your proxy prints when it starts.</p>
+</section>
+<section id="run">
+<h2>4. Run<a class="headerlink" href="#run" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Start the proxy (e.g. <code class="docutils literal notranslate"><span class="pre">claude-code-router</span></code>) and leave it running.</p></li>
+<li><p>In another terminal, start jobjob: <code class="docutils literal notranslate"><span class="pre">jobjob-app</span></code>.</p></li>
+</ol>
+<p><strong>Confirm it works:</strong> open the app, add a job posting with <strong>Paste text</strong> (not a PDF —
+see the caveat), and run it. If it completes, the proxy is wired up. If you see
+connection errors, confirm the proxy is running and <code class="docutils literal notranslate"><span class="pre">ANTHROPIC_BASE_URL</span></code> matches its
+address.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<p>→ <a class="reference internal" href="credentials.html"><span class="doc">Credentials</span></a> · <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="github-repo.html" class="btn btn-neutral float-left" title="Profile content in a Git/GitHub repository" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../library/index.html" class="btn btn-neutral float-right" title="Library Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

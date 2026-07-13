@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.loader.loadcontent &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.loader.loadcontent</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.loader.loadcontent</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Load credential highlights and skills from the static TOML content files.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dcs</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tomllib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.loader.location</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_content_path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.experience</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExperienceSet</span><span class="p">,</span> <span class="n">Role</span><span class="p">,</span> <span class="n">make_experience_set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.highlight</span><span class="w"> </span><span class="kn">import</span> <span class="n">Highlight</span><span class="p">,</span> <span class="n">HighlightSet</span><span class="p">,</span> <span class="n">make_highlight_set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.skill</span><span class="w"> </span><span class="kn">import</span> <span class="n">Skill</span><span class="p">,</span> <span class="n">SkillSet</span><span class="p">,</span> <span class="n">make_skill_set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.skillcloud</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_skill_cloud</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.template</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ResumeSection</span><span class="p">,</span>
+    <span class="n">ResumeTemplate</span><span class="p">,</span>
+    <span class="n">TemplateSet</span><span class="p">,</span>
+    <span class="n">make_template_set</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">DEFAULT_TEMPLATE_NAME</span> <span class="o">=</span> <span class="s2">&quot;default&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_toml_table</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the ``[tool.&lt;name&gt;]`` table from a TOML file.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: Path to the TOML file.</span>
+<span class="sd">        name: The sub-table key under ``[tool]`` (e.g. &quot;highlights&quot;).</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The table dict.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the expected ``[tool.&lt;name&gt;]`` table is missing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">tomllib</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;tool&quot;</span><span class="p">][</span><span class="n">name</span><span class="p">]</span>
+    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing [tool.</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">] table in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_highlights">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.loadcontent.load_highlights">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_highlights</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HighlightSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the highlight set from ``static/content/highlights.toml``.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: Override path to the TOML file. Defaults to the static content path.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A populated HighlightSet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="n">get_content_path</span><span class="p">(</span><span class="s2">&quot;highlights&quot;</span><span class="p">)</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">_load_toml_table</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;highlights&quot;</span><span class="p">)</span>
+    <span class="n">highlights</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">Highlight</span><span class="p">(</span>
+            <span class="n">context</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;context&quot;</span><span class="p">],</span>
+            <span class="n">text</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+            <span class="n">keywords</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;keywords&quot;</span><span class="p">,</span> <span class="p">())),</span>
+            <span class="n">enabled</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="n">topic</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;topic&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;highlight&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">]</span>
+    <span class="c1"># NOTE: pass through TOML values (or None) — the defaults live on HighlightSet.</span>
+    <span class="k">return</span> <span class="n">make_highlight_set</span><span class="p">(</span>
+        <span class="n">highlights</span><span class="p">,</span>
+        <span class="n">default_number</span><span class="o">=</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default_number&quot;</span><span class="p">),</span>
+        <span class="n">max_characters</span><span class="o">=</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_characters&quot;</span><span class="p">),</span>
+        <span class="n">min_characters</span><span class="o">=</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_characters&quot;</span><span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_skills">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.loadcontent.load_skills">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_skills</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SkillSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the skill set from ``static/content/skills.toml``.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: Override path to the TOML file. Defaults to the static content path.</span>
+<span class="sd">        logger: Optional logger for injection.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A populated SkillSet.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="n">get_content_path</span><span class="p">(</span><span class="s2">&quot;skills&quot;</span><span class="p">)</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">_load_toml_table</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;skills&quot;</span><span class="p">)</span>
+    <span class="n">skills</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_resolve_canonical</span><span class="p">(</span>
+            <span class="n">Skill</span><span class="p">(</span>
+                <span class="n">label</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;label&quot;</span><span class="p">],</span>
+                <span class="n">text</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;text&quot;</span><span class="p">],</span>
+                <span class="n">keywords</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;keywords&quot;</span><span class="p">,</span> <span class="p">())),</span>
+            <span class="p">),</span>
+            <span class="n">logger</span><span class="o">=</span><span class="n">logger</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;skill&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">]</span>
+    <span class="c1"># NOTE: pass through TOML value (or None) — the default lives on SkillSet.</span>
+    <span class="k">return</span> <span class="n">make_skill_set</span><span class="p">(</span><span class="n">skills</span><span class="p">,</span> <span class="n">default_number</span><span class="o">=</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default_number&quot;</span><span class="p">))</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_canonical</span><span class="p">(</span><span class="n">skill</span><span class="p">:</span> <span class="n">Skill</span><span class="p">,</span> <span class="n">logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Skill</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach skill-cloud canonical id + category weights when resolvable.</span>
+
+<span class="sd">    Resolution precedence: label, then text, then keywords (first hit wins).</span>
+<span class="sd">    Enrichment is in-memory only — the user&#39;s file is never modified. Unresolved</span>
+<span class="sd">    entries stay usable as free-form skills (flagged at INFO); a missing/invalid</span>
+<span class="sd">    cloud degrades to no enrichment at all (WARNING).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cloud</span> <span class="o">=</span> <span class="n">get_skill_cloud</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">_logger</span> <span class="o">=</span> <span class="n">logger</span> <span class="ow">or</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Skill cloud unavailable; skills stay non-canonical: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">skill</span>
+
+    <span class="k">for</span> <span class="n">candidate</span> <span class="ow">in</span> <span class="p">(</span><span class="n">skill</span><span class="o">.</span><span class="n">label</span><span class="p">,</span> <span class="n">skill</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="o">*</span><span class="n">skill</span><span class="o">.</span><span class="n">keywords</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">cloud</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">candidate</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">dcs</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                <span class="n">skill</span><span class="p">,</span> <span class="n">canonical_id</span><span class="o">=</span><span class="n">match</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">categories</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">categories</span><span class="p">)</span>
+            <span class="p">)</span>
+    <span class="n">_logger</span> <span class="o">=</span> <span class="n">logger</span> <span class="ow">or</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+    <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Non-canonical skill (no cloud match): </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">skill</span><span class="o">.</span><span class="n">label</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">skill</span>
+
+
+<div class="viewcode-block" id="load_templates">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.loadcontent.load_templates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_templates</span><span class="p">(</span>
+    <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fallback_doc_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TemplateSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load resume templates from ``static/content/templates.toml``.</span>
+
+<span class="sd">    NOTE: when the TOML is absent and ``fallback_doc_id`` is given, returns a</span>
+<span class="sd">        single &quot;default&quot; template using that id (backward-compatible with a single</span>
+<span class="sd">        ``RESUME_TEMPLATE_ID``).</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: Override path to the TOML file. Defaults to the static content path.</span>
+<span class="sd">        fallback_doc_id: A single Google Doc id to use when no TOML is present.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A TemplateSet (possibly empty if neither source is available).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">get_content_path</span><span class="p">(</span><span class="s2">&quot;templates&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fallback_doc_id</span><span class="p">:</span>
+            <span class="n">template</span> <span class="o">=</span> <span class="n">ResumeTemplate</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">DEFAULT_TEMPLATE_NAME</span><span class="p">,</span> <span class="n">archetype</span><span class="o">=</span><span class="s2">&quot;Default&quot;</span><span class="p">,</span> <span class="n">doc_id</span><span class="o">=</span><span class="n">fallback_doc_id</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">make_template_set</span><span class="p">([</span><span class="n">template</span><span class="p">],</span> <span class="n">default</span><span class="o">=</span><span class="n">DEFAULT_TEMPLATE_NAME</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">make_template_set</span><span class="p">([])</span>  <span class="c1"># EARLY EXIT: nothing configured.</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">_load_toml_table</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;templates&quot;</span><span class="p">)</span>
+    <span class="n">templates</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ResumeTemplate</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+            <span class="n">archetype</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;archetype&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">doc_id</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;doc_id&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">keywords</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;keywords&quot;</span><span class="p">,</span> <span class="p">())),</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;template&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">]</span>
+    <span class="n">sections</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">ResumeSection</span><span class="p">(</span>
+            <span class="n">heading</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;heading&quot;</span><span class="p">],</span>
+            <span class="n">section</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;section&quot;</span><span class="p">],</span>
+            <span class="n">enabled</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;section&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">make_template_set</span><span class="p">(</span><span class="n">templates</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">),</span> <span class="n">sections</span><span class="o">=</span><span class="n">sections</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_experience">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.loadcontent.load_experience">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_experience</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperienceSet</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load the structured work history from ``content/experience.toml``.</span>
+
+<span class="sd">    NOTE: experience is an optional content file (it postdates the other content,</span>
+<span class="sd">        and a fresh/imported profile may not have it yet), so a missing file</span>
+<span class="sd">        returns an empty set rather than raising — unlike highlights/skills.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: Override path to the TOML file. Defaults to the static content path.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A populated ExperienceSet (empty when no file is present).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">get_content_path</span><span class="p">(</span><span class="s2">&quot;experience&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">make_experience_set</span><span class="p">([])</span>  <span class="c1"># EARLY EXIT: optional file absent.</span>
+
+    <span class="n">table</span> <span class="o">=</span> <span class="n">_load_toml_table</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;experience&quot;</span><span class="p">)</span>
+    <span class="n">roles</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">Role</span><span class="p">(</span>
+            <span class="n">company</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;company&quot;</span><span class="p">],</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">],</span>
+            <span class="n">location</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">start</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;start&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">end</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;end&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">),</span>
+            <span class="n">current</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;current&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="n">description</span><span class="o">=</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;description&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;role&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">make_experience_set</span><span class="p">(</span><span class="n">roles</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

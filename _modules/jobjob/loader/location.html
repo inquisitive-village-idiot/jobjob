@@ -1,0 +1,361 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.loader.location &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.loader.location</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.loader.location</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Resource file location management.</span>
+
+<span class="sd">Resolves ``content``, ``reference``, and ``prompt`` resources against the active</span>
+<span class="sd">profile repo (``&lt;profile&gt;/&lt;name&gt;``) when one is configured, falling back to the</span>
+<span class="sd">bundled example profile (``static/example/&lt;name&gt;``) so tests and a fresh clone</span>
+<span class="sd">work without a profile. Prompts override per-file but default to the bundled</span>
+<span class="sd">jobjob versions.</span>
+
+<span class="sd">NOTE: resource getters are intentionally NOT cached — resolution depends on the</span>
+<span class="sd">    active profile (``os.environ``), which can change at runtime on a profile</span>
+<span class="sd">    switch. ``get_root_dir``/``get_static_dir``/example getters are profile-</span>
+<span class="sd">    independent and stay cached.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">cache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.loader.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">resolve_active_profile_dir</span>
+
+<span class="c1"># Per-profile resource dir names (env key → conventional default). A profile may</span>
+<span class="c1"># rename its resource subdirs via these keys; unset means the conventional name, so</span>
+<span class="c1"># existing profiles keep working. The names are duplicated here (not imported from</span>
+<span class="c1"># jobjob.config) to keep this module import-light and free of a config cycle.</span>
+<span class="n">_CONTENT_DIR_KEY</span> <span class="o">=</span> <span class="s2">&quot;CONTENT_DIR&quot;</span>
+<span class="n">_REFERENCE_DIR_KEY</span> <span class="o">=</span> <span class="s2">&quot;REFERENCE_DIR&quot;</span>
+<span class="n">_PROMPT_DIR_KEY</span> <span class="o">=</span> <span class="s2">&quot;PROMPT_DIR&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_profile_subdir</span><span class="p">(</span><span class="n">env_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the configured resource-dir name for ``env_key``, or ``default``.</span>
+
+<span class="sd">    Reads ``os.environ`` (populated by the active profile&#39;s config), tolerating</span>
+<span class="sd">    surrounding quotes/whitespace; an empty value falls back to ``default``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">env_key</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">value</span> <span class="ow">or</span> <span class="n">default</span>
+
+
+<span class="c1"># Template Functions</span>
+<span class="c1"># ======================================================================</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_static_dir</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the bundled fallback dir ``static/example/{name}`` at project root.</span>
+
+<span class="sd">    The bundled example profile doubles as the no-active-profile fallback, so its</span>
+<span class="sd">    ``content``/``reference`` dirs back tests and a fresh clone.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if the dir does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">get_root_dir</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="s2">&quot;example&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;&quot;static/example/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&quot; dir not found in project root&#39;</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_path_in</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the file in ``directory`` whose stem matches ``stem``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if no file with that stem exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="p">{</span><span class="n">x</span><span class="o">.</span><span class="n">stem</span><span class="p">:</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">directory</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()}</span>
+    <span class="k">if</span> <span class="n">stem</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown file &quot;</span><span class="si">{</span><span class="n">stem</span><span class="si">}</span><span class="s1">&quot; in </span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">files</span><span class="p">[</span><span class="n">stem</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_static_path</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return path to static/{name} file given the file stem.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if file stem not found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_path_in</span><span class="p">(</span><span class="n">_get_static_dir</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">stem</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_resolve_dir</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">subdir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``&lt;active-profile&gt;/&lt;subdir&gt;`` if it exists, else ``static/&lt;name&gt;``.</span>
+
+<span class="sd">    ``subdir`` is the profile&#39;s (possibly renamed) directory for this resource; it</span>
+<span class="sd">    defaults to ``name``. The static fallback always uses the canonical ``name`` (the</span>
+<span class="sd">    bundled example uses conventional dir names).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if neither the profile dir nor the static default exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profile_dir</span> <span class="o">=</span> <span class="n">resolve_active_profile_dir</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">profile_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">candidate</span> <span class="o">=</span> <span class="n">profile_dir</span> <span class="o">/</span> <span class="p">(</span><span class="n">subdir</span> <span class="ow">or</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">candidate</span>
+    <span class="k">return</span> <span class="n">_get_static_dir</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+
+<span class="c1"># Content</span>
+<span class="c1"># ======================================================================</span>
+
+
+<div class="viewcode-block" id="get_content_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_content_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_content_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the content dir: the active profile&#39;s ``content/`` if present, else</span>
+<span class="sd">    ``static/content``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if neither exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_resolve_dir</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">,</span> <span class="n">_profile_subdir</span><span class="p">(</span><span class="n">_CONTENT_DIR_KEY</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="get_content_path">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_content_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_content_path</span><span class="p">(</span><span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the content file for ``stem`` from the resolved content dir.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if file stem not found.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_path_in</span><span class="p">(</span><span class="n">get_content_dir</span><span class="p">(),</span> <span class="n">stem</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Prompt</span>
+<span class="c1"># ======================================================================</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_package_prompt_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the bundled default prompt dir (``jobjob/prompts``).</span>
+
+<span class="sd">    Prompts are app behavior, so the defaults ship inside the package rather than</span>
+<span class="sd">    in ``static/``. Anchored on the repo root so test mocking of ``get_root_dir``</span>
+<span class="sd">    still exercises the missing-dir path.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if the dir does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">get_root_dir</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;jobjob&quot;</span> <span class="o">/</span> <span class="s2">&quot;prompts&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;&quot;jobjob/prompts&quot; dir not found&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<div class="viewcode-block" id="package_prompt_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.package_prompt_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">package_prompt_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Public accessor for the bundled default prompt dir (``jobjob/prompts``).</span>
+
+<span class="sd">    The prompts editor needs the bundled default explicitly (to show it and to reset</span>
+<span class="sd">    an override), independent of any active-profile override resolution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_package_prompt_dir</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="get_prompt_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_prompt_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_prompt_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the prompt dir: the active profile&#39;s ``prompt/`` if present, else</span>
+<span class="sd">    the bundled ``jobjob/prompts``.&quot;&quot;&quot;</span>
+    <span class="n">profile_dir</span> <span class="o">=</span> <span class="n">resolve_active_profile_dir</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">profile_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prompt_dir</span> <span class="o">=</span> <span class="n">profile_dir</span> <span class="o">/</span> <span class="n">_profile_subdir</span><span class="p">(</span><span class="n">_PROMPT_DIR_KEY</span><span class="p">,</span> <span class="s2">&quot;prompt&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prompt_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">prompt_dir</span>
+    <span class="k">return</span> <span class="n">_package_prompt_dir</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="get_prompt_path">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_prompt_path">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_prompt_path</span><span class="p">(</span><span class="n">stem</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the prompt file for ``stem``.</span>
+
+<span class="sd">    A profile may override individual prompts in its ``prompt/`` dir; any prompt</span>
+<span class="sd">    it does not provide falls back to the bundled ``jobjob/prompts`` default.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError if file stem not found in the profile override or the default.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">profile_dir</span> <span class="o">=</span> <span class="n">resolve_active_profile_dir</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">profile_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prompt_dir</span> <span class="o">=</span> <span class="n">profile_dir</span> <span class="o">/</span> <span class="n">_profile_subdir</span><span class="p">(</span><span class="n">_PROMPT_DIR_KEY</span><span class="p">,</span> <span class="s2">&quot;prompt&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prompt_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_path_in</span><span class="p">(</span><span class="n">prompt_dir</span><span class="p">,</span> <span class="n">stem</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># fall through to the bundled jobjob default</span>
+    <span class="k">return</span> <span class="n">_path_in</span><span class="p">(</span><span class="n">_package_prompt_dir</span><span class="p">(),</span> <span class="n">stem</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Reference</span>
+<span class="c1"># ======================================================================</span>
+
+
+<div class="viewcode-block" id="get_reference_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_reference_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_reference_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the reference dir: the active profile&#39;s ``reference/`` if present,</span>
+<span class="sd">    else ``static/reference``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if neither exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_resolve_dir</span><span class="p">(</span><span class="s2">&quot;reference&quot;</span><span class="p">,</span> <span class="n">_profile_subdir</span><span class="p">(</span><span class="n">_REFERENCE_DIR_KEY</span><span class="p">,</span> <span class="s2">&quot;reference&quot;</span><span class="p">))</span></div>
+
+
+
+<span class="c1"># Root, etc</span>
+<span class="c1"># ======================================================================</span>
+
+
+<div class="viewcode-block" id="get_root_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_root_dir">[docs]</a>
+<span class="nd">@cache</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_root_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the jobjob project root (the dir containing the ``jobjob`` package).</span>
+
+<span class="sd">    Anchored on this file&#39;s location (``&lt;root&gt;/jobjob/loader/location.py``) rather than</span>
+<span class="sd">    searching the path for ``&quot;jobjob&quot;`` — robust when the checkout/site-packages dir is</span>
+<span class="sd">    itself named ``jobjob``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">parents</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="get_static_dir">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.location.get_static_dir">[docs]</a>
+<span class="nd">@cache</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_static_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return path to default static dir at project root.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError if default dir does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">get_root_dir</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="s2">&quot;static&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s1">&#39;&quot;static&quot; dir not found in project root&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

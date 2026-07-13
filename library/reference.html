@@ -1,0 +1,1378 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API (autodoc) &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="REST API Reference" href="../restapi/index.html" />
+    <link rel="prev" title="Architecture" href="architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Library Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture.html">Architecture</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">API (autodoc)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-jobjob.config">Configuration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.config.GoogleSettings"><code class="docutils literal notranslate"><span class="pre">GoogleSettings</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.config.Settings"><code class="docutils literal notranslate"><span class="pre">Settings</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.config.load_settings"><code class="docutils literal notranslate"><span class="pre">load_settings()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-jobjob.loader.profiles">Profiles and content</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.Profile"><code class="docutils literal notranslate"><span class="pre">Profile</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.active_profile_name"><code class="docutils literal notranslate"><span class="pre">active_profile_name()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.all_profiles"><code class="docutils literal notranslate"><span class="pre">all_profiles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.build_profiles"><code class="docutils literal notranslate"><span class="pre">build_profiles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.bundled_example_dir"><code class="docutils literal notranslate"><span class="pre">bundled_example_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.list_profiles"><code class="docutils literal notranslate"><span class="pre">list_profiles()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.profile_config_file"><code class="docutils literal notranslate"><span class="pre">profile_config_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.read_env_keys"><code class="docutils literal notranslate"><span class="pre">read_env_keys()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.profiles.resolve_active_profile_dir"><code class="docutils literal notranslate"><span class="pre">resolve_active_profile_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.skeleton.create_blank_profile"><code class="docutils literal notranslate"><span class="pre">create_blank_profile()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_content_dir"><code class="docutils literal notranslate"><span class="pre">get_content_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_content_path"><code class="docutils literal notranslate"><span class="pre">get_content_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_prompt_dir"><code class="docutils literal notranslate"><span class="pre">get_prompt_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_prompt_path"><code class="docutils literal notranslate"><span class="pre">get_prompt_path()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_reference_dir"><code class="docutils literal notranslate"><span class="pre">get_reference_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_root_dir"><code class="docutils literal notranslate"><span class="pre">get_root_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.get_static_dir"><code class="docutils literal notranslate"><span class="pre">get_static_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.location.package_prompt_dir"><code class="docutils literal notranslate"><span class="pre">package_prompt_dir()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.loadcontent.load_experience"><code class="docutils literal notranslate"><span class="pre">load_experience()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.loadcontent.load_highlights"><code class="docutils literal notranslate"><span class="pre">load_highlights()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.loadcontent.load_skills"><code class="docutils literal notranslate"><span class="pre">load_skills()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.loader.loadcontent.load_templates"><code class="docutils literal notranslate"><span class="pre">load_templates()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-jobjob.structure.highlight">Domain models</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.highlight.Highlight"><code class="docutils literal notranslate"><span class="pre">Highlight</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.highlight.HighlightSet"><code class="docutils literal notranslate"><span class="pre">HighlightSet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.highlight.make_highlight_set"><code class="docutils literal notranslate"><span class="pre">make_highlight_set()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.skill.Skill"><code class="docutils literal notranslate"><span class="pre">Skill</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.skill.SkillSet"><code class="docutils literal notranslate"><span class="pre">SkillSet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.skill.make_skill_set"><code class="docutils literal notranslate"><span class="pre">make_skill_set()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.template.ResumeSection"><code class="docutils literal notranslate"><span class="pre">ResumeSection</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate"><code class="docutils literal notranslate"><span class="pre">ResumeTemplate</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.template.TemplateSet"><code class="docutils literal notranslate"><span class="pre">TemplateSet</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.structure.template.make_template_set"><code class="docutils literal notranslate"><span class="pre">make_template_set()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#module-jobjob.apply.workflow">Workflow</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.apply.workflow.OverwriteConflict"><code class="docutils literal notranslate"><span class="pre">OverwriteConflict</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.apply.workflow.apply_inputs"><code class="docutils literal notranslate"><span class="pre">apply_inputs()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.apply.workflow.build_cached_context"><code class="docutils literal notranslate"><span class="pre">build_cached_context()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.apply.workflow.move_completed_jd"><code class="docutils literal notranslate"><span class="pre">move_completed_jd()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jobjob.apply.workflow.run_application_workflow"><code class="docutils literal notranslate"><span class="pre">run_application_workflow()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Library Reference</a></li>
+      <li class="breadcrumb-item active">API (autodoc)</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/library/reference.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-autodoc">
+<h1>API (autodoc)<a class="headerlink" href="#api-autodoc" title="Link to this heading"></a></h1>
+<p>Generated from the package’s docstrings (Google style). For the bigger picture, read
+<a class="reference internal" href="architecture.html"><span class="doc">Architecture</span></a> first.</p>
+<section id="module-jobjob.config">
+<span id="configuration"></span><h2>Configuration<a class="headerlink" href="#module-jobjob.config" title="Link to this heading"></a></h2>
+<p>Centralized runtime configuration in two disjoint tiers.</p>
+<ul class="simple">
+<li><p><strong>App config</strong> (<code class="docutils literal notranslate"><span class="pre">config/.env</span></code>, gitignored, machine-local): the single jobjob
+instance — secrets, local paths, output IDs, and the profile registry.</p></li>
+<li><p><strong>Profile config</strong> (<code class="docutils literal notranslate"><span class="pre">&lt;profile-repo&gt;/config/.profile</span></code>, committed): the active
+profile’s applicant identity and resume template.</p></li>
+</ul>
+<p>The two key sets are <strong>disjoint</strong> (<code class="docutils literal notranslate"><span class="pre">APP_KEYS</span></code> / <code class="docutils literal notranslate"><span class="pre">PROFILE_KEYS</span></code>) with no
+fallback between them; <code class="docutils literal notranslate"><span class="pre">load_settings</span></code> validates that neither file carries the
+other’s keys. The entry point calls <code class="docutils literal notranslate"><span class="pre">load_settings</span></code> once and passes concrete
+values each function needs — feature modules never import <code class="docutils literal notranslate"><span class="pre">Settings</span></code>.</p>
+<dl class="simple">
+<dt>NOTE: the google credential/token env-var names are owned by <code class="docutils literal notranslate"><span class="pre">jobjob.loader.auth</span></code></dt><dd><p>and re-used here so they are defined in exactly one place.</p>
+</dd>
+</dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.config.GoogleSettings">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.config.</span></span><span class="sig-name descname"><span class="pre">GoogleSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">credentials_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">token_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">template_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/config.html#GoogleSettings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.config.GoogleSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Google Drive/Docs credential + template settings.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.GoogleSettings.credentials_file">
+<span class="sig-name descname"><span class="pre">credentials_file</span></span><a class="headerlink" href="#jobjob.config.GoogleSettings.credentials_file" title="Link to this definition"></a></dt>
+<dd><p>OAuth client-secrets JSON path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.GoogleSettings.token_file">
+<span class="sig-name descname"><span class="pre">token_file</span></span><a class="headerlink" href="#jobjob.config.GoogleSettings.token_file" title="Link to this definition"></a></dt>
+<dd><p>Pickled-token path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.GoogleSettings.template_id">
+<span class="sig-name descname"><span class="pre">template_id</span></span><a class="headerlink" href="#jobjob.config.GoogleSettings.template_id" title="Link to this definition"></a></dt>
+<dd><p>Resume-template Google Doc id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.config.Settings">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.config.</span></span><span class="sig-name descname"><span class="pre">Settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">applicant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Applicant</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'claude-sonnet-4-6'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">anthropic_api_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">anthropic_base_url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cache_enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">google</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#jobjob.config.GoogleSettings" title="jobjob.config.GoogleSettings"><span class="pre">GoogleSettings</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">applications_input_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('data')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">applications_output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">applications_output_drive_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enrichment_input_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('data')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enrichment_output_sheet_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">industry</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/config.html#Settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.config.Settings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Aggregated runtime settings (built once at the entry point).</p>
+<p>Inputs/outputs are modeled per component (Applications = apply, Enrichment =
+enrich). Inputs are local-only for now.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.applicant">
+<span class="sig-name descname"><span class="pre">applicant</span></span><a class="headerlink" href="#jobjob.config.Settings.applicant" title="Link to this definition"></a></dt>
+<dd><p>Applicant identity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>jobjob.structure.applicant.Applicant</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#jobjob.config.Settings.model" title="Link to this definition"></a></dt>
+<dd><p>Claude model id.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.anthropic_api_key">
+<span class="sig-name descname"><span class="pre">anthropic_api_key</span></span><a class="headerlink" href="#jobjob.config.Settings.anthropic_api_key" title="Link to this definition"></a></dt>
+<dd><p>Anthropic API key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.anthropic_base_url">
+<span class="sig-name descname"><span class="pre">anthropic_base_url</span></span><a class="headerlink" href="#jobjob.config.Settings.anthropic_base_url" title="Link to this definition"></a></dt>
+<dd><p>Optional override for the Anthropic API base URL. Point it
+at a Claude-compatible proxy (e.g. one forwarding to a free Gemini key) to
+run without a paid Anthropic key. None uses the SDK default.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.cache_enabled">
+<span class="sig-name descname"><span class="pre">cache_enabled</span></span><a class="headerlink" href="#jobjob.config.Settings.cache_enabled" title="Link to this definition"></a></dt>
+<dd><p>Default response-cache toggle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.google">
+<span class="sig-name descname"><span class="pre">google</span></span><a class="headerlink" href="#jobjob.config.Settings.google" title="Link to this definition"></a></dt>
+<dd><p>Google credential + resume-template settings.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#jobjob.config.GoogleSettings" title="jobjob.config.GoogleSettings">jobjob.config.GoogleSettings</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.applications_input_dir">
+<span class="sig-name descname"><span class="pre">applications_input_dir</span></span><a class="headerlink" href="#jobjob.config.Settings.applications_input_dir" title="Link to this definition"></a></dt>
+<dd><p>Local root holding <code class="docutils literal notranslate"><span class="pre">jobs/</span></code>, <code class="docutils literal notranslate"><span class="pre">profiles/</span></code> and
+<code class="docutils literal notranslate"><span class="pre">completed/</span></code> for the apply flow — where a processed JD moves on
+completion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.applications_output_dir">
+<span class="sig-name descname"><span class="pre">applications_output_dir</span></span><a class="headerlink" href="#jobjob.config.Settings.applications_output_dir" title="Link to this definition"></a></dt>
+<dd><p>Local synced Google Drive applications mirror; when
+set, the completed-applications list is read from here instead of Drive.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.applications_output_drive_id">
+<span class="sig-name descname"><span class="pre">applications_output_drive_id</span></span><a class="headerlink" href="#jobjob.config.Settings.applications_output_drive_id" title="Link to this definition"></a></dt>
+<dd><p>Drive applications-root folder id (output).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.enrichment_input_dir">
+<span class="sig-name descname"><span class="pre">enrichment_input_dir</span></span><a class="headerlink" href="#jobjob.config.Settings.enrichment_input_dir" title="Link to this definition"></a></dt>
+<dd><p>Local input root for the enrich flow; defaults to
+<code class="docutils literal notranslate"><span class="pre">applications_input_dir</span></code> when its own key is unset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.enrichment_output_sheet_id">
+<span class="sig-name descname"><span class="pre">enrichment_output_sheet_id</span></span><a class="headerlink" href="#jobjob.config.Settings.enrichment_output_sheet_id" title="Link to this definition"></a></dt>
+<dd><p>Spreadsheet id for the contacts sheet (enrich).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.config.Settings.industry">
+<span class="sig-name descname"><span class="pre">industry</span></span><a class="headerlink" href="#jobjob.config.Settings.industry" title="Link to this definition"></a></dt>
+<dd><p>Optional domain/industry context for the active profile, injected
+into the resume-objective prompt; None means no domain hint is added.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.config.load_settings">
+<span class="sig-prename descclassname"><span class="pre">jobjob.config.</span></span><span class="sig-name descname"><span class="pre">load_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('config/.env')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.config.Settings" title="jobjob.config.Settings"><span class="pre">Settings</span></a></span></span><a class="reference internal" href="../_modules/jobjob/config.html#load_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.config.load_settings" title="Link to this definition"></a></dt>
+<dd><p>Load settings from the app config plus the active profile config.</p>
+<p>Sources <code class="docutils literal notranslate"><span class="pre">app_config</span></code> (machine-local), resolves the active profile from the
+registry it declares, then sources that profile’s <code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>. The
+two key sets are validated as disjoint. <code class="docutils literal notranslate"><span class="pre">load_dotenv</span></code> is a no-op on a
+missing file, so the ambient environment is used as-is when a file is absent.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app_config</strong> – Path to the app <code class="docutils literal notranslate"><span class="pre">config/.env</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">config/.env</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A populated Settings.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a configured active profile dir is missing, or the two
+    configs violate the zero-overlap rule.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-jobjob.loader.profiles">
+<span id="profiles-and-content"></span><h2>Profiles and content<a class="headerlink" href="#module-jobjob.loader.profiles" title="Link to this heading"></a></h2>
+<p>Profile registry resolution.</p>
+<p>A <em>profile</em> is a separate git repo holding one content set (highlights,
+reference docs, and a committed <code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>). The app config registers
+profiles by path and names the active one:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">JOBJOB_PROFILE_LOCAL</span><span class="o">=</span><span class="s2">&quot;/path/to/your/profile&quot;</span>
+<span class="n">JOBJOB_ACTIVE_PROFILE</span><span class="o">=</span><span class="s2">&quot;local&quot;</span>
+</pre></div>
+</div>
+<p>This module is intentionally dependency-light (os + pathlib) so both
+<code class="docutils literal notranslate"><span class="pre">jobjob.config</span></code> and <code class="docutils literal notranslate"><span class="pre">jobjob.loader.location</span></code> can import it without a cycle.
+It reads <code class="docutils literal notranslate"><span class="pre">os.environ</span></code> (populated by <code class="docutils literal notranslate"><span class="pre">load_dotenv</span></code> of the app config), so the
+active-profile lookup reflects whatever the app config most recently sourced.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.Profile">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">Profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">owned</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#Profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.Profile" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A registered (or bundled) profile with its state resolved once at load time.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.Profile.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#jobjob.loader.profiles.Profile.name" title="Link to this definition"></a></dt>
+<dd><p>Lowercased profile name (its registry suffix).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.Profile.path">
+<span class="sig-name descname"><span class="pre">path</span></span><a class="headerlink" href="#jobjob.loader.profiles.Profile.path" title="Link to this definition"></a></dt>
+<dd><p>The profile directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.Profile.read_only">
+<span class="sig-name descname"><span class="pre">read_only</span></span><a class="headerlink" href="#jobjob.loader.profiles.Profile.read_only" title="Link to this definition"></a></dt>
+<dd><p>True if this is the bundled example (lives in the read-only
+package <code class="docutils literal notranslate"><span class="pre">static/example</span></code> and may only be duplicated).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.Profile.owned">
+<span class="sig-name descname"><span class="pre">owned</span></span><a class="headerlink" href="#jobjob.loader.profiles.Profile.owned" title="Link to this definition"></a></dt>
+<dd><p>True if jobjob created and manages this dir (a direct child of the
+home <code class="docutils literal notranslate"><span class="pre">profiles/</span></code> base) and so may delete its files. False for the
+bundled example and for externally-registered, in-place dirs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.active_profile_name">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">active_profile_name</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#active_profile_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.active_profile_name" title="Link to this definition"></a></dt>
+<dd><p>Return the active profile name (lowercased), or None if unset.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.all_profiles">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">all_profiles</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#all_profiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.all_profiles" title="Link to this definition"></a></dt>
+<dd><p>Return the registered profiles plus the bundled <code class="docutils literal notranslate"><span class="pre">example</span></code> profile.</p>
+<p>The registry (<code class="docutils literal notranslate"><span class="pre">list_profiles</span></code>) is the user-managed source of truth; the
+read-only <code class="docutils literal notranslate"><span class="pre">example</span></code> is injected here so it is always switchable for reference
+without polluting the user’s config. An explicit <code class="docutils literal notranslate"><span class="pre">JOBJOB_PROFILE_EXAMPLE</span></code>
+registry entry overrides the bundled location.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.build_profiles">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">build_profiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profiles_base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#jobjob.loader.profiles.Profile" title="jobjob.loader.profiles.Profile"><span class="pre">Profile</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#build_profiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.build_profiles" title="Link to this definition"></a></dt>
+<dd><p>Resolve every profile (registry + bundled example) into <code class="docutils literal notranslate"><span class="pre">Profile</span></code> objects.</p>
+<p><code class="docutils literal notranslate"><span class="pre">read_only</span></code> and <code class="docutils literal notranslate"><span class="pre">owned</span></code> are computed once here so callers carry the flags
+instead of recomputing predicates. <code class="docutils literal notranslate"><span class="pre">profiles_base</span></code> is the home <code class="docutils literal notranslate"><span class="pre">profiles/</span></code>
+dir (used to decide <code class="docutils literal notranslate"><span class="pre">owned</span></code>); when None, no profile is considered owned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>profiles_base</strong> – The <code class="docutils literal notranslate"><span class="pre">&lt;home&gt;/profiles</span></code> dir, or None if unknown.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">Profile}</span></code> for the bundled example plus all registered profiles.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.bundled_example_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">bundled_example_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#bundled_example_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.bundled_example_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the bundled example profile dir (<code class="docutils literal notranslate"><span class="pre">static/example</span></code>), or None.</p>
+<p>Computed directly from this file’s location (<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/jobjob/loader/profiles.py</span></code>
+→ <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/static/example</span></code>) so this module stays import-light (no dependency on
+<code class="docutils literal notranslate"><span class="pre">loader.location</span></code>). The example lives in its own subdir — isolated from any
+other <code class="docutils literal notranslate"><span class="pre">static/</span></code> assets — and doubles as the no-active-profile fallback.
+Returns None when the dir is absent (e.g. a stripped install), so callers can
+simply skip the example.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.list_profiles">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">list_profiles</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#list_profiles"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.list_profiles" title="Link to this definition"></a></dt>
+<dd><p>Return the registered profiles as <code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">repo_path}</span></code> (names lowercased).</p>
+<p>Reads <code class="docutils literal notranslate"><span class="pre">JOBJOB_PROFILE_&lt;NAME&gt;=&lt;path&gt;</span></code> entries from the environment. The
+active-profile pointer (<code class="docutils literal notranslate"><span class="pre">JOBJOB_ACTIVE_PROFILE</span></code>) is not a registry entry.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.profile_config_file">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">profile_config_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profile_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#profile_config_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.profile_config_file" title="Link to this definition"></a></dt>
+<dd><p>Return the path to a profile repo’s committed config (<code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.read_env_keys">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">read_env_keys</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#set" title="(in Python v3.14)"><span class="pre">set</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#read_env_keys"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.read_env_keys" title="Link to this definition"></a></dt>
+<dd><p>Return the set of <code class="docutils literal notranslate"><span class="pre">KEY</span></code> names assigned in a dotenv-format file.</p>
+<p>Blank lines, comments, and lines without <code class="docutils literal notranslate"><span class="pre">=</span></code> are ignored. Used to validate
+that app and profile configs hold disjoint key sets.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.profiles.resolve_active_profile_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.profiles.</span></span><span class="sig-name descname"><span class="pre">resolve_active_profile_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/profiles.html#resolve_active_profile_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.profiles.resolve_active_profile_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the active profile’s repo path, or None when none is configured.</p>
+<p>Returns the registered path even if it does not yet exist on disk — callers
+decide whether a missing dir is an error (config load) or a fallback signal
+(content resolution).</p>
+</dd></dl>
+
+<p id="module-jobjob.loader.skeleton">Create a blank-but-valid jobjob profile from a built-in skeleton.</p>
+<p>A <em>new</em> profile starts empty — no Tila Mer (or any other) example content — but
+structurally complete: the content TOMLs parse and load to empty sets, the reference
+dirs exist, and <code class="docutils literal notranslate"><span class="pre">config/.profile</span></code> is present (blank). The user fills it in via the
+Static Content / Profile pages or by importing a résumé (see <code class="docutils literal notranslate"><span class="pre">jobjob.ingest</span></code>).</p>
+<p>Kept here (next to <code class="docutils literal notranslate"><span class="pre">loadcontent</span></code>/<code class="docutils literal notranslate"><span class="pre">location</span></code>) so the exact <code class="docutils literal notranslate"><span class="pre">[tool.*]</span></code> shapes the
+loaders expect stay co-located with the code that reads them.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.skeleton.create_blank_profile">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.skeleton.</span></span><span class="sig-name descname"><span class="pre">create_blank_profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/skeleton.html#create_blank_profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.skeleton.create_blank_profile" title="Link to this definition"></a></dt>
+<dd><p>Write a blank-but-valid profile tree at <code class="docutils literal notranslate"><span class="pre">dest</span></code> and return it.</p>
+<p>Creates <code class="docutils literal notranslate"><span class="pre">content/{highlights,skills,templates,experience}.toml</span></code>,
+<code class="docutils literal notranslate"><span class="pre">reference/{background.md,writing_style.md,cover_letters/,stars/}</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>. Parent dirs are created as needed; existing files are left
+untouched (idempotent), so re-running never clobbers user edits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dest</strong> – The profile directory to populate.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p id="module-jobjob.loader.location">Resource file location management.</p>
+<p>Resolves <code class="docutils literal notranslate"><span class="pre">content</span></code>, <code class="docutils literal notranslate"><span class="pre">reference</span></code>, and <code class="docutils literal notranslate"><span class="pre">prompt</span></code> resources against the active
+profile repo (<code class="docutils literal notranslate"><span class="pre">&lt;profile&gt;/&lt;name&gt;</span></code>) when one is configured, falling back to the
+bundled example profile (<code class="docutils literal notranslate"><span class="pre">static/example/&lt;name&gt;</span></code>) so tests and a fresh clone
+work without a profile. Prompts override per-file but default to the bundled
+jobjob versions.</p>
+<dl class="simple">
+<dt>NOTE: resource getters are intentionally NOT cached — resolution depends on the</dt><dd><p>active profile (<code class="docutils literal notranslate"><span class="pre">os.environ</span></code>), which can change at runtime on a profile
+switch. <code class="docutils literal notranslate"><span class="pre">get_root_dir</span></code>/<code class="docutils literal notranslate"><span class="pre">get_static_dir</span></code>/example getters are profile-
+independent and stay cached.</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_content_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_content_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_content_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_content_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the content dir: the active profile’s <code class="docutils literal notranslate"><span class="pre">content/</span></code> if present, else
+<code class="docutils literal notranslate"><span class="pre">static/content</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>FileNotFoundError if neither exists.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_content_path">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_content_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_content_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_content_path" title="Link to this definition"></a></dt>
+<dd><p>Return the content file for <code class="docutils literal notranslate"><span class="pre">stem</span></code> from the resolved content dir.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError if file stem not found.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_prompt_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_prompt_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_prompt_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_prompt_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the prompt dir: the active profile’s <code class="docutils literal notranslate"><span class="pre">prompt/</span></code> if present, else
+the bundled <code class="docutils literal notranslate"><span class="pre">jobjob/prompts</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_prompt_path">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_prompt_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stem</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_prompt_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_prompt_path" title="Link to this definition"></a></dt>
+<dd><p>Return the prompt file for <code class="docutils literal notranslate"><span class="pre">stem</span></code>.</p>
+<p>A profile may override individual prompts in its <code class="docutils literal notranslate"><span class="pre">prompt/</span></code> dir; any prompt
+it does not provide falls back to the bundled <code class="docutils literal notranslate"><span class="pre">jobjob/prompts</span></code> default.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError if file stem not found in the profile override</strong><strong> or </strong><strong>the default.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_reference_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_reference_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_reference_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_reference_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the reference dir: the active profile’s <code class="docutils literal notranslate"><span class="pre">reference/</span></code> if present,
+else <code class="docutils literal notranslate"><span class="pre">static/reference</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>FileNotFoundError if neither exists.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_root_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_root_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_root_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_root_dir" title="Link to this definition"></a></dt>
+<dd><p>Return the jobjob project root (the dir containing the <code class="docutils literal notranslate"><span class="pre">jobjob</span></code> package).</p>
+<p>Anchored on this file’s location (<code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/jobjob/loader/location.py</span></code>) rather than
+searching the path for <code class="docutils literal notranslate"><span class="pre">&quot;jobjob&quot;</span></code> — robust when the checkout/site-packages dir is
+itself named <code class="docutils literal notranslate"><span class="pre">jobjob</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.get_static_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">get_static_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#get_static_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.get_static_dir" title="Link to this definition"></a></dt>
+<dd><p>Return path to default static dir at project root.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>FileNotFoundError if default dir does not exist.</strong> – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.location.package_prompt_dir">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.location.</span></span><span class="sig-name descname"><span class="pre">package_prompt_dir</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/location.html#package_prompt_dir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.location.package_prompt_dir" title="Link to this definition"></a></dt>
+<dd><p>Public accessor for the bundled default prompt dir (<code class="docutils literal notranslate"><span class="pre">jobjob/prompts</span></code>).</p>
+<p>The prompts editor needs the bundled default explicitly (to show it and to reset
+an override), independent of any active-profile override resolution.</p>
+</dd></dl>
+
+<p id="module-jobjob.loader.loadcontent">Load credential highlights and skills from the static TOML content files.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.loadcontent.load_experience">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.loadcontent.</span></span><span class="sig-name descname"><span class="pre">load_experience</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ExperienceSet</span></span></span><a class="reference internal" href="../_modules/jobjob/loader/loadcontent.html#load_experience"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.loadcontent.load_experience" title="Link to this definition"></a></dt>
+<dd><p>Load the structured work history from <code class="docutils literal notranslate"><span class="pre">content/experience.toml</span></code>.</p>
+<dl class="simple">
+<dt>NOTE: experience is an optional content file (it postdates the other content,</dt><dd><p>and a fresh/imported profile may not have it yet), so a missing file
+returns an empty set rather than raising — unlike highlights/skills.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Override path to the TOML file. Defaults to the static content path.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A populated ExperienceSet (empty when no file is present).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.loadcontent.load_highlights">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.loadcontent.</span></span><span class="sig-name descname"><span class="pre">load_highlights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.highlight.HighlightSet" title="jobjob.structure.highlight.HighlightSet"><span class="pre">HighlightSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/loadcontent.html#load_highlights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.loadcontent.load_highlights" title="Link to this definition"></a></dt>
+<dd><p>Load the highlight set from <code class="docutils literal notranslate"><span class="pre">static/content/highlights.toml</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> – Override path to the TOML file. Defaults to the static content path.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A populated HighlightSet.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.loadcontent.load_skills">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.loadcontent.</span></span><span class="sig-name descname"><span class="pre">load_skills</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><span class="pre">Logger</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.skill.SkillSet" title="jobjob.structure.skill.SkillSet"><span class="pre">SkillSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/loadcontent.html#load_skills"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.loadcontent.load_skills" title="Link to this definition"></a></dt>
+<dd><p>Load the skill set from <code class="docutils literal notranslate"><span class="pre">static/content/skills.toml</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – Override path to the TOML file. Defaults to the static content path.</p></li>
+<li><p><strong>logger</strong> – Optional logger for injection.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A populated SkillSet.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.loader.loadcontent.load_templates">
+<span class="sig-prename descclassname"><span class="pre">jobjob.loader.loadcontent.</span></span><span class="sig-name descname"><span class="pre">load_templates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fallback_doc_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.template.TemplateSet" title="jobjob.structure.template.TemplateSet"><span class="pre">TemplateSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/loader/loadcontent.html#load_templates"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.loader.loadcontent.load_templates" title="Link to this definition"></a></dt>
+<dd><p>Load resume templates from <code class="docutils literal notranslate"><span class="pre">static/content/templates.toml</span></code>.</p>
+<dl class="simple">
+<dt>NOTE: when the TOML is absent and <code class="docutils literal notranslate"><span class="pre">fallback_doc_id</span></code> is given, returns a</dt><dd><p>single “default” template using that id (backward-compatible with a single
+<code class="docutils literal notranslate"><span class="pre">RESUME_TEMPLATE_ID</span></code>).</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> – Override path to the TOML file. Defaults to the static content path.</p></li>
+<li><p><strong>fallback_doc_id</strong> – A single Google Doc id to use when no TOML is present.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A TemplateSet (possibly empty if neither source is available).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-jobjob.structure.highlight">
+<span id="domain-models"></span><h2>Domain models<a class="headerlink" href="#module-jobjob.structure.highlight" title="Link to this heading"></a></h2>
+<p>Credential highlight blocks and their selection metadata.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.highlight.</span></span><span class="sig-name descname"><span class="pre">Highlight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">keywords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">...]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/highlight.html#Highlight"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.highlight.Highlight" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A single pre-written credential block.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight.context">
+<span class="sig-name descname"><span class="pre">context</span></span><a class="headerlink" href="#jobjob.structure.highlight.Highlight.context" title="Link to this definition"></a></dt>
+<dd><p>Stable key identifying the block (e.g. “fda_class3”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight.text">
+<span class="sig-name descname"><span class="pre">text</span></span><a class="headerlink" href="#jobjob.structure.highlight.Highlight.text" title="Link to this definition"></a></dt>
+<dd><p>The block prose.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight.keywords">
+<span class="sig-name descname"><span class="pre">keywords</span></span><a class="headerlink" href="#jobjob.structure.highlight.Highlight.keywords" title="Link to this definition"></a></dt>
+<dd><p>Keywords used to score relevance against a job description.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><a class="headerlink" href="#jobjob.structure.highlight.Highlight.enabled" title="Link to this definition"></a></dt>
+<dd><p>Whether the block is eligible for selection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.Highlight.topic">
+<span class="sig-name descname"><span class="pre">topic</span></span><a class="headerlink" href="#jobjob.structure.highlight.Highlight.topic" title="Link to this definition"></a></dt>
+<dd><p>Single-word grouping for the UI (e.g. Collaboration, Communication,
+Creativity, Leadership, Teamwork, Technical). Empty string if ungrouped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.highlight.</span></span><span class="sig-name descname"><span class="pre">HighlightSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">highlights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.highlight.Highlight" title="jobjob.structure.highlight.Highlight"><span class="pre">Highlight</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_characters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">900</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_characters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">600</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/highlight.html#HighlightSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A collection of highlights plus selection defaults.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.highlights">
+<span class="sig-name descname"><span class="pre">highlights</span></span><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.highlights" title="Link to this definition"></a></dt>
+<dd><p>All loaded highlights (enabled and disabled).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="#jobjob.structure.highlight.Highlight" title="jobjob.structure.highlight.Highlight">jobjob.structure.highlight.Highlight</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.default_number">
+<span class="sig-name descname"><span class="pre">default_number</span></span><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.default_number" title="Link to this definition"></a></dt>
+<dd><p>Default count to select for an application.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.max_characters">
+<span class="sig-name descname"><span class="pre">max_characters</span></span><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.max_characters" title="Link to this definition"></a></dt>
+<dd><p>Upper bound on total selected character count.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.min_characters">
+<span class="sig-name descname"><span class="pre">min_characters</span></span><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.min_characters" title="Link to this definition"></a></dt>
+<dd><p>Lower bound on total selected character count.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.by_context">
+<span class="sig-name descname"><span class="pre">by_context</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.14)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#jobjob.structure.highlight.Highlight" title="jobjob.structure.highlight.Highlight"><span class="pre">Highlight</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/structure/highlight.html#HighlightSet.by_context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.by_context" title="Link to this definition"></a></dt>
+<dd><p>Return a mapping of context key to highlight (all, including disabled).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.HighlightSet.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.highlight.Highlight" title="jobjob.structure.highlight.Highlight"><span class="pre">Highlight</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/structure/highlight.html#HighlightSet.enabled"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.highlight.HighlightSet.enabled" title="Link to this definition"></a></dt>
+<dd><p>Return only the enabled highlights.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.structure.highlight.make_highlight_set">
+<span class="sig-prename descclassname"><span class="pre">jobjob.structure.highlight.</span></span><span class="sig-name descname"><span class="pre">make_highlight_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">highlights</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.highlight.Highlight" title="jobjob.structure.highlight.Highlight"><span class="pre">Highlight</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_characters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_characters</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.highlight.HighlightSet" title="jobjob.structure.highlight.HighlightSet"><span class="pre">HighlightSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/highlight.html#make_highlight_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.highlight.make_highlight_set" title="Link to this definition"></a></dt>
+<dd><p>Build a HighlightSet from an iterable of highlights.</p>
+<dl class="simple">
+<dt>NOTE: selection defaults live only on <code class="docutils literal notranslate"><span class="pre">HighlightSet</span></code>; passing None for any</dt><dd><p>keeps that field’s default (so the value is declared in exactly one place).</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>highlights</strong> – The highlights.</p></li>
+<li><p><strong>default_number</strong> – Override for the default selection count.</p></li>
+<li><p><strong>max_characters</strong> – Override for the max total character count.</p></li>
+<li><p><strong>min_characters</strong> – Override for the min total character count.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A HighlightSet.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p id="module-jobjob.structure.skill">Skill entries and their selection metadata.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.skill.</span></span><span class="sig-name descname"><span class="pre">Skill</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">keywords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">...]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">canonical_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">categories</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">float]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/skill.html#Skill"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.skill.Skill" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A single skill entry.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill.label">
+<span class="sig-name descname"><span class="pre">label</span></span><a class="headerlink" href="#jobjob.structure.skill.Skill.label" title="Link to this definition"></a></dt>
+<dd><p>Stable key identifying the skill (e.g. “python”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill.text">
+<span class="sig-name descname"><span class="pre">text</span></span><a class="headerlink" href="#jobjob.structure.skill.Skill.text" title="Link to this definition"></a></dt>
+<dd><p>Display text (e.g. “Python”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill.keywords">
+<span class="sig-name descname"><span class="pre">keywords</span></span><a class="headerlink" href="#jobjob.structure.skill.Skill.keywords" title="Link to this definition"></a></dt>
+<dd><p>Keywords used to score relevance against a job description.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill.canonical_id">
+<span class="sig-name descname"><span class="pre">canonical_id</span></span><a class="headerlink" href="#jobjob.structure.skill.Skill.canonical_id" title="Link to this definition"></a></dt>
+<dd><p>Skill-cloud canonical id (None = non-canonical/free-form).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.Skill.categories">
+<span class="sig-name descname"><span class="pre">categories</span></span><a class="headerlink" href="#jobjob.structure.skill.Skill.categories" title="Link to this definition"></a></dt>
+<dd><p>The canonical skill’s category weights ({} when non-canonical).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.skill.SkillSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.skill.</span></span><span class="sig-name descname"><span class="pre">SkillSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">skills</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.skill.Skill" title="jobjob.structure.skill.Skill"><span class="pre">Skill</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/skill.html#SkillSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.skill.SkillSet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A collection of skills plus selection defaults.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.SkillSet.skills">
+<span class="sig-name descname"><span class="pre">skills</span></span><a class="headerlink" href="#jobjob.structure.skill.SkillSet.skills" title="Link to this definition"></a></dt>
+<dd><p>All loaded skills.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="#jobjob.structure.skill.Skill" title="jobjob.structure.skill.Skill">jobjob.structure.skill.Skill</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.skill.SkillSet.default_number">
+<span class="sig-name descname"><span class="pre">default_number</span></span><a class="headerlink" href="#jobjob.structure.skill.SkillSet.default_number" title="Link to this definition"></a></dt>
+<dd><p>Default count to surface for an application.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.structure.skill.make_skill_set">
+<span class="sig-prename descclassname"><span class="pre">jobjob.structure.skill.</span></span><span class="sig-name descname"><span class="pre">make_skill_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">skills</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.skill.Skill" title="jobjob.structure.skill.Skill"><span class="pre">Skill</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.skill.SkillSet" title="jobjob.structure.skill.SkillSet"><span class="pre">SkillSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/skill.html#make_skill_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.skill.make_skill_set" title="Link to this definition"></a></dt>
+<dd><p>Build a SkillSet from an iterable of skills.</p>
+<dl class="simple">
+<dt>NOTE: the selection default lives only on <code class="docutils literal notranslate"><span class="pre">SkillSet</span></code>; passing None keeps</dt><dd><p>that field’s default (declared in one place).</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>skills</strong> – The skills.</p></li>
+<li><p><strong>default_number</strong> – Override for the default selection count.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A SkillSet.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p id="module-jobjob.structure.template">Resume template variations (archetypes).</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeSection">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.template.</span></span><span class="sig-name descname"><span class="pre">ResumeSection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">heading</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">section</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/template.html#ResumeSection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.ResumeSection" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>An editable region of a resume template, located by its heading.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeSection.heading">
+<span class="sig-name descname"><span class="pre">heading</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeSection.heading" title="Link to this definition"></a></dt>
+<dd><p>The section heading text to find (matched case-insensitively).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeSection.section">
+<span class="sig-name descname"><span class="pre">section</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeSection.section" title="Link to this definition"></a></dt>
+<dd><p>How the section is filled — <code class="docutils literal notranslate"><span class="pre">SECTION_OBJECTIVE</span></code> (model-rewritten
+paragraph) or <code class="docutils literal notranslate"><span class="pre">SECTION_HIGHLIGHTS</span></code> (bullets replaced with selected
+highlights, verbatim).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeSection.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeSection.enabled" title="Link to this definition"></a></dt>
+<dd><p>Whether the apply flow edits this section. A disabled section is
+omitted from tailoring so its template text is left untouched.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.template.</span></span><span class="sig-name descname"><span class="pre">ResumeTemplate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">archetype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">doc_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">keywords</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">...]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sections</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple[~jobjob.structure.template.ResumeSection</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">...]</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/template.html#ResumeTemplate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A resume template tailored to a role archetype.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.name" title="Link to this definition"></a></dt>
+<dd><p>Stable key (e.g. “print_correspondent”).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.archetype">
+<span class="sig-name descname"><span class="pre">archetype</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.archetype" title="Link to this definition"></a></dt>
+<dd><p>Human-readable archetype label.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.doc_id">
+<span class="sig-name descname"><span class="pre">doc_id</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.doc_id" title="Link to this definition"></a></dt>
+<dd><p>Google Doc id of the template.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.keywords">
+<span class="sig-name descname"><span class="pre">keywords</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.keywords" title="Link to this definition"></a></dt>
+<dd><p>Keywords used to auto-detect the archetype from a job description.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.description">
+<span class="sig-name descname"><span class="pre">description</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.description" title="Link to this definition"></a></dt>
+<dd><p>Longer description used in the auto-detection prompt.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.ResumeTemplate.sections">
+<span class="sig-name descname"><span class="pre">sections</span></span><a class="headerlink" href="#jobjob.structure.template.ResumeTemplate.sections" title="Link to this definition"></a></dt>
+<dd><p>Editable sections located by heading and tailored per <code class="docutils literal notranslate"><span class="pre">section</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="#jobjob.structure.template.ResumeSection" title="jobjob.structure.template.ResumeSection">jobjob.structure.template.ResumeSection</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.structure.template.</span></span><span class="sig-name descname"><span class="pre">TemplateSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate"><span class="pre">ResumeTemplate</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/structure/template.html#TemplateSet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.TemplateSet" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>A collection of resume templates plus the default selection.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.templates">
+<span class="sig-name descname"><span class="pre">templates</span></span><a class="headerlink" href="#jobjob.structure.template.TemplateSet.templates" title="Link to this definition"></a></dt>
+<dd><p>All available templates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate">jobjob.structure.template.ResumeTemplate</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.default">
+<span class="sig-name descname"><span class="pre">default</span></span><a class="headerlink" href="#jobjob.structure.template.TemplateSet.default" title="Link to this definition"></a></dt>
+<dd><p>Name of the default template.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.by_name">
+<span class="sig-name descname"><span class="pre">by_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate"><span class="pre">ResumeTemplate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/template.html#TemplateSet.by_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.TemplateSet.by_name" title="Link to this definition"></a></dt>
+<dd><p>Return the template with <code class="docutils literal notranslate"><span class="pre">name</span></code>, or None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.default_template">
+<span class="sig-name descname"><span class="pre">default_template</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate"><span class="pre">ResumeTemplate</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/template.html#TemplateSet.default_template"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.TemplateSet.default_template" title="Link to this definition"></a></dt>
+<dd><p>Return the default template (falls back to the first available).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.names">
+<span class="sig-name descname"><span class="pre">names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/jobjob/structure/template.html#TemplateSet.names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.TemplateSet.names" title="Link to this definition"></a></dt>
+<dd><p>Return the available template names.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="jobjob.structure.template.TemplateSet.require">
+<span class="sig-name descname"><span class="pre">require</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate"><span class="pre">ResumeTemplate</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/template.html#TemplateSet.require"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.TemplateSet.require" title="Link to this definition"></a></dt>
+<dd><p>Return the template with <code class="docutils literal notranslate"><span class="pre">name</span></code> or raise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#KeyError" title="(in Python v3.14)"><strong>KeyError</strong></a> – If no template has that name.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.structure.template.make_template_set">
+<span class="sig-prename descclassname"><span class="pre">jobjob.structure.template.</span></span><span class="sig-name descname"><span class="pre">make_template_set</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">templates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.template.ResumeTemplate" title="jobjob.structure.template.ResumeTemplate"><span class="pre">ResumeTemplate</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sections</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Iterable" title="(in Python v3.14)"><span class="pre">Iterable</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#jobjob.structure.template.ResumeSection" title="jobjob.structure.template.ResumeSection"><span class="pre">ResumeSection</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#jobjob.structure.template.TemplateSet" title="jobjob.structure.template.TemplateSet"><span class="pre">TemplateSet</span></a></span></span><a class="reference internal" href="../_modules/jobjob/structure/template.html#make_template_set"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.structure.template.make_template_set" title="Link to this definition"></a></dt>
+<dd><p>Build a TemplateSet from an iterable of templates.</p>
+<dl class="simple">
+<dt>NOTE: <code class="docutils literal notranslate"><span class="pre">sections</span></code> are shared template structure (the resumes share headings); they</dt><dd><p>are attached to every template that does not already define its own.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-jobjob.apply.workflow">
+<span id="workflow"></span><h2>Workflow<a class="headerlink" href="#module-jobjob.apply.workflow" title="Link to this heading"></a></h2>
+<p>Orchestrate the end-to-end application workflow.</p>
+<p>Sequential model calls share one cached context prefix (highlights, STARs,
+background, cover-letter examples, writing style, and — in Drive mode — the
+customized resume). The offline path (<code class="docutils literal notranslate"><span class="pre">skip_drive=True</span></code>) produces local
+artifacts and is fully exercised by tests; the Drive path adds Google I/O.</p>
+<p>Drive folder per application (<code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span> <span class="pre">-</span> <span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code>) contains exactly:
+the README (Google Doc), the JD (<code class="docutils literal notranslate"><span class="pre">JD_&lt;Company&gt;_&lt;Role&gt;.pdf</span></code>), the resume (the
+customized Google Doc), and the cover letter (Google Doc).</p>
+<dl class="py exception">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.OverwriteConflict">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">jobjob.apply.workflow.</span></span><span class="sig-name descname"><span class="pre">OverwriteConflict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/jobjob/apply/workflow.html#OverwriteConflict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.apply.workflow.OverwriteConflict" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+<p>A fresh apply would overwrite an existing application folder.</p>
+<p>Raised when processing a new JD whose target <code class="docutils literal notranslate"><span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code> folder already
+exists and the caller did not opt into overwriting. The webapp surfaces this so
+the user can relaunch with override (acknowledge) or clear the queued JD.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.OverwriteConflict.folder_name">
+<span class="sig-name descname"><span class="pre">folder_name</span></span><a class="headerlink" href="#jobjob.apply.workflow.OverwriteConflict.folder_name" title="Link to this definition"></a></dt>
+<dd><p>The conflicting <code class="docutils literal notranslate"><span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code> folder name.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.apply_inputs">
+<span class="sig-prename descclassname"><span class="pre">jobjob.apply.workflow.</span></span><span class="sig-name descname"><span class="pre">apply_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">input_path:</span> <span class="pre">~pathlib.Path,</span> <span class="pre">query_service:</span> <span class="pre">~jobjob.ailib.session.AIClient,</span> <span class="pre">applicant:</span> <span class="pre">~jobjob.structure.applicant.Applicant,</span> <span class="pre">output_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">skip_drive:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">use_cache:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True,</span> <span class="pre">template_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">template_name:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">parent_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">data_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">allow_overwrite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">archive_on_conflict:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">industry:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">applications_output_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">entity_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">logger:</span> <span class="pre">~logging.Logger</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">_credentials_loader:</span> <span class="pre">~collections.abc.Callable[[...],</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">get_google_credentials&gt;,</span> <span class="pre">_classify:</span> <span class="pre">~collections.abc.Callable[[...],</span> <span class="pre">str]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">classify_file&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/jobjob/apply/workflow.html#apply_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.apply.workflow.apply_inputs" title="Link to this definition"></a></dt>
+<dd><p>Run the application workflow for every JD at <code class="docutils literal notranslate"><span class="pre">input_path</span></code> (file or dir).</p>
+<p>A single file is processed directly. For a directory, each entry is classified
+and <strong>only job descriptions are processed</strong>; non-JD files (LinkedIn profiles,
+anything unsupported) are skipped with a log line — apply’s half of the shared
+single-input-directory. Processing continues past a per-file error.</p>
+<p>Each JD in a directory gets its own <code class="docutils literal notranslate"><span class="pre">output_dir/&lt;jd-stem&gt;</span></code> subdirectory when
+no <code class="docutils literal notranslate"><span class="pre">applications_output_dir</span></code> is configured — the legacy/offline fallback,
+since in that case <code class="docutils literal notranslate"><span class="pre">run_application_workflow</span></code> writes local artifacts flat
+into <code class="docutils literal notranslate"><span class="pre">output_dir</span></code> and would otherwise clobber the previous JD’s files. When
+<code class="docutils literal notranslate"><span class="pre">applications_output_dir</span></code> is set (the mainstream case), each JD resolves its
+own <code class="docutils literal notranslate"><span class="pre">&lt;Company</span> <span class="pre">-</span> <span class="pre">Role&gt;</span></code> entity folder instead, so no subdir is needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_path</strong> – A job-description PDF, or a directory of mixed inputs.</p></li>
+<li><p><strong>query_service</strong> – AIClient driving the workflow (and classifying ambiguous files).</p></li>
+<li><p><strong>applicant</strong> – Applicant identity.</p></li>
+<li><p><strong>output_dir</strong> – Local output root. Per-JD subdirs are created under it in dir mode.</p></li>
+<li><p><strong>skip_drive</strong> – Skip Google Drive/Docs operations.</p></li>
+<li><p><strong>use_cache</strong> – Whether model calls consult/populate the response cache.</p></li>
+<li><p><strong>template_id</strong> – Resume-template Google Doc id.</p></li>
+<li><p><strong>template_name</strong> – Force a resume template (else auto-detected).</p></li>
+<li><p><strong>parent_id</strong> – Applications-root Drive folder id.</p></li>
+<li><p><strong>data_dir</strong> – Root holding <code class="docutils literal notranslate"><span class="pre">completed/</span></code>; when set (and not <code class="docutils literal notranslate"><span class="pre">skip_drive</span></code>), a
+successfully-applied JD is moved into <code class="docutils literal notranslate"><span class="pre">&lt;data_dir&gt;/completed/jobs/</span></code>.</p></li>
+<li><p><strong>allow_overwrite</strong> – Forwarded to <code class="docutils literal notranslate"><span class="pre">run_application_workflow</span></code>.</p></li>
+<li><p><strong>archive_on_conflict</strong> – Forwarded to <code class="docutils literal notranslate"><span class="pre">run_application_workflow</span></code>.</p></li>
+<li><p><strong>industry</strong> – Optional domain/industry context for the active profile, forwarded
+to the resume-objective prompt.</p></li>
+<li><p><strong>applications_output_dir</strong> – Local Drive-mirror root; forwarded so each JD’s
+identity and artifacts persist into <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;Company</span> <span class="pre">-</span> <span class="pre">Role&gt;</span></code> rather
+than the ephemeral output dir.</p></li>
+<li><p><strong>entity_dir</strong> – Explicit persistent identity folder (a single-application re-run
+targeting an existing/renamed folder). In directory mode leave it None so
+each JD resolves its own folder under <code class="docutils literal notranslate"><span class="pre">applications_output_dir</span></code>.</p></li>
+<li><p><strong>logger</strong> – Optional logger for injection.</p></li>
+<li><p><strong>_credentials_loader</strong> – Injection point for Google credentials (testing).</p></li>
+<li><p><strong>_classify</strong> – Injection point for the file classifier (testing).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{processed,</span> <span class="pre">skipped,</span> <span class="pre">failed,</span> <span class="pre">items:</span> <span class="pre">[{name,</span> <span class="pre">status,</span> <span class="pre">...}]}</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Summary dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">input_path</span></code> does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.build_cached_context">
+<span class="sig-prename descclassname"><span class="pre">jobjob.apply.workflow.</span></span><span class="sig-name descname"><span class="pre">build_cached_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">highlight_set</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#jobjob.structure.highlight.HighlightSet" title="jobjob.structure.highlight.HighlightSet"><span class="pre">HighlightSet</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ReferenceDocs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resume_text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../_modules/jobjob/apply/workflow.html#build_cached_context"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.apply.workflow.build_cached_context" title="Link to this definition"></a></dt>
+<dd><p>Assemble the stable, cached system context shared across all calls.</p>
+<dl class="simple">
+<dt>NOTE: order matters for prompt caching — stable content first; the resume</dt><dd><p>(added in Drive mode) goes last as it is the most volatile prefix piece.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>highlight_set</strong> – All available highlights.</p></li>
+<li><p><strong>reference</strong> – Loaded reference documents.</p></li>
+<li><p><strong>resume_text</strong> – Customized resume text, if available.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The cached-context string.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.move_completed_jd">
+<span class="sig-prename descclassname"><span class="pre">jobjob.apply.workflow.</span></span><span class="sig-name descname"><span class="pre">move_completed_jd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">folder_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">logger</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/logging.html#logging.Logger" title="(in Python v3.14)"><span class="pre">Logger</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="../_modules/jobjob/apply/workflow.html#move_completed_jd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.apply.workflow.move_completed_jd" title="Link to this definition"></a></dt>
+<dd><p>Move a processed JD into <code class="docutils literal notranslate"><span class="pre">&lt;data_dir&gt;/completed/jobs/&lt;folder_name&gt;&lt;ext&gt;</span></code>.</p>
+<p>Called on a successful application so the JD leaves the input area — the same
+behavior for the CLI and the webapp. Renamed to match the Drive folder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src</strong> – The processed job-description file.</p></li>
+<li><p><strong>data_dir</strong> – Root holding <code class="docutils literal notranslate"><span class="pre">jobs/</span></code>/<code class="docutils literal notranslate"><span class="pre">completed/</span></code>.</p></li>
+<li><p><strong>folder_name</strong> – Drive application folder name (<code class="docutils literal notranslate"><span class="pre">YYYY-MM-DD</span> <span class="pre">-</span> <span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code>).</p></li>
+<li><p><strong>logger</strong> – Optional logger for injection.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new path.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="jobjob.apply.workflow.run_application_workflow">
+<span class="sig-prename descclassname"><span class="pre">jobjob.apply.workflow.</span></span><span class="sig-name descname"><span class="pre">run_application_workflow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">job_description_pdf:</span> <span class="pre">~pathlib.Path,</span> <span class="pre">*,</span> <span class="pre">query_service:</span> <span class="pre">~jobjob.ailib.session.AIClient,</span> <span class="pre">applicant:</span> <span class="pre">~jobjob.structure.applicant.Applicant,</span> <span class="pre">output_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">skip_drive:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">highlight_set:</span> <span class="pre">~jobjob.structure.highlight.HighlightSet</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">reference:</span> <span class="pre">~jobjob.structure.reference.ReferenceDocs</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">use_cache:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True,</span> <span class="pre">template_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">template_name:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">parent_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">reuse_folder_id:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">allow_overwrite:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">archive_on_conflict:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False,</span> <span class="pre">industry:</span> <span class="pre">str</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">applications_output_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">entity_dir:</span> <span class="pre">~pathlib.Path</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">logger:</span> <span class="pre">~logging.Logger</span> <span class="pre">|</span> <span class="pre">None</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">_credentials_loader:</span> <span class="pre">~collections.abc.Callable[[...],</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">get_google_credentials&gt;,</span> <span class="pre">_drive_builder:</span> <span class="pre">~collections.abc.Callable[[...],</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">build_drive_service&gt;,</span> <span class="pre">_docs_builder:</span> <span class="pre">~collections.abc.Callable[[...],</span> <span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;function</span> <span class="pre">build_docs_service&gt;</span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></span></span><a class="reference internal" href="../_modules/jobjob/apply/workflow.html#run_application_workflow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#jobjob.apply.workflow.run_application_workflow" title="Link to this definition"></a></dt>
+<dd><p>Run the full application workflow and return a results dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>job_description_pdf</strong> – Path to the job-description PDF.</p></li>
+<li><p><strong>query_service</strong> – AIClient (callable + cached context + usage).</p></li>
+<li><p><strong>applicant</strong> – Applicant identity (for cover-letter headers).</p></li>
+<li><p><strong>output_dir</strong> – Local output directory. Used as-is only as a last-resort
+fallback (legacy/offline: no <code class="docutils literal notranslate"><span class="pre">applications_output_dir</span></code> and no
+<code class="docutils literal notranslate"><span class="pre">entity_dir</span></code> configured); defaults to a fresh temp directory in
+that case. Superseded by the entity-folder resolution below.</p></li>
+<li><p><strong>skip_drive</strong> – If True, skip all Google Drive/Docs operations.</p></li>
+<li><p><strong>highlight_set</strong> – Highlights. Loaded from static content if None.</p></li>
+<li><p><strong>reference</strong> – Reference docs. Loaded from static reference if None.</p></li>
+<li><p><strong>use_cache</strong> – Whether the model calls consult/populate the response cache.</p></li>
+<li><p><strong>template_id</strong> – Fallback resume-template Google Doc id when no templates.toml.</p></li>
+<li><p><strong>template_name</strong> – Explicit template name; if None the archetype is auto-detected.</p></li>
+<li><p><strong>parent_id</strong> – Applications-root folder id (Drive mode).</p></li>
+<li><p><strong>reuse_folder_id</strong> – Existing Drive folder id to update in place (re-process mode).</p></li>
+<li><p><strong>allow_overwrite</strong> – Proceed past a name collision with an existing execution
+(Drive folder and/or local entity folder) instead of raising
+<code class="docutils literal notranslate"><span class="pre">OverwriteConflict</span></code>. Overwrite-in-place stays the default flow.</p></li>
+<li><p><strong>archive_on_conflict</strong> – When <code class="docutils literal notranslate"><span class="pre">allow_overwrite</span></code> is set and a prior execution
+is found at the resolved entity folder (Drive and/or local), move its
+current root artifacts into <code class="docutils literal notranslate"><span class="pre">archive/&lt;timestamp&gt;/</span></code> first instead of
+overwriting them in place. Ignored when there is no prior execution.</p></li>
+<li><p><strong>industry</strong> – Optional domain/industry context for the active profile, passed to
+the resume-objective prompt so the company is described accurately.</p></li>
+<li><p><strong>applications_output_dir</strong> – Root of the local Drive-mirror of application
+folders. A build materializes <code class="docutils literal notranslate"><span class="pre">&lt;root&gt;/&lt;Company</span> <span class="pre">-</span> <span class="pre">Role&gt;</span></code> under it and
+places <strong>all</strong> of this execution’s artifacts there (identity files
+and local artifacts alike) — the single entity folder design D7/D2
+describe. Superseded by <code class="docutils literal notranslate"><span class="pre">entity_dir</span></code> when given.</p></li>
+<li><p><strong>entity_dir</strong> – Explicit persistent entity folder, overriding the resolution
+from <code class="docutils literal notranslate"><span class="pre">applications_output_dir</span></code>. Used by a re-run of a possibly-renamed
+application to target the existing folder so its entity_id is reused
+and no overwrite guard applies (this is the local-path equivalent of
+<code class="docutils literal notranslate"><span class="pre">reuse_folder_id</span></code>).</p></li>
+<li><p><strong>logger</strong> – Optional logger for injection.</p></li>
+<li><p><strong>_credentials_loader</strong> – Injection point for Google credentials (testing).</p></li>
+<li><p><strong>_drive_builder</strong> – Injection point for the Drive service builder (testing).</p></li>
+<li><p><strong>_docs_builder</strong> – Injection point for the Docs service builder (testing).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dict of produced paths/ids, job info, and token usage.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#jobjob.apply.workflow.OverwriteConflict" title="jobjob.apply.workflow.OverwriteConflict"><strong>OverwriteConflict</strong></a> – A fresh (non-reuse) build resolves to an entity folder
+    (Drive and/or the local mirror) that already holds a prior execution,
+    and neither <code class="docutils literal notranslate"><span class="pre">allow_overwrite</span></code> is set.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="architecture.html" class="btn btn-neutral float-left" title="Architecture" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../restapi/index.html" class="btn btn-neutral float-right" title="REST API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,275 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="API (autodoc)" href="reference.html" />
+    <link rel="prev" title="Library Reference" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Library Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#package-layout">Package layout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#how-a-run-works">How a run works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#caching">Caching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#webapp">Webapp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#application-identity-three-tiers">Application identity: three tiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#running-from-source">Running from source</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html">API (autodoc)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Library Reference</a></li>
+      <li class="breadcrumb-item active">Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/library/architecture.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">jobjob</span></code> is a Python package providing a command-line interface and a local webapp,
+plus a bundled dashboard frontend.</p>
+<section id="package-layout">
+<h2>Package layout<a class="headerlink" href="#package-layout" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28.0%" />
+<col style="width: 72.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Module</p></th>
+<th class="head"><p>Role</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/config.py</span></code></p></td>
+<td><p>Central <code class="docutils literal notranslate"><span class="pre">Settings</span></code>, loaded once from <code class="docutils literal notranslate"><span class="pre">config/.env</span></code> plus the active profile’s
+<code class="docutils literal notranslate"><span class="pre">config/.profile</span></code>. Config is read at the entry point and injected into the
+workflow; feature modules take plain parameters and never read the environment
+themselves.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/loader/</span></code></p></td>
+<td><p>Auth, prompt/content/reference loaders, and static-file location.
+<code class="docutils literal notranslate"><span class="pre">profiles.py</span></code> resolves the registry and active profile; <code class="docutils literal notranslate"><span class="pre">location.py</span></code> resolves
+<code class="docutils literal notranslate"><span class="pre">content</span></code>/<code class="docutils literal notranslate"><span class="pre">reference</span></code>/<code class="docutils literal notranslate"><span class="pre">prompt</span></code> (falling back to the bundled example);
+<code class="docutils literal notranslate"><span class="pre">loadcontent.py</span></code> loads the TOML; <code class="docutils literal notranslate"><span class="pre">skeleton.py</span></code> writes a blank-but-valid
+profile.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/ailib/</span></code></p></td>
+<td><p>AI orchestration: <code class="docutils literal notranslate"><span class="pre">query</span></code> (retry + cache), <code class="docutils literal notranslate"><span class="pre">client/</span></code> (thin provider adapters,
+e.g. <code class="docutils literal notranslate"><span class="pre">anthropic.py</span></code>), <code class="docutils literal notranslate"><span class="pre">session.py</span></code> (<code class="docutils literal notranslate"><span class="pre">AIClient</span></code>: cached context + token
+usage), and the cache manager.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/structure/</span></code></p></td>
+<td><p>Typed domain models (job description, highlight, skill, template, …).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/apply/</span></code></p></td>
+<td><p>The application-generation workflow (CLI verb <code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">build</span></code>; the module
+keeps its historical name); <code class="docutils literal notranslate"><span class="pre">generate/</span></code> holds the five AI-call steps and
+<code class="docutils literal notranslate"><span class="pre">output/</span></code> the PDF/DOCX builders.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/autofill/</span></code></p></td>
+<td><p>Assisted browser auto-fill of a job application (CLI verb <code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">apply</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/enrich/</span></code></p></td>
+<td><p>LinkedIn-profile ingestion into the contacts Sheet.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/gapi/</span></code></p></td>
+<td><p>Google Drive/Docs/Sheets I/O.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/__main__.py</span></code></p></td>
+<td><p>CLI dispatcher (<code class="docutils literal notranslate"><span class="pre">build</span></code>, <code class="docutils literal notranslate"><span class="pre">apply</span></code>, <code class="docutils literal notranslate"><span class="pre">enrich</span></code>, <code class="docutils literal notranslate"><span class="pre">auth</span></code>, <code class="docutils literal notranslate"><span class="pre">ats</span></code>, <code class="docutils literal notranslate"><span class="pre">skills</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">jobjob/launcher.py</span></code></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">jobjob-app</span></code> entry: scaffolds the working dir and serves the webapp.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Adding another AI provider is a single new adapter under <code class="docutils literal notranslate"><span class="pre">jobjob/ailib/client/</span></code>.</p>
+</section>
+<section id="how-a-run-works">
+<h2>How a run works<a class="headerlink" href="#how-a-run-works" title="Link to this heading"></a></h2>
+<p>Five sequential Claude calls per application share one cached context prefix (résumé,
+STAR examples, cover-letter examples, background):</p>
+<ol class="arabic simple">
+<li><p><strong>JD parse</strong> — extract role level, domain, required skills, location, requirements.</p></li>
+<li><p><strong>Highlight selection</strong> — pick the most relevant credential blocks for the role.</p></li>
+<li><p><strong>Résumé update</strong> — swap the objective and adjust emphasis on the Google Doc template
+via section-aware edits.</p></li>
+<li><p><strong>Cover-letter generation</strong> — assemble from the selected blocks, mirror JD language.</p></li>
+<li><p><strong>Skills analysis</strong> — gap check; flag anything not met or not honestly claimable.</p></li>
+</ol>
+</section>
+<section id="caching">
+<h2>Caching<a class="headerlink" href="#caching" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Anthropic prompt cache</strong> — stable context is sent as a cached system prefix and
+reused across all five calls (ephemeral, ~5 min, extended by hits). Keep stable content
+at the top; variable content (JD, company) at the end.</p></li>
+<li><p><strong>Local file cache</strong> — SHA256-keyed under <code class="docutils literal notranslate"><span class="pre">CACHE_DIR</span></code>, scoped by model so the
+same prompt under a different model never collides; skips identical prompts on
+re-runs. Toggle with <code class="docutils literal notranslate"><span class="pre">CLAUDE_CACHE_ENABLED</span></code>.</p></li>
+</ul>
+</section>
+<section id="webapp">
+<h2>Webapp<a class="headerlink" href="#webapp" title="Link to this heading"></a></h2>
+<p>A local dashboard (FastAPI backend + React frontend) manages the queue, launches jobs,
+edits profile content, and reviews results. It binds to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> only and protects
+state-changing endpoints with a CSRF double-submit cookie. Its HTTP surface is documented
+in the <a class="reference internal" href="../restapi/index.html"><span class="doc">REST API Reference</span></a>.</p>
+<p>Every launched job (build, autofill, enrich, batch, schedule) is a <strong>run</strong>: an
+in-memory job table drives live progress, but each run is also persisted as a
+JSON record plus a log file under <code class="docutils literal notranslate"><span class="pre">&lt;applications</span> <span class="pre">input</span> <span class="pre">dir&gt;/runs/</span></code> (see
+<code class="docutils literal notranslate"><span class="pre">webapp/backend/services/run_history.py</span></code>), so history — including failures —
+survives a backend restart instead of living only in memory. Listing merges
+the persisted records with the live job table; a persisted run still marked
+<code class="docutils literal notranslate"><span class="pre">running</span></code> with no live counterpart is reported <code class="docutils literal notranslate"><span class="pre">failed</span></code> (“interrupted”).
+Records are bounded (oldest pruned beyond a retention cap) and, once a
+finished run’s application is known, carry that application’s <code class="docutils literal notranslate"><span class="pre">entity_id</span></code>.</p>
+</section>
+<section id="application-identity-three-tiers">
+<h2>Application identity: three tiers<a class="headerlink" href="#application-identity-three-tiers" title="Link to this heading"></a></h2>
+<p>Each processed application (or contact) folder is modeled as three tiers, held
+together by one on-disk folder:</p>
+<ul class="simple">
+<li><p><strong>Entity</strong> — <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code>: a stable <code class="docutils literal notranslate"><span class="pre">entity_id</span></code> (uuid4, minted once and
+reused across every re-build/rename), status, and the notes changelog.</p></li>
+<li><p><strong>Source</strong> — <code class="docutils literal notranslate"><span class="pre">source.json</span></code>: the posting itself (company, role, description,
+and a file/web/external reference), written once at first build; a re-build
+reads it back rather than overwriting it, so a user correction (via
+<strong>Edit source</strong>) survives. <strong>Re-parse</strong> is the sanctioned exception —
+it deliberately overwrites company/role/description.</p></li>
+<li><p><strong>Execution</strong> — the artifacts of one build: <code class="docutils literal notranslate"><span class="pre">summary.json</span></code> plus the
+generated documents. The current execution lives at the folder root; prior
+executions kept on a re-build move into <code class="docutils literal notranslate"><span class="pre">archive/&lt;timestamp&gt;/</span></code> (a
+self-contained snapshot), manageable per-execution (note, lock/unlock
+against purge, promote back to root, purge unlocked).</p></li>
+</ul>
+<p>A folder with neither <code class="docutils literal notranslate"><span class="pre">entity_id</span></code> nor <code class="docutils literal notranslate"><span class="pre">source.json</span></code> is legacy: it joins by
+folder name exactly as before, and gains an id lazily on its next natural
+write — no backfill.</p>
+<p>Duplicate applications (same normalized company + role) are flagged
+advisory-only; resolving one either <strong>merges</strong> the loser’s current and
+archived executions into the survivor’s <code class="docutils literal notranslate"><span class="pre">archive/</span></code> and unions its notes, or
+<strong>deletes</strong> the loser outright. Both actions are always explicit, never
+automatic (<code class="docutils literal notranslate"><span class="pre">webapp/backend/services/dedup_service.py</span></code>).</p>
+</section>
+<section id="running-from-source">
+<h2>Running from source<a class="headerlink" href="#running-from-source" title="Link to this heading"></a></h2>
+<p>Prerequisites: Python ≥ 3.12 and <a class="reference external" href="https://docs.astral.sh/uv/">uv</a> (or plain <code class="docutils literal notranslate"><span class="pre">pip</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">sync</span>                          <span class="c1"># create the venv and install dependencies</span>
+<span class="n">uv</span> <span class="n">run</span> <span class="o">--</span><span class="n">group</span> <span class="n">test</span> <span class="n">pytest</span>       <span class="c1"># run the test suite</span>
+<span class="n">uv</span> <span class="n">run</span> <span class="n">ruff</span> <span class="n">check</span> <span class="o">.</span>              <span class="c1"># lint</span>
+<span class="n">uv</span> <span class="n">run</span> <span class="o">--</span><span class="n">group</span> <span class="n">docs</span> <span class="n">sphinx</span><span class="o">-</span><span class="n">build</span> <span class="o">-</span><span class="n">b</span> <span class="n">html</span> <span class="n">docs</span> <span class="n">docs</span><span class="o">/</span><span class="n">build</span>   <span class="c1"># build these docs</span>
+</pre></div>
+</div>
+<p>Run the webapp dev servers (two terminals):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># backend</span>
+<span class="n">cd</span> <span class="n">webapp</span><span class="o">/</span><span class="n">backend</span> <span class="o">&amp;&amp;</span> <span class="n">uvicorn</span> <span class="n">main</span><span class="p">:</span><span class="n">app</span> <span class="o">--</span><span class="n">host</span> <span class="mf">127.0.0.1</span> <span class="o">--</span><span class="n">port</span> <span class="mi">8000</span> <span class="o">--</span><span class="n">reload</span>
+<span class="c1"># frontend</span>
+<span class="n">cd</span> <span class="n">webapp</span><span class="o">/</span><span class="n">frontend</span> <span class="o">&amp;&amp;</span> <span class="n">npm</span> <span class="n">install</span> <span class="o">&amp;&amp;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">dev</span>
+</pre></div>
+</div>
+<p>See <code class="docutils literal notranslate"><span class="pre">webapp/README.md</span></code> for details.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Library Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="reference.html" class="btn btn-neutral float-right" title="API (autodoc)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

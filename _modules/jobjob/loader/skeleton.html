@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.loader.skeleton &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.loader.skeleton</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.loader.skeleton</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Create a blank-but-valid jobjob profile from a built-in skeleton.</span>
+
+<span class="sd">A *new* profile starts empty — no Tila Mer (or any other) example content — but</span>
+<span class="sd">structurally complete: the content TOMLs parse and load to empty sets, the reference</span>
+<span class="sd">dirs exist, and ``config/.profile`` is present (blank). The user fills it in via the</span>
+<span class="sd">Static Content / Profile pages or by importing a résumé (see ``jobjob.ingest``).</span>
+
+<span class="sd">Kept here (next to ``loadcontent``/``location``) so the exact ``[tool.*]`` shapes the</span>
+<span class="sd">loaders expect stay co-located with the code that reads them.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Valid-but-empty content. The tool-level config carries the same defaults as the</span>
+<span class="c1"># bundled example so a fresh profile behaves sensibly; the item arrays are omitted</span>
+<span class="c1"># (the loaders treat a missing array as an empty set).</span>
+<span class="n">_HIGHLIGHTS_TOML</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Your credential highlights — reusable blocks the model selects from per job.</span>
+<span class="s2"># Add your own below, or import a résumé to pre-fill them (Static Content → Import).</span>
+<span class="s2">[tool.highlights]</span>
+<span class="s2">default_number = 6</span>
+<span class="s2">max_characters = 900</span>
+<span class="s2">min_characters = 600</span>
+
+<span class="s2"># [[tool.highlights.highlight]]</span>
+<span class="s2"># context = &quot;short_id&quot;</span>
+<span class="s2"># topic = &quot;Technical&quot;   # Collaboration/Communication/Creativity/Leadership/Teamwork</span>
+<span class="s2"># enabled = true</span>
+<span class="s2"># text = &#39;&#39;&#39;One strong, specific accomplishment in your own voice.&#39;&#39;&#39;</span>
+<span class="s2"># keywords = [&quot;keyword&quot;, &quot;another&quot;]</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_SKILLS_TOML</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Your skills. `keywords` drive matching against a job description; the skills</span>
+<span class="s2"># analysis reports which are supported vs. gaps. Add your own below.</span>
+<span class="s2">[tool.skills]</span>
+<span class="s2">default_number = 12</span>
+
+<span class="s2"># [[tool.skills.skill]]</span>
+<span class="s2"># label = &quot;short_id&quot;</span>
+<span class="s2"># text = &quot;Human-readable skill&quot;</span>
+<span class="s2"># keywords = [&quot;keyword&quot;]</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_TEMPLATES_TOML</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Your resume template(s). Point `doc_id` (or the app&#39;s RESUME_TEMPLATE_ID) at your</span>
+<span class="s2"># own Google Doc. Sections are located by heading and filled by the apply flow.</span>
+<span class="s2">[tool.templates]</span>
+<span class="s2">default = &quot;default&quot;</span>
+
+<span class="s2"># Editable sections, located by their heading (matched case-insensitively).</span>
+<span class="s2"># `section` selects how the region is filled: &quot;objective&quot; (rewritten for the role)</span>
+<span class="s2"># or &quot;highlights&quot; (bullets replaced with the selected highlights). Toggle `enabled`</span>
+<span class="s2"># to leave a section&#39;s template text untouched.</span>
+<span class="s2">[[tool.templates.section]]</span>
+<span class="s2">heading = &quot;Objective&quot;</span>
+<span class="s2">section = &quot;objective&quot;</span>
+<span class="s2">enabled = true</span>
+
+<span class="s2">[[tool.templates.section]]</span>
+<span class="s2">heading = &quot;Highlights&quot;</span>
+<span class="s2">section = &quot;highlights&quot;</span>
+<span class="s2">enabled = true</span>
+
+<span class="s2">[[tool.templates.template]]</span>
+<span class="s2">name = &quot;default&quot;</span>
+<span class="s2">archetype = &quot;Default&quot;</span>
+<span class="s2">doc_id = &quot;&quot;</span>
+<span class="s2">description = &quot;Your resume template. Set doc_id (RESUME_TEMPLATE_ID) to a Google Doc.&quot;</span>
+<span class="s2">keywords = []</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_EXPERIENCE_TOML</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Your work history. Each [[tool.experience.role]] is one ATS &quot;Work Experience&quot;</span>
+<span class="s2"># entry. Several roles at the same employer are separate entries (that&#39;s how an ATS</span>
+<span class="s2"># wants them); list them adjacent and a résumé groups them under one company.</span>
+<span class="s2"># Add your own below, or import a résumé to pre-fill them (Static Content → Import).</span>
+<span class="s2">[tool.experience]</span>
+
+<span class="s2"># [[tool.experience.role]]</span>
+<span class="s2"># company = &quot;Acme Corp&quot;</span>
+<span class="s2"># title = &quot;Senior Engineer&quot;</span>
+<span class="s2"># location = &quot;Remote&quot;</span>
+<span class="s2"># start = &quot;2021-03&quot;          # YYYY-MM or YYYY</span>
+<span class="s2"># end = &quot;&quot;                   # blank when current</span>
+<span class="s2"># current = true</span>
+<span class="s2"># description = &#39;&#39;&#39;</span>
+<span class="s2"># - One specific, quantified accomplishment.</span>
+<span class="s2"># - Another.</span>
+<span class="s2"># &#39;&#39;&#39;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_BACKGROUND_MD</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Background</span>
+
+<span class="s2">Your career narrative, context, and any relocation intent go here. This is shared</span>
+<span class="s2">context the model reads on every generation — write it in your own voice.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_WRITING_STYLE_MD</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># Writing style</span>
+
+<span class="s2">Notes on your voice and style: tone, sentence rhythm, words to favor or avoid. The</span>
+<span class="s2">model mirrors this when drafting cover letters.</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="n">_PROFILE_CONFIG</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span><span class="se">\</span>
+<span class="s2"># jobjob profile — applicant identity + resume template.</span>
+<span class="s2"># Fill these in via the setup wizard or the Profile settings page. No secrets or</span>
+<span class="s2"># local paths here.</span>
+<span class="s2">APPLICANT_NAME=&quot;&quot;</span>
+<span class="s2">APPLICANT_EMAIL=&quot;&quot;</span>
+<span class="s2">APPLICANT_PHONE=&quot;&quot;</span>
+<span class="s2">APPLICANT_LINKEDIN=&quot;&quot;</span>
+<span class="s2">RESUME_TEMPLATE_ID=&quot;&quot;</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="create_blank_profile">
+<a class="viewcode-back" href="../../../library/reference.html#jobjob.loader.skeleton.create_blank_profile">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_blank_profile</span><span class="p">(</span><span class="n">dest</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a blank-but-valid profile tree at ``dest`` and return it.</span>
+
+<span class="sd">    Creates ``content/{highlights,skills,templates,experience}.toml``,</span>
+<span class="sd">    ``reference/{background.md,writing_style.md,cover_letters/,stars/}``, and</span>
+<span class="sd">    ``config/.profile``. Parent dirs are created as needed; existing files are left</span>
+<span class="sd">    untouched (idempotent), so re-running never clobbers user edits.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        dest: The profile directory to populate.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        ``dest``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">dest</span> <span class="o">/</span> <span class="s2">&quot;content&quot;</span>
+    <span class="n">reference</span> <span class="o">=</span> <span class="n">dest</span> <span class="o">/</span> <span class="s2">&quot;reference&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">dest</span> <span class="o">/</span> <span class="s2">&quot;config&quot;</span>
+    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span>
+        <span class="n">content</span><span class="p">,</span>
+        <span class="n">reference</span><span class="p">,</span>
+        <span class="n">reference</span> <span class="o">/</span> <span class="s2">&quot;cover_letters&quot;</span><span class="p">,</span>
+        <span class="n">reference</span> <span class="o">/</span> <span class="s2">&quot;stars&quot;</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">files</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">content</span> <span class="o">/</span> <span class="s2">&quot;highlights.toml&quot;</span><span class="p">:</span> <span class="n">_HIGHLIGHTS_TOML</span><span class="p">,</span>
+        <span class="n">content</span> <span class="o">/</span> <span class="s2">&quot;skills.toml&quot;</span><span class="p">:</span> <span class="n">_SKILLS_TOML</span><span class="p">,</span>
+        <span class="n">content</span> <span class="o">/</span> <span class="s2">&quot;templates.toml&quot;</span><span class="p">:</span> <span class="n">_TEMPLATES_TOML</span><span class="p">,</span>
+        <span class="n">content</span> <span class="o">/</span> <span class="s2">&quot;experience.toml&quot;</span><span class="p">:</span> <span class="n">_EXPERIENCE_TOML</span><span class="p">,</span>
+        <span class="n">reference</span> <span class="o">/</span> <span class="s2">&quot;background.md&quot;</span><span class="p">:</span> <span class="n">_BACKGROUND_MD</span><span class="p">,</span>
+        <span class="n">reference</span> <span class="o">/</span> <span class="s2">&quot;writing_style.md&quot;</span><span class="p">:</span> <span class="n">_WRITING_STYLE_MD</span><span class="p">,</span>
+        <span class="n">config</span> <span class="o">/</span> <span class="s2">&quot;.profile&quot;</span><span class="p">:</span> <span class="n">_PROFILE_CONFIG</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">text</span> <span class="ow">in</span> <span class="n">files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dest</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

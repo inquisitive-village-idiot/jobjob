@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jobjob.config &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">jobjob.config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for jobjob.config</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;Centralized runtime configuration in two disjoint tiers.</span>
+
+<span class="sd">- **App config** (``config/.env``, gitignored, machine-local): the single jobjob</span>
+<span class="sd">  instance — secrets, local paths, output IDs, and the profile registry.</span>
+<span class="sd">- **Profile config** (``&lt;profile-repo&gt;/config/.profile``, committed): the active</span>
+<span class="sd">  profile&#39;s applicant identity and resume template.</span>
+
+<span class="sd">The two key sets are **disjoint** (``APP_KEYS`` / ``PROFILE_KEYS``) with no</span>
+<span class="sd">fallback between them; ``load_settings`` validates that neither file carries the</span>
+<span class="sd">other&#39;s keys. The entry point calls ``load_settings`` once and passes concrete</span>
+<span class="sd">values each function needs — feature modules never import ``Settings``.</span>
+
+<span class="sd">NOTE: the google credential/token env-var names are owned by ``jobjob.loader.auth``</span>
+<span class="sd">    and re-used here so they are defined in exactly one place.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dcs</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.loader.auth</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ENV_GOOGLE_CREDENTIALS_FILE</span><span class="p">,</span>
+    <span class="n">ENV_GOOGLE_TOKEN_FILE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.loader.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">PROFILE_REGISTRY_PREFIX</span><span class="p">,</span>
+    <span class="n">active_profile_name</span><span class="p">,</span>
+    <span class="n">profile_config_file</span><span class="p">,</span>
+    <span class="n">read_env_keys</span><span class="p">,</span>
+    <span class="n">resolve_active_profile_dir</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">jobjob.structure.applicant</span><span class="w"> </span><span class="kn">import</span> <span class="n">Applicant</span>
+
+<span class="c1"># App config: machine-local, gitignored. Lives under config/ (not a root .env,</span>
+<span class="c1"># which autoenv would auto-source).</span>
+<span class="n">DEFAULT_APP_CONFIG</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/.env&quot;</span><span class="p">)</span>
+<span class="n">DEFAULT_MODEL</span> <span class="o">=</span> <span class="s2">&quot;claude-sonnet-4-6&quot;</span>
+
+<span class="c1"># Env-var names (single source of truth)</span>
+<span class="n">ENV_ANTHROPIC_API_KEY</span> <span class="o">=</span> <span class="s2">&quot;ANTHROPIC_API_KEY&quot;</span>
+<span class="n">ENV_ANTHROPIC_BASE_URL</span> <span class="o">=</span> <span class="s2">&quot;ANTHROPIC_BASE_URL&quot;</span>
+<span class="n">ENV_MODEL</span> <span class="o">=</span> <span class="s2">&quot;CLAUDE_MODEL&quot;</span>
+<span class="n">ENV_CACHE_ENABLED</span> <span class="o">=</span> <span class="s2">&quot;CLAUDE_CACHE_ENABLED&quot;</span>
+<span class="n">ENV_CACHE_DIR</span> <span class="o">=</span> <span class="s2">&quot;CACHE_DIR&quot;</span>
+<span class="n">ENV_RESUME_TEMPLATE_ID</span> <span class="o">=</span> <span class="s2">&quot;RESUME_TEMPLATE_ID&quot;</span>
+
+<span class="c1"># Per-component input/output keys. Each component (Applications = apply, Enrichment =</span>
+<span class="c1"># enrich) has its own INPUT (local working dir) and OUTPUT (where results land).</span>
+<span class="n">ENV_APPLICATIONS_INPUT_DIR</span> <span class="o">=</span> <span class="s2">&quot;APPLICATIONS_INPUT_DIR&quot;</span>
+<span class="n">ENV_APPLICATIONS_OUTPUT_DIR</span> <span class="o">=</span> <span class="s2">&quot;APPLICATIONS_OUTPUT_DIR&quot;</span>
+<span class="n">ENV_APPLICATIONS_OUTPUT_DRIVE_ID</span> <span class="o">=</span> <span class="s2">&quot;APPLICATIONS_OUTPUT_DRIVE_ID&quot;</span>
+<span class="n">ENV_ENRICHMENT_INPUT_DIR</span> <span class="o">=</span> <span class="s2">&quot;ENRICHMENT_INPUT_DIR&quot;</span>
+<span class="n">ENV_ENRICHMENT_OUTPUT_SHEET_ID</span> <span class="o">=</span> <span class="s2">&quot;ENRICHMENT_OUTPUT_SHEET_ID&quot;</span>
+
+<span class="c1"># Deprecated pre-2.4 names, still read as a fallback (see RENAMED_KEYS and</span>
+<span class="c1"># _env_first). Kept readable through the 2.x line; removed at a future major.</span>
+<span class="n">ENV_DATA_DIR</span> <span class="o">=</span> <span class="s2">&quot;DATA_DIR&quot;</span>
+<span class="n">ENV_APPLICATIONS_LOCAL_DIR</span> <span class="o">=</span> <span class="s2">&quot;APPLICATIONS_LOCAL_DIR&quot;</span>
+<span class="n">ENV_APPLICATIONS_FOLDER_ID</span> <span class="o">=</span> <span class="s2">&quot;APPLICATIONS_FOLDER_ID&quot;</span>
+<span class="n">ENV_LINKEDIN_SHEET_ID</span> <span class="o">=</span> <span class="s2">&quot;LINKEDIN_SHEET_ID&quot;</span>
+
+<span class="c1"># Old → new renames. The migration rewrites the old keys to the new ones in</span>
+<span class="c1"># ``config/.env`` (best-effort cleanup); the load-time fallback in ``_env_first``</span>
+<span class="c1"># is what actually keeps old configs — including env-var-only setups the file</span>
+<span class="c1"># rewrite can&#39;t reach — working until the keys are removed.</span>
+<span class="n">RENAMED_KEYS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">ENV_DATA_DIR</span><span class="p">:</span> <span class="n">ENV_APPLICATIONS_INPUT_DIR</span><span class="p">,</span>
+    <span class="n">ENV_APPLICATIONS_LOCAL_DIR</span><span class="p">:</span> <span class="n">ENV_APPLICATIONS_OUTPUT_DIR</span><span class="p">,</span>
+    <span class="n">ENV_APPLICATIONS_FOLDER_ID</span><span class="p">:</span> <span class="n">ENV_APPLICATIONS_OUTPUT_DRIVE_ID</span><span class="p">,</span>
+    <span class="n">ENV_LINKEDIN_SHEET_ID</span><span class="p">:</span> <span class="n">ENV_ENRICHMENT_OUTPUT_SHEET_ID</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">DEFAULT_INPUT_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
+<span class="n">ENV_APPLICANT_NAME</span> <span class="o">=</span> <span class="s2">&quot;APPLICANT_NAME&quot;</span>
+<span class="n">ENV_APPLICANT_PHONE</span> <span class="o">=</span> <span class="s2">&quot;APPLICANT_PHONE&quot;</span>
+<span class="n">ENV_APPLICANT_EMAIL</span> <span class="o">=</span> <span class="s2">&quot;APPLICANT_EMAIL&quot;</span>
+<span class="n">ENV_APPLICANT_LINKEDIN</span> <span class="o">=</span> <span class="s2">&quot;APPLICANT_LINKEDIN&quot;</span>
+<span class="c1"># Optional domain/industry context for this profile (e.g. &quot;science journalism&quot;).</span>
+<span class="c1"># Injected into the resume-objective prompt so the model describes the target</span>
+<span class="c1"># company accurately; left out of the prompt entirely when unset.</span>
+<span class="n">ENV_INDUSTRY</span> <span class="o">=</span> <span class="s2">&quot;INDUSTRY&quot;</span>
+
+<span class="c1"># Per-profile resource directory names (relative to the profile repo). Optional;</span>
+<span class="c1"># each falls back to its conventional default so existing profiles keep working.</span>
+<span class="c1"># Read by jobjob.loader.location when resolving the active profile&#39;s resources.</span>
+<span class="n">ENV_CONTENT_DIR</span> <span class="o">=</span> <span class="s2">&quot;CONTENT_DIR&quot;</span>
+<span class="n">ENV_REFERENCE_DIR</span> <span class="o">=</span> <span class="s2">&quot;REFERENCE_DIR&quot;</span>
+<span class="n">ENV_PROMPT_DIR</span> <span class="o">=</span> <span class="s2">&quot;PROMPT_DIR&quot;</span>
+
+<span class="c1"># Config tiers — disjoint by construction; enforced by _validate_scopes.</span>
+<span class="c1"># APP: one jobjob instance (secrets, local paths, output IDs, registry).</span>
+<span class="n">APP_KEYS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="n">ENV_ANTHROPIC_API_KEY</span><span class="p">,</span>
+        <span class="n">ENV_ANTHROPIC_BASE_URL</span><span class="p">,</span>
+        <span class="n">ENV_MODEL</span><span class="p">,</span>
+        <span class="n">ENV_CACHE_ENABLED</span><span class="p">,</span>
+        <span class="n">ENV_CACHE_DIR</span><span class="p">,</span>
+        <span class="n">ENV_GOOGLE_CREDENTIALS_FILE</span><span class="p">,</span>
+        <span class="n">ENV_GOOGLE_TOKEN_FILE</span><span class="p">,</span>
+        <span class="c1"># Per-component input/output keys.</span>
+        <span class="n">ENV_APPLICATIONS_INPUT_DIR</span><span class="p">,</span>
+        <span class="n">ENV_APPLICATIONS_OUTPUT_DIR</span><span class="p">,</span>
+        <span class="n">ENV_APPLICATIONS_OUTPUT_DRIVE_ID</span><span class="p">,</span>
+        <span class="n">ENV_ENRICHMENT_INPUT_DIR</span><span class="p">,</span>
+        <span class="n">ENV_ENRICHMENT_OUTPUT_SHEET_ID</span><span class="p">,</span>
+        <span class="c1"># Deprecated aliases — still accepted so existing configs keep validating.</span>
+        <span class="n">ENV_DATA_DIR</span><span class="p">,</span>
+        <span class="n">ENV_APPLICATIONS_LOCAL_DIR</span><span class="p">,</span>
+        <span class="n">ENV_APPLICATIONS_FOLDER_ID</span><span class="p">,</span>
+        <span class="n">ENV_LINKEDIN_SHEET_ID</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+<span class="c1"># PROFILE: the active content set (identity + resume template + resource dir names).</span>
+<span class="c1"># No local paths (the resource dirs are names relative to the profile repo).</span>
+<span class="n">PROFILE_KEYS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">{</span>
+        <span class="n">ENV_APPLICANT_NAME</span><span class="p">,</span>
+        <span class="n">ENV_APPLICANT_PHONE</span><span class="p">,</span>
+        <span class="n">ENV_APPLICANT_EMAIL</span><span class="p">,</span>
+        <span class="n">ENV_APPLICANT_LINKEDIN</span><span class="p">,</span>
+        <span class="n">ENV_RESUME_TEMPLATE_ID</span><span class="p">,</span>
+        <span class="n">ENV_INDUSTRY</span><span class="p">,</span>
+        <span class="n">ENV_CONTENT_DIR</span><span class="p">,</span>
+        <span class="n">ENV_REFERENCE_DIR</span><span class="p">,</span>
+        <span class="n">ENV_PROMPT_DIR</span><span class="p">,</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># Conventional defaults for the per-profile resource dirs (used by the loaders and</span>
+<span class="c1"># the config UI so an unset key behaves exactly as before).</span>
+<span class="n">DEFAULT_CONTENT_DIR</span> <span class="o">=</span> <span class="s2">&quot;content&quot;</span>
+<span class="n">DEFAULT_REFERENCE_DIR</span> <span class="o">=</span> <span class="s2">&quot;reference&quot;</span>
+<span class="n">DEFAULT_PROMPT_DIR</span> <span class="o">=</span> <span class="s2">&quot;prompt&quot;</span>
+
+<span class="n">_TRUE_VALUES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GoogleSettings">
+<a class="viewcode-back" href="../../library/reference.html#jobjob.config.GoogleSettings">[docs]</a>
+<span class="nd">@dcs</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GoogleSettings</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Google Drive/Docs credential + template settings.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        credentials_file: OAuth client-secrets JSON path.</span>
+<span class="sd">        token_file: Pickled-token path.</span>
+<span class="sd">        template_id: Resume-template Google Doc id.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">credentials_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">token_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">template_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="Settings">
+<a class="viewcode-back" href="../../library/reference.html#jobjob.config.Settings">[docs]</a>
+<span class="nd">@dcs</span><span class="o">.</span><span class="n">dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Aggregated runtime settings (built once at the entry point).</span>
+
+<span class="sd">    Inputs/outputs are modeled per component (Applications = apply, Enrichment =</span>
+<span class="sd">    enrich). Inputs are local-only for now.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        applicant: Applicant identity.</span>
+<span class="sd">        model: Claude model id.</span>
+<span class="sd">        anthropic_api_key: Anthropic API key.</span>
+<span class="sd">        anthropic_base_url: Optional override for the Anthropic API base URL. Point it</span>
+<span class="sd">            at a Claude-compatible proxy (e.g. one forwarding to a free Gemini key) to</span>
+<span class="sd">            run without a paid Anthropic key. None uses the SDK default.</span>
+<span class="sd">        cache_enabled: Default response-cache toggle.</span>
+<span class="sd">        google: Google credential + resume-template settings.</span>
+<span class="sd">        applications_input_dir: Local root holding ``jobs/``, ``profiles/`` and</span>
+<span class="sd">            ``completed/`` for the apply flow — where a processed JD moves on</span>
+<span class="sd">            completion.</span>
+<span class="sd">        applications_output_dir: Local synced Google Drive applications mirror; when</span>
+<span class="sd">            set, the completed-applications list is read from here instead of Drive.</span>
+<span class="sd">        applications_output_drive_id: Drive applications-root folder id (output).</span>
+<span class="sd">        enrichment_input_dir: Local input root for the enrich flow; defaults to</span>
+<span class="sd">            ``applications_input_dir`` when its own key is unset.</span>
+<span class="sd">        enrichment_output_sheet_id: Spreadsheet id for the contacts sheet (enrich).</span>
+<span class="sd">        industry: Optional domain/industry context for the active profile, injected</span>
+<span class="sd">            into the resume-objective prompt; None means no domain hint is added.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">applicant</span><span class="p">:</span> <span class="n">Applicant</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_MODEL</span>
+    <span class="n">anthropic_api_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">anthropic_base_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cache_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">google</span><span class="p">:</span> <span class="n">GoogleSettings</span> <span class="o">=</span> <span class="n">dcs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">GoogleSettings</span><span class="p">)</span>
+    <span class="n">applications_input_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">DEFAULT_INPUT_DIR</span>
+    <span class="n">applications_output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">applications_output_drive_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">enrichment_input_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">DEFAULT_INPUT_DIR</span>
+    <span class="n">enrichment_output_sheet_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">profile_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">profile_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">industry</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<span class="c1"># Deprecated keys we&#39;ve already warned about this process — keep the log to once each.</span>
+<span class="n">_DEPRECATION_WARNED</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_warn_deprecated</span><span class="p">(</span><span class="n">old_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">new_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Log a one-time deprecation warning when a deprecated config key is used.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">old_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_DEPRECATION_WARNED</span><span class="p">:</span>
+        <span class="n">_DEPRECATION_WARNED</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">old_key</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;jobjob.config&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Config key </span><span class="si">%s</span><span class="s2"> is deprecated — rename it to </span><span class="si">%s</span><span class="s2">. The old name still &quot;</span>
+            <span class="s2">&quot;works for now but will be removed in a future major release.&quot;</span><span class="p">,</span>
+            <span class="n">old_key</span><span class="p">,</span>
+            <span class="n">new_key</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_env_first</span><span class="p">(</span>
+    <span class="n">new_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">old_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">overrides</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a setting across its new and deprecated names, honoring source priority.</span>
+
+<span class="sd">    Precedence, highest first: environment variable (new name, then deprecated) →</span>
+<span class="sd">    config-file value (new name, then deprecated). ``overrides`` is a snapshot of</span>
+<span class="sd">    ``os.environ`` taken BEFORE any ``.env`` file was sourced, so a value set directly</span>
+<span class="sd">    in the environment outranks the config file even across the rename (env &gt; file).</span>
+<span class="sd">    When ``overrides`` is None the two layers collapse to ``os.environ`` (new before</span>
+<span class="sd">    deprecated). Using a deprecated name logs a one-time warning.</span>
+
+<span class="sd">    This is the compatibility mechanism for the Batch C rename: it covers values in</span>
+<span class="sd">    ``config/.env`` AND values provided directly as environment variables</span>
+<span class="sd">    (shell/launchd/Docker/CI), which a file migration can&#39;t reach.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">layers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">overrides</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span>  <span class="c1"># real env vars (pre-dotenv) — top precedence</span>
+    <span class="n">layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">)</span>  <span class="c1"># env + config-file values merged by load_dotenv</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="n">new_key</span><span class="p">,</span> <span class="n">old_key</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="n">old_key</span><span class="p">:</span>
+                    <span class="n">_warn_deprecated</span><span class="p">(</span><span class="n">old_key</span><span class="p">,</span> <span class="n">new_key</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">new_key</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_path</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]:</span>
+    <span class="c1"># Tolerate a value pasted with surrounding quotes (e.g. via the config UI).</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span> <span class="k">if</span> <span class="n">value</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_text</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a trimmed, unquoted string, or None when empty (for id-style values).&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&#39;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">value</span> <span class="ow">or</span> <span class="kc">None</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_bool</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">default</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">default</span>
+    <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">_TRUE_VALUES</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate_scopes</span><span class="p">(</span><span class="n">app_config</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">profile_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Raise if app/profile configs carry each other&#39;s keys (zero-overlap rule).</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        app_config: Path to the app ``config/.env``.</span>
+<span class="sd">        profile_config: Path to the active ``config/.profile``, or None.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If the app config holds profile-owned keys, or the profile</span>
+<span class="sd">            config holds app-owned or registry keys.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">app_misplaced</span> <span class="o">=</span> <span class="n">read_env_keys</span><span class="p">(</span><span class="n">app_config</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">PROFILE_KEYS</span>
+    <span class="k">if</span> <span class="n">app_misplaced</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;App config </span><span class="si">{</span><span class="n">app_config</span><span class="si">}</span><span class="s2"> contains profile-owned keys &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">app_misplaced</span><span class="p">)</span><span class="si">}</span><span class="s2"> — move them to the profile&#39;s config/.profile.&quot;</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">profile_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prof_keys</span> <span class="o">=</span> <span class="n">read_env_keys</span><span class="p">(</span><span class="n">profile_config</span><span class="p">)</span>
+        <span class="n">prof_misplaced</span> <span class="o">=</span> <span class="p">(</span><span class="n">prof_keys</span> <span class="o">&amp;</span> <span class="n">APP_KEYS</span><span class="p">)</span> <span class="o">|</span> <span class="p">{</span>
+            <span class="n">k</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">prof_keys</span>
+            <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">PROFILE_REGISTRY_PREFIX</span><span class="p">)</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="s2">&quot;JOBJOB_ACTIVE_PROFILE&quot;</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">prof_misplaced</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Profile config </span><span class="si">{</span><span class="n">profile_config</span><span class="si">}</span><span class="s2"> contains app-owned keys &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">prof_misplaced</span><span class="p">)</span><span class="si">}</span><span class="s2"> — move them to the app config/.env.&quot;</span>
+            <span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_settings">
+<a class="viewcode-back" href="../../library/reference.html#jobjob.config.load_settings">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_settings</span><span class="p">(</span><span class="n">app_config</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">DEFAULT_APP_CONFIG</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Settings</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load settings from the app config plus the active profile config.</span>
+
+<span class="sd">    Sources ``app_config`` (machine-local), resolves the active profile from the</span>
+<span class="sd">    registry it declares, then sources that profile&#39;s ``config/.profile``. The</span>
+<span class="sd">    two key sets are validated as disjoint. ``load_dotenv`` is a no-op on a</span>
+<span class="sd">    missing file, so the ambient environment is used as-is when a file is absent.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        app_config: Path to the app ``config/.env``. Defaults to ``config/.env``.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        A populated Settings.</span>
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If a configured active profile dir is missing, or the two</span>
+<span class="sd">            configs violate the zero-overlap rule.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Snapshot real environment variables before sourcing any .env file so a value set</span>
+    <span class="c1"># directly in the environment outranks the config file (priority: CLI &gt; env &gt; file</span>
+    <span class="c1"># &gt; default), even across the deprecated→new key rename. CLI overrides are applied</span>
+    <span class="c1"># above this, at each command&#39;s entry point (e.g. ``args.sheet_id or settings.…``).</span>
+    <span class="n">env_overrides</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">)</span>
+    <span class="n">load_dotenv</span><span class="p">(</span><span class="n">app_config</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="n">profile_dir</span> <span class="o">=</span> <span class="n">resolve_active_profile_dir</span><span class="p">()</span>
+    <span class="n">profile_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">profile_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">profile_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Active profile dir not found: </span><span class="si">{</span><span class="n">profile_dir</span><span class="si">}</span><span class="s2"> &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;(check the JOBJOB_PROFILE_* registry in </span><span class="si">{</span><span class="n">app_config</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="p">)</span>
+        <span class="c1"># Clear any prior profile&#39;s keys so a re-load (e.g. a profile switch in the</span>
+        <span class="c1"># webapp) doesn&#39;t inherit stale values the new profile may omit.</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">PROFILE_KEYS</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">profile_config</span> <span class="o">=</span> <span class="n">profile_config_file</span><span class="p">(</span><span class="n">profile_dir</span><span class="p">)</span>
+        <span class="n">load_dotenv</span><span class="p">(</span><span class="n">profile_config</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+    <span class="n">_validate_scopes</span><span class="p">(</span><span class="n">app_config</span><span class="p">,</span> <span class="n">profile_config</span><span class="p">)</span>
+
+    <span class="c1"># NOTE: unset applicant fields stay None (no PII default); contact_line and the</span>
+    <span class="c1">#   document builders treat None as &quot;omit&quot;.</span>
+    <span class="n">applicant</span> <span class="o">=</span> <span class="n">Applicant</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_APPLICANT_NAME</span><span class="p">),</span>
+        <span class="n">phone</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_APPLICANT_PHONE</span><span class="p">),</span>
+        <span class="n">email</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_APPLICANT_EMAIL</span><span class="p">),</span>
+        <span class="n">linkedin</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_APPLICANT_LINKEDIN</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="c1"># Applications input: new key → deprecated DATA_DIR → default. Enrichment input:</span>
+    <span class="c1"># its own key, else it inherits the fully-resolved applications input (so a</span>
+    <span class="c1"># config that only set the old DATA_DIR keeps both flows pointed there, exactly</span>
+    <span class="c1"># as before). See the precedence table in docs/setup.md.</span>
+    <span class="n">applications_input_dir</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_path</span><span class="p">(</span>
+            <span class="n">_env_first</span><span class="p">(</span>
+                <span class="n">ENV_APPLICATIONS_INPUT_DIR</span><span class="p">,</span> <span class="n">ENV_DATA_DIR</span><span class="p">,</span> <span class="n">overrides</span><span class="o">=</span><span class="n">env_overrides</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="ow">or</span> <span class="n">DEFAULT_INPUT_DIR</span>
+    <span class="p">)</span>
+    <span class="n">enrichment_input_dir</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_ENRICHMENT_INPUT_DIR</span><span class="p">))</span> <span class="ow">or</span> <span class="n">applications_input_dir</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Settings</span><span class="p">(</span>
+        <span class="n">applicant</span><span class="o">=</span><span class="n">applicant</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_MODEL</span><span class="p">)</span> <span class="ow">or</span> <span class="n">DEFAULT_MODEL</span><span class="p">,</span>
+        <span class="n">anthropic_api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_ANTHROPIC_API_KEY</span><span class="p">),</span>
+        <span class="n">anthropic_base_url</span><span class="o">=</span><span class="n">_text</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_ANTHROPIC_BASE_URL</span><span class="p">)),</span>
+        <span class="n">cache_enabled</span><span class="o">=</span><span class="n">_bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_CACHE_ENABLED</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">google</span><span class="o">=</span><span class="n">GoogleSettings</span><span class="p">(</span>
+            <span class="n">credentials_file</span><span class="o">=</span><span class="n">_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_GOOGLE_CREDENTIALS_FILE</span><span class="p">)),</span>
+            <span class="n">token_file</span><span class="o">=</span><span class="n">_path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_GOOGLE_TOKEN_FILE</span><span class="p">)),</span>
+            <span class="n">template_id</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_RESUME_TEMPLATE_ID</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">applications_input_dir</span><span class="o">=</span><span class="n">applications_input_dir</span><span class="p">,</span>
+        <span class="n">applications_output_dir</span><span class="o">=</span><span class="n">_path</span><span class="p">(</span>
+            <span class="n">_env_first</span><span class="p">(</span>
+                <span class="n">ENV_APPLICATIONS_OUTPUT_DIR</span><span class="p">,</span>
+                <span class="n">ENV_APPLICATIONS_LOCAL_DIR</span><span class="p">,</span>
+                <span class="n">overrides</span><span class="o">=</span><span class="n">env_overrides</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
+        <span class="n">applications_output_drive_id</span><span class="o">=</span><span class="n">_text</span><span class="p">(</span>
+            <span class="n">_env_first</span><span class="p">(</span>
+                <span class="n">ENV_APPLICATIONS_OUTPUT_DRIVE_ID</span><span class="p">,</span>
+                <span class="n">ENV_APPLICATIONS_FOLDER_ID</span><span class="p">,</span>
+                <span class="n">overrides</span><span class="o">=</span><span class="n">env_overrides</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
+        <span class="n">enrichment_input_dir</span><span class="o">=</span><span class="n">enrichment_input_dir</span><span class="p">,</span>
+        <span class="n">enrichment_output_sheet_id</span><span class="o">=</span><span class="n">_text</span><span class="p">(</span>
+            <span class="n">_env_first</span><span class="p">(</span>
+                <span class="n">ENV_ENRICHMENT_OUTPUT_SHEET_ID</span><span class="p">,</span>
+                <span class="n">ENV_LINKEDIN_SHEET_ID</span><span class="p">,</span>
+                <span class="n">overrides</span><span class="o">=</span><span class="n">env_overrides</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">),</span>
+        <span class="n">profile_name</span><span class="o">=</span><span class="n">active_profile_name</span><span class="p">(),</span>
+        <span class="n">profile_dir</span><span class="o">=</span><span class="n">profile_dir</span><span class="p">,</span>
+        <span class="n">industry</span><span class="o">=</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ENV_INDUSTRY</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># __END__</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

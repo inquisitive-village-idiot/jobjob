@@ -1,0 +1,364 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Applications &mdash; jobjob documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=08bfcbec"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Enrichment" href="usage-enrichment.html" />
+    <link rel="prev" title="Profiles" href="profiles.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            jobjob
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">User Guide</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="prerequisites.html">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="credentials.html">Credentials</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html">Install</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiles.html">Profiles</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Applications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#in-the-app">In the app</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#on-the-command-line">On the command line</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#re-checking-a-resume">Re-checking a resume</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#what-you-need">What you need</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#where-output-lands">Where output lands</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#re-building-and-archived-executions">Re-building and archived executions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#managing-archived-executions">Managing archived executions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#identity-entity-source-and-executions">Identity: entity, source, and executions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#possible-duplicates">Possible duplicates</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#applying-from-the-dashboard">Applying from the dashboard</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#see-also">See also</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage-enrichment.html">Enrichment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="google-project.html">Google Drive/Docs setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="github-repo.html">Profile content in a Git/GitHub repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="free-option.html">Free option (experimental)</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Library Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../library/index.html">Library Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">REST API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../restapi/index.html">REST API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">jobjob</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">User Guide</a></li>
+      <li class="breadcrumb-item active">Applications</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/inquisitive-village-idiot/jobjob/blob/main/docs/guide/usage-applications.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="applications">
+<h1>Applications<a class="headerlink" href="#applications" title="Link to this heading"></a></h1>
+<p>The core feature: give jobjob a job posting and it tailors a résumé summary and cover
+letter from your active <a class="reference internal" href="profiles.html"><span class="doc">profile</span></a>, saving them locally and (optionally)
+to Google Drive.</p>
+<p><strong>Before you start:</strong> finish <a class="reference internal" href="install.html"><span class="doc">Install</span></a>, <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>, and
+<a class="reference internal" href="profiles.html"><span class="doc">Profiles</span></a> (add some background content). Configuration keys for this feature live
+under <em>Applications</em> in the <a class="reference internal" href="configuration.html"><span class="doc">configuration reference</span></a>.</p>
+<section id="in-the-app">
+<h2>In the app<a class="headerlink" href="#in-the-app" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Add a job posting</strong> — click <strong>Add JD</strong>, then <em>paste the text</em>, <em>fetch a URL</em>, or
+<em>upload a PDF</em>. (You can also drop a PDF into <code class="docutils literal notranslate"><span class="pre">&lt;jobjob</span> <span class="pre">folder&gt;/data/jobs/</span></code>.)</p></li>
+<li><p>On the <strong>Applications</strong> page, find the posting (state <em>Queued</em>) and choose
+<strong>Build</strong> from its actions.</p></li>
+<li><p>Watch progress. While a document-generation run is in flight the row shows a
+live <strong>Building…</strong> indicator — even if the build was launched from a batch,
+a schedule, or another browser tab — and clears automatically (the page
+refreshes the run listing every few seconds). The finished application
+flips to <em>Built</em> in the same table; past runs (and any errors) stay on the
+<strong>Queue</strong> page.</p></li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The cover letter starts with a <code class="docutils literal notranslate"><span class="pre">⚠️</span> <span class="pre">GAPS</span> <span class="pre">/</span> <span class="pre">FLAGS</span> <span class="pre">–</span> <span class="pre">DELETE</span> <span class="pre">BEFORE</span> <span class="pre">SENDING</span></code> section
+listing anything the AI couldn’t match to your documented background. <strong>Review and
+delete it before sending.</strong> jobjob flags gaps rather than inventing qualifications.</p>
+</div>
+</section>
+<section id="on-the-command-line">
+<h2>On the command line<a class="headerlink" href="#on-the-command-line" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jobjob</span> <span class="n">build</span> <span class="o">&lt;</span><span class="n">job_description</span><span class="o">.</span><span class="n">pdf</span><span class="o">&gt;</span> <span class="p">[</span><span class="n">options</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">apply</span></code> means something different than it used to — it now runs
+assisted browser auto-fill (formerly <code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">autofill</span></code>), not document
+generation. Document generation is <code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">build</span></code>.</p>
+</div>
+<p>The positional argument is a job-description PDF, or a directory of mixed inputs (only
+job descriptions are processed; other files are skipped).</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Flag</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-o</span></code> / <code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;dir&gt;</span></code></p></td>
+<td><p>Output directory (default: <code class="docutils literal notranslate"><span class="pre">./out/&lt;date&gt;</span> <span class="pre">-</span> <span class="pre">&lt;Company&gt;</span> <span class="pre">-</span> <span class="pre">&lt;Role&gt;/</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--skip-drive</span></code></p></td>
+<td><p>Local artifacts only; no Google Drive/Docs.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--template</span> <span class="pre">&lt;name&gt;</span></code></p></td>
+<td><p>Force a résumé archetype (otherwise the model classifies the JD).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--no-cache</span></code></p></td>
+<td><p>Disable the response cache for this run.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">--clear-cache</span></code></p></td>
+<td><p>Purge the response cache before running.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">--reprocess</span></code></p></td>
+<td><p>Re-run a previous application in place. Point at the JD copy inside its output
+directory; that directory (and the original Drive folder) is regenerated.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Example — local only, custom output folder:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jobjob</span> <span class="n">build</span> <span class="n">path</span><span class="o">/</span><span class="n">to</span><span class="o">/</span><span class="n">job</span><span class="o">.</span><span class="n">pdf</span> <span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">drive</span> <span class="o">-</span><span class="n">o</span> <span class="o">./</span><span class="n">out</span>
+</pre></div>
+</div>
+</section>
+<section id="re-checking-a-resume">
+<h2>Re-checking a resume<a class="headerlink" href="#re-checking-a-resume" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jobjob</span> <span class="n">ats</span> <span class="o">&lt;</span><span class="n">output_dir</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Re-assesses a processed application’s résumé against its job description — keyword
+coverage plus parseability checks — and prints a plain-text report. Point it at the
+application’s output directory (the one containing <code class="docutils literal notranslate"><span class="pre">summary.json</span></code>).</p>
+<p>Use it while iterating: edit the résumé Google Doc, run <code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">ats</span></code>, repeat. The
+assessment is rebuilt from the saved artifacts plus one Google Docs read of the current
+résumé — <strong>no AI calls</strong>, so the loop is free. Applications generated with
+<code class="docutils literal notranslate"><span class="pre">--skip-drive</span></code> have no résumé Doc to read and report a skipped assessment.</p>
+</section>
+<section id="what-you-need">
+<h2>What you need<a class="headerlink" href="#what-you-need" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>A job posting</strong> — a PDF, a URL, or pasted text.</p></li>
+<li><p><strong>An active profile with content</strong> — see <a class="reference internal" href="profiles.html"><span class="doc">Profiles</span></a>. Output quality tracks how
+well your <code class="docutils literal notranslate"><span class="pre">highlights.toml</span></code> and <code class="docutils literal notranslate"><span class="pre">stars/</span></code> cover the role.</p></li>
+<li><p><em>(Optional)</em> <strong>Google connected</strong> — for editable Docs output; otherwise everything is
+local. See <a class="reference internal" href="google-project.html"><span class="doc">Google Drive/Docs setup</span></a>.</p></li>
+</ul>
+</section>
+<section id="where-output-lands">
+<h2>Where output lands<a class="headerlink" href="#where-output-lands" title="Link to this heading"></a></h2>
+<p>Every build materializes one <strong>entity folder</strong> — <code class="docutils literal notranslate"><span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code> — under your
+configured output dir and places <em>all</em> of that build’s artifacts there (identity
+files and generated documents alike). The submitted résumé and cover letter are
+named after the applicant: <code class="docutils literal notranslate"><span class="pre">FirstLast_Resume</span></code> / <code class="docutils literal notranslate"><span class="pre">FirstLast_CoverLetter</span></code> (from
+<code class="docutils literal notranslate"><span class="pre">APPLICANT_NAME</span></code>, keeping generational suffixes like <code class="docutils literal notranslate"><span class="pre">Jr</span></code>/<code class="docutils literal notranslate"><span class="pre">III</span></code> but dropping
+credentials such as <code class="docutils literal notranslate"><span class="pre">PhD</span></code>); the README, JD copy, and JSON sidecars keep their
+names. The file extension is whatever the artifact actually is — a real
+<code class="docutils literal notranslate"><span class="pre">.pdf</span></code>/<code class="docutils literal notranslate"><span class="pre">.docx</span></code> locally, an editable Google Doc when Drive-backed.</p>
+<p><strong>Locally</strong> (<code class="docutils literal notranslate"><span class="pre">--skip-drive</span></code> or when Drive is not connected):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Company</span> <span class="o">-</span> <span class="n">Role</span><span class="o">/</span>
+  <span class="n">JD_Company_Role</span><span class="o">.</span><span class="n">pdf</span>   <span class="n">FirstLast_CoverLetter</span><span class="o">.</span><span class="n">pdf</span>   <span class="n">skills_analysis</span><span class="o">.</span><span class="n">json</span>
+  <span class="n">README</span><span class="o">.</span><span class="n">docx</span>           <span class="n">summary</span><span class="o">.</span><span class="n">json</span>                <span class="n">metadata</span><span class="o">.</span><span class="n">json</span>  <span class="n">source</span><span class="o">.</span><span class="n">json</span>
+</pre></div>
+</div>
+<p><strong>On Google Drive</strong> (if connected): a folder <code class="docutils literal notranslate"><span class="pre">Company</span> <span class="pre">-</span> <span class="pre">Role</span></code> under your
+<code class="docutils literal notranslate"><span class="pre">APPLICATIONS_OUTPUT_DRIVE_ID</span></code> holding the README, JD copy, <code class="docutils literal notranslate"><span class="pre">FirstLast_Resume</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">FirstLast_CoverLetter</span></code> as editable Google Docs. In Drive mode the Google Doc
+<em>is</em> the artifact — the tool does not also leave a redundant local <code class="docutils literal notranslate"><span class="pre">.docx</span></code> copy.</p>
+</section>
+<section id="re-building-and-archived-executions">
+<h2>Re-building and archived executions<a class="headerlink" href="#re-building-and-archived-executions" title="Link to this heading"></a></h2>
+<p>Overwriting the previous build <strong>in place</strong> stays the default: re-building an
+application updates its artifacts and (on Drive) preserves each document’s
+revision history. A local re-build onto an existing application is guarded — it
+asks you to confirm rather than silently overwriting. When you opt to keep the
+old run instead of overwriting it, the prior execution’s root artifacts move into
+an <code class="docutils literal notranslate"><span class="pre">archive/&lt;timestamp&gt;/</span></code> subfolder (a complete, self-contained snapshot) and
+the new build writes at the root. The entity’s <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code> / <code class="docutils literal notranslate"><span class="pre">source.json</span></code>
+and its status/notes stay at the root across all executions; <code class="docutils literal notranslate"><span class="pre">archive/</span></code> never
+counts toward an application’s completeness.</p>
+</section>
+<section id="managing-archived-executions">
+<h2>Managing archived executions<a class="headerlink" href="#managing-archived-executions" title="Link to this heading"></a></h2>
+<p>The Applications table’s row actions include <strong>Executions</strong> (labeled with a
+count once at least one archived execution exists), opening a panel over that
+application’s <code class="docutils literal notranslate"><span class="pre">archive/&lt;timestamp&gt;/</span></code> history:</p>
+<ul class="simple">
+<li><p><strong>Promote</strong> makes an archived execution primary. The current root is
+archived first, under a fresh timestamp, and only then does the chosen
+execution’s files move up to the root — there is never a moment where the
+two are both un-archived, so nothing is lost either way.</p></li>
+<li><p><strong>Note</strong> — a short free-text reminder of why a given run was kept (e.g. “kept
+for the recruiter’s version of the JD”). Saved per archived execution.</p></li>
+<li><p><strong>Lock</strong> exempts an execution from purge; unlock it to make it eligible
+again. Locking is per execution, not per application.</p></li>
+<li><p><strong>Purge unlocked</strong> deletes every unlocked archived execution for that one
+application. A page-level <strong>Purge all archived executions</strong> button (next to
+Refresh) does the same across every application in the local mirror in one
+action — locked executions are skipped everywhere, not just per-application.</p></li>
+</ul>
+<p>None of this touches an application’s primary (root) artifacts, status, or
+notes; it only manages the <code class="docutils literal notranslate"><span class="pre">archive/</span></code> history alongside them.</p>
+</section>
+<section id="identity-entity-source-and-executions">
+<h2>Identity: entity, source, and executions<a class="headerlink" href="#identity-entity-source-and-executions" title="Link to this heading"></a></h2>
+<p>Each application folder now carries a stable <code class="docutils literal notranslate"><span class="pre">entity_id</span></code> (a uuid minted once,
+in <code class="docutils literal notranslate"><span class="pre">metadata.json</span></code>, and reused across re-builds/renames) plus a <code class="docutils literal notranslate"><span class="pre">source.json</span></code>
+recording the posting itself — company, role, a one-time summary, and any file
+or web URI. The summary/company/role are written <strong>once</strong>, at first build; a
+re-build reads them back rather than overwriting them, so a correction survives.
+Correct a parse mistake (company, role, posting URL, or an external requisition
+id) from the application’s row actions (<strong>Edit source</strong>) — this never touches
+the résumé, cover letter, or any other artifact. A folder built before this
+change has neither field; it behaves exactly as it always has (joined by folder
+name) until its next build, when the id is added automatically.</p>
+<p><strong>Re-parse</strong> (row actions) is the one sanctioned exception to “parse-once”: it
+re-runs JD parsing and overwrites <code class="docutils literal notranslate"><span class="pre">company</span></code>/<code class="docutils literal notranslate"><span class="pre">role</span></code>/<code class="docutils literal notranslate"><span class="pre">description</span></code> with
+whatever the parser produces this time — including clobbering any manual
+correction made via <strong>Edit source</strong>. Use it to pick up a prompt or model
+improvement; the confirmation dialog and the response both say plainly that
+it’s a destructive overwrite. Nothing else about the application changes — no
+artifacts are regenerated, and its <code class="docutils literal notranslate"><span class="pre">entity_id</span></code>/status/execution history are
+untouched.</p>
+</section>
+<section id="possible-duplicates">
+<h2>Possible duplicates<a class="headerlink" href="#possible-duplicates" title="Link to this heading"></a></h2>
+<p>The Applications table computes a normalized <strong>company + role</strong> signal for
+every application at listing time — casefold, collapsed whitespace, and a
+small common-abbreviation map (<code class="docutils literal notranslate"><span class="pre">Inc</span></code>/<code class="docutils literal notranslate"><span class="pre">Incorporated</span></code>, <code class="docutils literal notranslate"><span class="pre">Corp</span></code>/
+<code class="docutils literal notranslate"><span class="pre">Corporation</span></code>, <code class="docutils literal notranslate"><span class="pre">Co</span></code>/<code class="docutils literal notranslate"><span class="pre">Company</span></code>, <code class="docutils literal notranslate"><span class="pre">Ltd</span></code>/<code class="docutils literal notranslate"><span class="pre">Limited</span></code>, <code class="docutils literal notranslate"><span class="pre">Sr</span></code>/<code class="docutils literal notranslate"><span class="pre">Senior</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Jr</span></code>/<code class="docutils literal notranslate"><span class="pre">Junior</span></code>). It’s read from each application’s <code class="docutils literal notranslate"><span class="pre">source.json</span></code> (falling
+back to the folder name for a legacy application with none), so it survives a
+folder rename but is never itself stored anywhere — recomputed fresh on every
+listing.</p>
+<p>Two or more applications with a matching signal show a small <strong>Possible
+duplicate</strong> badge next to the company name (and a row action of the same
+name). Clicking it opens a panel listing the other matching application(s)
+with two per-item choices:</p>
+<ul class="simple">
+<li><p><strong>Merge into “…”</strong> re-parents the other application’s current build and
+every one of its archived executions into <em>this</em> application’s
+<code class="docutils literal notranslate"><span class="pre">archive/</span></code> history, unions its changelog notes in, and then removes its
+(now-empty) folder. The application you opened the panel from is always the
+survivor — it keeps its <code class="docutils literal notranslate"><span class="pre">entity_id</span></code>, status, and root (primary) execution
+exactly as they were.</p></li>
+<li><p><strong>Delete</strong> removes the other application outright — every tier and
+execution, irreversibly.</p></li>
+</ul>
+<p>Duplicate detection is <strong>advisory only</strong> — a flag for you to look at, never an
+automatic merge. Two applications that happen to share a company and role but
+aren’t actually duplicates (e.g. two genuinely separate postings) are left
+alone unless you act on the badge.</p>
+</section>
+<section id="applying-from-the-dashboard">
+<h2>Applying from the dashboard<a class="headerlink" href="#applying-from-the-dashboard" title="Link to this heading"></a></h2>
+<p>The Applications table’s row actions include <strong>Apply</strong> — assisted browser
+auto-fill (<code class="docutils literal notranslate"><span class="pre">jobjob</span> <span class="pre">apply</span></code>, see above) launched for that application, gated on
+a posting URL: it’s disabled with a tooltip until one is present (a URL/text
+ingest captures it automatically; a PDF drop needs one attached via <strong>Edit
+source</strong> first). Launching it starts a detached background process — the run
+shows up in the Queue like any other job, with the fill report in its log —
+and opens a real browser window on the machine running the dashboard for you
+to finish account creation, custom widgets, screening questions, and the
+submit.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<p>→ <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a> · <a class="reference internal" href="profiles.html"><span class="doc">Profiles</span></a> · <a class="reference internal" href="usage-enrichment.html"><span class="doc">Enrichment</span></a></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="profiles.html" class="btn btn-neutral float-left" title="Profiles" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="usage-enrichment.html" class="btn btn-neutral float-right" title="Enrichment" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, jobjob contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
