@@ -282,6 +282,40 @@ def write_status(folder: Path, status: ApplicationStatus) -> dict:
     return _write_metadata(folder, data)
 
 
+def union_notes(folder: Path, incoming: list[dict]) -> dict:
+    """Merge externally-sourced changelog notes into this folder's metadata.
+
+    Used by application-identity dedup merge (design D3): the "loser" entity's
+    notes are unioned into the surviving entity's changelog, then sorted by
+    timestamp. Only ``notes`` changes here — ``entity_id``/``status`` (and
+    everything else) are left exactly as they were; the caller
+    (``services.dedup_service.merge_applications``) owns those invariants. An
+    entry already present (identical ``ts``/``kind``/``text``) is not
+    re-added, so calling this twice with the same ``incoming`` is a no-op the
+    second time.
+
+    Arguments:
+        folder: The surviving entity's folder.
+        incoming: Note entries to merge in (e.g. the loser's ``notes`` list).
+    Returns:
+        The full metadata dict as written.
+    Raises:
+        ValueError: An existing metadata file is corrupt (not overwritten).
+        OSError: The file cannot be read or written.
+    """
+    data = read_metadata(folder)
+    data.setdefault("schema_version", _SCHEMA_VERSION)
+    existing = data.setdefault("notes", [])
+    seen = {(n.get("ts"), n.get("kind"), n.get("text")) for n in existing}
+    for note in incoming:
+        key = (note.get("ts"), note.get("kind"), note.get("text"))
+        if key not in seen:
+            existing.append(note)
+            seen.add(key)
+    existing.sort(key=lambda n: n.get("ts") or "")
+    return _write_metadata(folder, data)
+
+
 def add_note(folder: Path, text: str, *, kind: str = NOTE_FREEFORM) -> dict:
     """Append a changelog note to the folder's metadata file and return the dict.
 

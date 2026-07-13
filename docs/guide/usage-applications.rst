@@ -167,6 +167,46 @@ the résumé, cover letter, or any other artifact. A folder built before this
 change has neither field; it behaves exactly as it always has (joined by folder
 name) until its next build, when the id is added automatically.
 
+**Re-parse** (row actions) is the one sanctioned exception to "parse-once": it
+re-runs JD parsing and overwrites ``company``/``role``/``description`` with
+whatever the parser produces this time — including clobbering any manual
+correction made via **Edit source**. Use it to pick up a prompt or model
+improvement; the confirmation dialog and the response both say plainly that
+it's a destructive overwrite. Nothing else about the application changes — no
+artifacts are regenerated, and its ``entity_id``/status/execution history are
+untouched.
+
+Possible duplicates
+--------------------
+
+The Applications table computes a normalized **company + role** signal for
+every application at listing time — casefold, collapsed whitespace, and a
+small common-abbreviation map (``Inc``/``Incorporated``, ``Corp``/
+``Corporation``, ``Co``/``Company``, ``Ltd``/``Limited``, ``Sr``/``Senior``,
+``Jr``/``Junior``). It's read from each application's ``source.json`` (falling
+back to the folder name for a legacy application with none), so it survives a
+folder rename but is never itself stored anywhere — recomputed fresh on every
+listing.
+
+Two or more applications with a matching signal show a small **Possible
+duplicate** badge next to the company name (and a row action of the same
+name). Clicking it opens a panel listing the other matching application(s)
+with two per-item choices:
+
+- **Merge into "…"** re-parents the other application's current build and
+  every one of its archived executions into *this* application's
+  ``archive/`` history, unions its changelog notes in, and then removes its
+  (now-empty) folder. The application you opened the panel from is always the
+  survivor — it keeps its ``entity_id``, status, and root (primary) execution
+  exactly as they were.
+- **Delete** removes the other application outright — every tier and
+  execution, irreversibly.
+
+Duplicate detection is **advisory only** — a flag for you to look at, never an
+automatic merge. Two applications that happen to share a company and role but
+aren't actually duplicates (e.g. two genuinely separate postings) are left
+alone unless you act on the badge.
+
 Applying from the dashboard
 ----------------------------
 

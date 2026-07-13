@@ -180,6 +180,12 @@ export interface CompletedItem {
   // application-identity (phase 6b): count of archived (superseded)
   // executions under archive/ — 0 for most applications.
   execution_count?: number;
+  // application-identity (phase 6c): computed fresh at listing time from the
+  // normalized company+role signal (never persisted — a flag for the user,
+  // never an auto-merge). possible_duplicate is false / duplicate_group is
+  // null for the vast majority of applications.
+  possible_duplicate?: boolean;
+  duplicate_group?: string | null;
   // Parsed from "YYYY-MM-DD - Company - Role" (applications only).
   date?: string;
   company?: string;

@@ -281,6 +281,99 @@ class TestExecutionNote(ThisTestCase):
             adapter.write_execution_note("nope", note="x")
 
 
+class TestMergeFrom(ThisTestCase):
+    """Test DriveStorageAdapter.merge_from (application-identity phase 6c dedup)."""
+
+    def test_absorbs_root_and_archived_executions_by_id(self) -> None:
+        service = self.make_service()
+        survivor = MOD.DriveStorageAdapter(service, "SURVIVOR")
+        loser = MOD.DriveStorageAdapter(service, "LOSER")
+
+        self.files.list.return_value.execute.side_effect = [
+            {
+                "files": [{"id": "ARCHIVE_ROOT", "name": "archive"}]
+            },  # ensure_subfolder(SURVIVOR, archive)
+            {
+                "files": [{"id": "DOC1", "name": "TilaMer_Resume"}]
+            },  # loser's root contents
+            {"files": []},  # ensure_subfolder(ARCHIVE_ROOT, ts-new): not found
+            {
+                "files": [{"id": "LOSER_ARCHIVE", "name": "archive"}]
+            },  # find loser's archive root
+            {
+                "files": [{"id": "LOSER_TS_OLD", "name": "ts-old"}]
+            },  # loser's archived subfolders
+            {
+                "files": []
+            },  # collision check for "ts-old" under survivor's archive: none
+        ]
+        self.files.create.return_value.execute.side_effect = [
+            {"id": "DEST_DIR", "name": "ts-new"},
+        ]
+        self.files.update.return_value.execute.side_effect = [
+            {"id": "DOC1", "parents": ["DEST_DIR"]},
+            {"id": "LOSER_TS_OLD", "parents": ["ARCHIVE_ROOT"]},
+        ]
+
+        moved = survivor.merge_from(loser, "ts-new")
+
+        with self.subTest("root execution + archived execution both moved"):
+            self.assertEqual({"TilaMer_Resume", "ts-old"}, {m.name for m in moved})
+        with self.subTest("root artifact moved into the fresh ts-new subfolder"):
+            first_update_kwargs = self.files.update.call_args_list[0].kwargs
+            self.assertEqual("DOC1", first_update_kwargs["fileId"])
+            self.assertEqual("DEST_DIR", first_update_kwargs["addParents"])
+            self.assertEqual("LOSER", first_update_kwargs["removeParents"])
+        with self.subTest("archived execution re-parented, whole folder, by id"):
+            second_update_kwargs = self.files.update.call_args_list[1].kwargs
+            self.assertEqual("LOSER_TS_OLD", second_update_kwargs["fileId"])
+            self.assertEqual("ARCHIVE_ROOT", second_update_kwargs["addParents"])
+            self.assertEqual("LOSER_ARCHIVE", second_update_kwargs["removeParents"])
+        with self.subTest("no rename needed — no timestamp collision"):
+            # Only the two addParents/removeParents update() calls happened —
+            # no extra files().update(body={"name": ...}) rename call.
+            self.assertEqual(2, self.files.update.call_count)
+
+    def test_collision_renames_with_merged_suffix(self) -> None:
+        service = self.make_service()
+        survivor = MOD.DriveStorageAdapter(service, "SURVIVOR")
+        loser = MOD.DriveStorageAdapter(service, "LOSER")
+
+        self.files.list.return_value.execute.side_effect = [
+            {
+                "files": [{"id": "ARCHIVE_ROOT", "name": "archive"}]
+            },  # ensure_subfolder(SURVIVOR, archive)
+            {"files": []},  # loser's root contents: empty (no root execution to absorb)
+            {
+                "files": [{"id": "LOSER_ARCHIVE", "name": "archive"}]
+            },  # find loser's archive root
+            {
+                "files": [{"id": "LOSER_TS", "name": "ts1"}]
+            },  # loser's archived subfolders
+            {
+                "files": [{"id": "SURVIVOR_TS", "name": "ts1"}]
+            },  # collision: survivor already has ts1
+            {"files": []},  # "ts1-merged": no collision
+        ]
+        self.files.update.return_value.execute.side_effect = [
+            {"id": "LOSER_TS", "parents": ["ARCHIVE_ROOT"]},  # move
+            {"id": "LOSER_TS", "name": "ts1-merged"},  # rename
+        ]
+
+        moved = survivor.merge_from(loser, "ts-new")
+
+        with self.subTest("no root execution absorbed — none existed"):
+            self.assertEqual(["ts1-merged"], [m.name for m in moved])
+        with self.subTest("renamed after the collision"):
+            _, kwargs = self.files.update.call_args_list[1]
+            self.assertEqual("LOSER_TS", kwargs["fileId"])
+            self.assertEqual({"name": "ts1-merged"}, kwargs["body"])
+        with self.subTest(
+            "create() never called — no root execution, no ensure_subfolder(ts-new)"
+        ):
+            self.files.create.assert_not_called()
+
+
 class TestPurgeExecutions(ThisTestCase):
     """Test DriveStorageAdapter.purge_executions: locked executions are exempt."""
 

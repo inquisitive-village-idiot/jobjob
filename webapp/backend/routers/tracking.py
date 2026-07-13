@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Tracking API: input queue, completed jobs, and application status."""
 
+import dataclasses as dcs
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
+from budget import calculate_cost, check_budget, record_run
 from jobjob.apply.recheck import assessment_as_dict, reassess_application
 from jobjob.storage import LocalStorageAdapter
 from security import safe_path
@@ -18,6 +20,8 @@ from services.application_metadata import (
     read_status,
     write_status,
 )
+from services.dedup_service import delete_application, merge_applications
+from services.reparse_service import ReparseError, reparse_source
 from services.tracking_service import (
     invalidate_completed_cache,
     list_completed,
@@ -379,3 +383,127 @@ def purge_all_executions(request: Request) -> dict:
     invalidate_completed_cache()
     total = sum(len(v) for v in by_folder.values())
     return {"purged": by_folder, "total": total}
+
+
+# --- Dedup: merge/delete/re-parse (application-identity, phase 6c) ---------
+#
+# Duplicate *flagging* is computed at listing time (services.tracking_service
+# ._flag_duplicates) from the normalized company+role signal
+# (jobjob.structure.dedup) — it is never auto-merged (design D3). These routes
+# are the user-triggered resolution once a flag is raised, plus the one
+# sanctioned parse-once overwrite (re-parse).
+
+
+class MergeRequest(BaseModel):
+    """The duplicate ("loser") folder to absorb into ``{folder_name}`` (survivor)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    loser_folder_name: str
+
+
+@router.post("/applications/{folder_name}/merge")
+def merge_application(folder_name: str, body: MergeRequest, request: Request) -> dict:
+    """Merge a flagged-duplicate entity into this one (the survivor).
+
+    ``folder_name`` is the SURVIVING entity — it keeps its entity_id, status,
+    and root execution untouched. ``body.loser_folder_name`` is the duplicate
+    being absorbed: its current root execution and every archived execution
+    are re-parented into the survivor's ``archive/``, its changelog notes are
+    unioned in, and its folder is then removed outright. Never automatic
+    (design D3) — always an explicit user action.
+
+    Raises:
+        HTTPException: 404 if either folder doesn't exist; 400 if they're the
+            same folder.
+    """
+    survivor = _resolve_app_folder(request, folder_name)
+    loser = _resolve_app_folder(request, body.loser_folder_name)
+    if survivor == loser:
+        raise HTTPException(
+            status_code=400, detail="Cannot merge a folder into itself."
+        )
+    result = merge_applications(survivor, loser)
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, **result}
+
+
+@router.delete("/applications/{folder_name}/duplicate")
+def delete_duplicate(folder_name: str, request: Request) -> dict:
+    """Delete a flagged-duplicate application entity outright.
+
+    Design D3: dedup flags are advisory only (never auto-merge) — this is the
+    user's explicit "this one is a duplicate, remove it" action. Deletes the
+    whole entity folder — every tier and execution, including any archived
+    ones. Irreversible.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    delete_application(folder)
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "deleted": True}
+
+
+def _build_reparse_query_service():
+    """Construct the AIClient used for a re-parse call.
+
+    Split out from the endpoint so tests can substitute a stub without a
+    real Anthropic API key configured (mirrors ``jobs._make_build_run``'s
+    construction, just factored for injection).
+    """
+    from jobjob.ailib.client.anthropic import AnthropicAdapter
+    from jobjob.ailib.session import AIClient
+    from jobjob.config import load_settings
+
+    settings = load_settings()
+    client = AIClient(
+        AnthropicAdapter(model=settings.model, api_key=settings.anthropic_api_key)
+    )
+    return client, settings
+
+
+@router.post("/applications/{folder_name}/reparse")
+def reparse_application_source(folder_name: str, request: Request) -> dict:
+    """Re-run JD parsing and OVERWRITE this application's parsed source fields.
+
+    Parse-once (``application_source.ensure_source``) is otherwise sacred — a
+    rebuild's parse step never touches an existing ``source.json``. This is
+    the single sanctioned exception (design D3): an explicit user action to
+    pick up parser/prompt improvements, at the cost of clobbering whatever was
+    there before — including any manual corrections made via **Edit source**.
+    Only ``company``/``role``/``description`` change; ``entity_id``/
+    ``web_uri``/``external_ref`` and every artifact/execution are untouched.
+    The dedup signal is never stored, so nothing further to recompute here —
+    the next listing derives it fresh from the new ``company``/``role``.
+
+    Raises:
+        HTTPException: 404 unknown folder; 402 budget exceeded; 409 no JD
+            file recorded to re-parse from.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    s = _settings(request)
+    budget_error = check_budget(
+        per_run_budget=s.get("per_run_budget", 2.0),
+        daily_budget=s.get("daily_budget", 20.0),
+    )
+    if budget_error:
+        raise HTTPException(status_code=402, detail=budget_error)
+
+    client, settings = _build_reparse_query_service()
+    try:
+        source = reparse_source(folder, client, use_cache=settings.cache_enabled)
+    except ReparseError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    usage = getattr(client, "usage", None)
+    if usage is not None:
+        record_run(calculate_cost(dcs.asdict(usage), model=settings.model))
+
+    invalidate_completed_cache()
+    return {
+        "folder_name": folder_name,
+        "source": source,
+        "warning": (
+            "Re-parse overwrote company/role/description; any manual "
+            "corrections to those fields were replaced."
+        ),
+    }

@@ -156,5 +156,50 @@ class LocalStorageAdapter:
             purged.append(ts)
         return purged
 
+    def merge_from(
+        self, other: "LocalStorageAdapter", timestamp: str
+    ) -> list[PlacedArtifact]:
+        """Absorb ``other``'s executions into this entity's archive (dedup merge).
+
+        See ``StorageAdapter.merge_from`` for the full contract. ``other`` is
+        the "loser" duplicate; its entity-tier files and directory are left
+        untouched here (the caller removes them once notes are unioned).
+        """
+        moved: list[PlacedArtifact] = []
+
+        # Absorb the loser's current root execution (if any) under a fresh
+        # timestamp — exactly the archive_execution exclusion rules apply.
+        if other.root.is_dir():
+            entries = [
+                p
+                for p in other.root.iterdir()
+                if p.name not in ENTITY_TIER_FILES and p.name != ARCHIVE_DIRNAME
+            ]
+            if entries:
+                archive_dir = self.root / ARCHIVE_DIRNAME / timestamp
+                archive_dir.mkdir(parents=True, exist_ok=True)
+                for entry in entries:
+                    dest = archive_dir / entry.name
+                    entry.rename(dest)
+                    moved.append(PlacedArtifact(name=entry.name, location=str(dest)))
+
+        # Re-parent the loser's own already-archived executions, one whole
+        # timestamp directory at a time; a name collision is suffixed rather
+        # than silently overwritten.
+        for ts in other.list_executions():
+            src_dir = other.root / ARCHIVE_DIRNAME / ts
+            dest_ts = ts
+            attempt = 0
+            while (self.root / ARCHIVE_DIRNAME / dest_ts).exists():
+                attempt += 1
+                dest_ts = f"{ts}-merged" if attempt == 1 else f"{ts}-merged-{attempt}"
+            dest_dir = self.root / ARCHIVE_DIRNAME / dest_ts
+            dest_dir.parent.mkdir(parents=True, exist_ok=True)
+            src_dir.rename(dest_dir)
+            for f in sorted(dest_dir.iterdir()):
+                moved.append(PlacedArtifact(name=f.name, location=str(f)))
+
+        return moved
+
 
 # __END__

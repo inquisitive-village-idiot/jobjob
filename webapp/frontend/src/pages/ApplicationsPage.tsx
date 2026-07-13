@@ -11,6 +11,7 @@ import type {
 import { useJobs } from "../hooks/useJobs";
 import AddJdPanel from "../components/AddJdPanel";
 import AtsReportModal from "../components/AtsReportModal";
+import DuplicateModal from "../components/DuplicateModal";
 import ExecutionsModal from "../components/ExecutionsModal";
 import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
@@ -236,6 +237,8 @@ export default function ApplicationsPage() {
   const [atsApp, setAtsApp] = useState<CompletedItem | null>(null);
   const [sourceApp, setSourceApp] = useState<CompletedItem | null>(null);
   const [executionsApp, setExecutionsApp] = useState<CompletedItem | null>(null);
+  const [duplicateApp, setDuplicateApp] = useState<CompletedItem | null>(null);
+  const [reparsing, setReparsing] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [purgingAll, setPurgingAll] = useState(false);
@@ -380,6 +383,43 @@ export default function ApplicationsPage() {
   const appLabel = (item: CompletedItem) =>
     item.company ? `${item.company} — ${item.title || ""}`.trim() : item.folder_name;
 
+  // application-identity, phase 6c: other applications flagged as sharing
+  // this one's normalized company+role signal — never itself.
+  const duplicateCandidates = (item: CompletedItem): CompletedItem[] =>
+    (completed ?? []).filter(
+      (c) =>
+        c.duplicate_group != null &&
+        c.duplicate_group === item.duplicate_group &&
+        c.folder_name !== item.folder_name
+    );
+
+  // Explicit re-parse (application-identity, phase 6c / design D3's one
+  // sanctioned overwrite): re-run JD parsing and overwrite company/role/
+  // description, clobbering any manual "Edit source" correction.
+  const reparseApplication = async (item: CompletedItem) => {
+    if (
+      !confirm(
+        "Re-run JD parsing for this application?\n\nThis overwrites company/role/" +
+          "description — including any manual corrections made via Edit source."
+      )
+    ) {
+      return;
+    }
+    setReparsing(item.folder_name);
+    try {
+      const r = await api.post<{ warning: string }>(
+        `/tracking/applications/${encodeURIComponent(item.folder_name)}/reparse`,
+        {}
+      );
+      fetchCompleted(true);
+      alert(r.warning);
+    } catch (e) {
+      setError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setReparsing(null);
+    }
+  };
+
   const rows: Row[] | null = useMemo(() => {
     if (queue === null || completed === null) return null;
     return [
@@ -512,8 +552,23 @@ export default function ApplicationsPage() {
           label: `Executions${item.execution_count ? ` (${item.execution_count})` : ""}`,
           onClick: () => setExecutionsApp(item),
           title: "View/promote/note/lock/purge archived (superseded) executions",
+        },
+        {
+          label: reparsing === item.folder_name ? "Re-parsing…" : "Re-parse",
+          onClick: () => reparseApplication(item),
+          disabled: reparsing === item.folder_name,
+          title:
+            "Re-run JD parsing and overwrite company/role/description " +
+            "(clobbers manual corrections — the only sanctioned overwrite).",
         }
       );
+      if (item.possible_duplicate) {
+        actions.push({
+          label: "Possible duplicate",
+          onClick: () => setDuplicateApp(item),
+          title: "Shares a normalized company+role with another application — resolve it",
+        });
+      }
     }
     if (item.drive?.web_link) {
       actions.push({ label: "Drive", href: item.drive.web_link });
@@ -632,6 +687,17 @@ export default function ApplicationsPage() {
                           <p className="font-mono font-normal text-[10px] text-gray-300">
                             {row.built.entity_id.slice(0, 8)}
                           </p>
+                        )}
+                        {row.built?.possible_duplicate && (
+                          <button
+                            onClick={() => setDuplicateApp(row.built!)}
+                            className="mt-0.5 inline-flex items-center px-1.5 py-0.5 rounded
+                              text-[10px] font-medium border bg-amber-50 text-amber-700
+                              border-amber-200 hover:bg-amber-100"
+                            title="Shares a normalized company+role with another application — click to resolve"
+                          >
+                            Possible duplicate
+                          </button>
                         )}
                       </td>
                       <td className="px-4 py-2 align-top text-gray-700">
@@ -761,6 +827,15 @@ export default function ApplicationsPage() {
           item={executionsApp}
           onClose={() => setExecutionsApp(null)}
           onCountChange={setExecutionCount}
+        />
+      )}
+
+      {duplicateApp && (
+        <DuplicateModal
+          item={duplicateApp}
+          candidates={duplicateCandidates(duplicateApp)}
+          onClose={() => setDuplicateApp(null)}
+          onResolved={() => fetchCompleted(true)}
         />
       )}
     </div>
