@@ -216,6 +216,26 @@ class TestApplicationItemPostingUrl:
         assert item["posting_url"] is None
 
 
+class TestApplicationItemExecutionCount:
+    """execution_count (application-identity, phase 6b): archived executions."""
+
+    def _items(self, local_dir):
+        with mock.patch.object(MOD, "list_application_folders", return_value=[]):
+            return MOD._application_items(local_dir, None, None, None, _LOGGER)
+
+    def test_zero_when_no_archive(self, tmp_path):
+        _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (item,) = self._items(tmp_path)
+        assert item["execution_count"] == 0
+
+    def test_counts_archived_executions(self, tmp_path):
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
+        (folder / "archive" / "ts1").mkdir(parents=True)
+        (folder / "archive" / "ts2").mkdir(parents=True)
+        (item,) = self._items(tmp_path)
+        assert item["execution_count"] == 2
+
+
 class TestRunMatchesApplication:
     """Id-preferring join across a rename, falling back to folder name."""
 

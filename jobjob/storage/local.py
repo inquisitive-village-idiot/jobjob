@@ -6,10 +6,18 @@ Used for plain-file artifacts regardless of Drive mode (``summary.json``,
 (``--skip-drive``) mode.
 """
 
+import json
 import shutil
 from pathlib import Path
+from typing import Optional
 
-from jobjob.storage.base import ARCHIVE_DIRNAME, ENTITY_TIER_FILES, PlacedArtifact
+from jobjob.storage.base import (
+    ARCHIVE_DIRNAME,
+    ENTITY_TIER_FILES,
+    EXECUTION_NOTE_FILENAME,
+    PlacedArtifact,
+    archive_timestamp,
+)
 
 
 class LocalStorageAdapter:
@@ -70,6 +78,83 @@ class LocalStorageAdapter:
         if not archive_root.is_dir():
             return []
         return sorted(p.name for p in archive_root.iterdir() if p.is_dir())
+
+    def promote_execution(self, timestamp: str) -> list[PlacedArtifact]:
+        """Archive the current root first, then move ``timestamp`` up to root."""
+        archive_dir = self.root / ARCHIVE_DIRNAME / timestamp
+        if not archive_dir.is_dir():
+            raise FileNotFoundError(f"No archived execution at {timestamp!r}.")
+
+        # Step 1 — archive whatever is currently at root, under a fresh
+        # timestamp, so the promoted files never share the root with the
+        # outgoing ones (design D2). Guard the (exceedingly unlikely) same-
+        # second collision with the timestamp being promoted.
+        new_ts = archive_timestamp()
+        if new_ts == timestamp:
+            new_ts = f"{new_ts}-prior"
+        self.archive_execution(new_ts)
+
+        # Step 2 — move the promoted execution's artifacts up to root. The
+        # note/lock sidecar describes archived state and does not travel.
+        moved = []
+        for entry in sorted(archive_dir.iterdir()):
+            if entry.name == EXECUTION_NOTE_FILENAME:
+                continue
+            dest = self.root / entry.name
+            entry.rename(dest)
+            moved.append(PlacedArtifact(name=entry.name, location=str(dest)))
+        shutil.rmtree(archive_dir, ignore_errors=True)
+        return moved
+
+    def _note_path(self, timestamp: str) -> Path:
+        return self.root / ARCHIVE_DIRNAME / timestamp / EXECUTION_NOTE_FILENAME
+
+    def read_execution_note(self, timestamp: str) -> dict:
+        """Tolerant read of the note/lock sidecar (default when absent/corrupt)."""
+        empty = {"note": None, "locked": False}
+        path = self._note_path(timestamp)
+        if not path.is_file():
+            return empty
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return empty
+        if not isinstance(data, dict):
+            return empty
+        return {"note": data.get("note"), "locked": bool(data.get("locked", False))}
+
+    def write_execution_note(
+        self,
+        timestamp: str,
+        *,
+        note: Optional[str] = None,
+        locked: Optional[bool] = None,
+    ) -> dict:
+        archive_dir = self.root / ARCHIVE_DIRNAME / timestamp
+        if not archive_dir.is_dir():
+            raise FileNotFoundError(f"No archived execution at {timestamp!r}.")
+        current = self.read_execution_note(timestamp)
+        if note is not None:
+            current["note"] = note
+        if locked is not None:
+            current["locked"] = bool(locked)
+        self._note_path(timestamp).write_text(
+            json.dumps(current, indent=2) + "\n", encoding="utf-8"
+        )
+        return current
+
+    def purge_executions(self) -> list[str]:
+        """Delete archived executions, skipping any locked one."""
+        archive_root = self.root / ARCHIVE_DIRNAME
+        if not archive_root.is_dir():
+            return []
+        purged = []
+        for ts in self.list_executions():
+            if self.read_execution_note(ts).get("locked"):
+                continue
+            shutil.rmtree(archive_root / ts, ignore_errors=True)
+            purged.append(ts)
+        return purged
 
 
 # __END__

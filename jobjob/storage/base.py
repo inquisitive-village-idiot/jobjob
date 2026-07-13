@@ -17,7 +17,7 @@ executions) and D7 (the adapter seam itself).
 
 import dataclasses as dcs
 from datetime import datetime
-from typing import Protocol
+from typing import Optional, Protocol
 
 # Entity/source-tier files: never archived (they describe the entity across all
 # of its executions, not one execution) — same carve-out `metadata.json` gets
@@ -25,6 +25,14 @@ from typing import Protocol
 ENTITY_TIER_FILES = frozenset({"metadata.json", "source.json"})
 
 ARCHIVE_DIRNAME = "archive"
+
+# Per-archived-execution sidecar holding the user's note ("why we kept this
+# run") and the purge-exempting lock flag (design D5, phase 6b). Lives inside
+# the execution's own ``archive/<timestamp>/`` directory — never at the entity
+# root — and does not travel with the execution on promote (see
+# ``promote_execution``): it describes the *archived* state, which promotion
+# ends.
+EXECUTION_NOTE_FILENAME = "execution.json"
 
 
 def archive_timestamp(_now: datetime | None = None) -> str:
@@ -87,6 +95,63 @@ class StorageAdapter(Protocol):
 
     def list_executions(self) -> list[str]:
         """Return archived execution timestamps (``archive/`` subdir names), sorted."""
+        ...
+
+    def promote_execution(self, timestamp: str) -> list[PlacedArtifact]:
+        """Make the archived execution at ``archive/<timestamp>`` the primary one.
+
+        Strictly in this order (design D2, so no overwrite window ever exists):
+        (1) archive whatever currently sits at the root, under a *fresh*
+        timestamp (as ``archive_execution`` would for any other re-build);
+        (2) move the promoted execution's artifacts up to the root. The
+        promoted execution's note/lock sidecar (``EXECUTION_NOTE_FILENAME``)
+        does not travel to the root — it describes an *archived* state, which
+        promotion ends — and the now-empty archive directory is discarded.
+
+        Returns:
+            The artifacts placed at the root (the promoted execution's own).
+        Raises:
+            FileNotFoundError: No archived execution exists at ``timestamp``.
+        """
+        ...
+
+    def read_execution_note(self, timestamp: str) -> dict:
+        """Return ``{"note": str | None, "locked": bool}`` for an archived execution.
+
+        Tolerant read (same posture as ``metadata.json``/``source.json``): a
+        missing or corrupt sidecar degrades to the empty default rather than
+        raising.
+        """
+        ...
+
+    def write_execution_note(
+        self,
+        timestamp: str,
+        *,
+        note: Optional[str] = None,
+        locked: Optional[bool] = None,
+    ) -> dict:
+        """Update the note/lock sidecar for an archived execution.
+
+        Only the fields explicitly passed (non-``None``) change; the other is
+        left as previously stored (or its default). To clear a note, pass
+        ``note=""`` explicitly — ``None`` means "leave unchanged", mirroring
+        ``application_source.edit_source``.
+
+        Returns:
+            The full sidecar dict as written.
+        Raises:
+            FileNotFoundError: No archived execution exists at ``timestamp``.
+        """
+        ...
+
+    def purge_executions(self) -> list[str]:
+        """Delete every archived execution for this entity, skipping locked ones.
+
+        Returns:
+            The timestamps actually purged. A locked execution is silently
+            skipped (exempt, not an error) — see design D5.
+        """
         ...
 
 

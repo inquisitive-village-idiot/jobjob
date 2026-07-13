@@ -344,6 +344,22 @@ def move_to_folder(
     return updated
 
 
+def delete_file(
+    service: Any,
+    file_id: str,
+    logger: logging.Logger | None = None,
+) -> None:
+    """Permanently delete ``file_id`` (a file or a folder, recursively).
+
+    Used by archived-execution purge (design D5) and by promote's cleanup of
+    the now-empty archived directory it just promoted out of — a real delete,
+    not a trash, mirroring the local adapter's ``shutil.rmtree``.
+    """
+    _logger = logger or logging.getLogger(__name__)
+    service.files().delete(fileId=file_id).execute()
+    _logger.info("Deleted: %s", file_id)
+
+
 def upload_docx_as_google_doc(
     service: Any,
     docx_path: Path,

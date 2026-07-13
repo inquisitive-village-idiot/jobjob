@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict
 
 from jobjob.apply.recheck import assessment_as_dict, reassess_application
+from jobjob.storage import LocalStorageAdapter
 from security import safe_path
 from services import application_source
 from services.application_metadata import (
@@ -88,6 +89,20 @@ def get_completed(request: Request, refresh: bool = False) -> list[dict]:
     )
 
 
+def _local_dir(request: Request) -> Path:
+    """Return the configured local applications mirror, or 400 if unset."""
+    local_dir = _settings(request).get("applications_output_dir")
+    if not local_dir:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
+            ),
+        )
+    return Path(local_dir).expanduser()
+
+
 def _resolve_app_folder(request: Request, folder_name: str) -> Path:
     """Resolve and validate an application folder in the local mirror.
 
@@ -98,15 +113,7 @@ def _resolve_app_folder(request: Request, folder_name: str) -> Path:
         HTTPException: 400 if the mirror is unconfigured or the name is unsafe;
             404 if the folder does not exist.
     """
-    local_dir = _settings(request).get("applications_output_dir")
-    if not local_dir:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Local applications mirror not configured "
-                "(set APPLICATIONS_OUTPUT_DIR)."
-            ),
-        )
+    local_dir = _local_dir(request)
     # folder_name must be a plain directory name — no separators or traversal.
     if (
         not folder_name
@@ -256,3 +263,119 @@ def update_application_source(
         "folder_name": folder_name,
         "source": source,
     }
+
+
+# --- Execution management (application-identity, phase 6b) -----------------
+#
+# An "execution" here is an archived (superseded) build under a folder's
+# archive/<timestamp>/ — the root artifacts are always the primary execution
+# and are not addressed by these routes. See jobjob/storage (StorageAdapter)
+# and openspec/changes/application-identity/design.md D2/D5.
+
+
+def _execution_list(folder: Path) -> list[dict]:
+    """Return archived executions (newest first) with their note/lock state."""
+    adapter = LocalStorageAdapter(folder)
+    timestamps = sorted(adapter.list_executions(), reverse=True)
+    return [{"timestamp": ts, **adapter.read_execution_note(ts)} for ts in timestamps]
+
+
+@router.get("/applications/{folder_name}/executions")
+def get_application_executions(folder_name: str, request: Request) -> dict:
+    """List an application's archived executions, newest first.
+
+    Each entry carries its ``note`` (or None) and ``locked`` flag (purge-exempt).
+    The primary (root) execution is not included — see the module docstring.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    return {"folder_name": folder_name, "executions": _execution_list(folder)}
+
+
+@router.post("/applications/{folder_name}/executions/{timestamp}/promote")
+def promote_application_execution(
+    folder_name: str, timestamp: str, request: Request
+) -> dict:
+    """Make an archived execution primary.
+
+    Strictly ordered (design D2): the current root is archived first, under a
+    fresh timestamp, before the chosen execution's files move up — there is
+    never a window where the two coexist un-archived.
+
+    Raises:
+        HTTPException: 404 if the folder or the named execution doesn't exist.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    adapter = LocalStorageAdapter(folder)
+    try:
+        adapter.promote_execution(timestamp)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "executions": _execution_list(folder)}
+
+
+class ExecutionNoteUpdate(BaseModel):
+    """Editable fields on an archived execution: its note and purge-exempt lock."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    note: Optional[str] = None
+    locked: Optional[bool] = None
+
+
+@router.patch("/applications/{folder_name}/executions/{timestamp}")
+def update_application_execution(
+    folder_name: str, timestamp: str, body: ExecutionNoteUpdate, request: Request
+) -> dict:
+    """Set an archived execution's note ("why we kept this run") and/or lock.
+
+    Only fields explicitly present in the request body change; the other is
+    left as previously stored. A lock exempts the execution from purge.
+
+    Raises:
+        HTTPException: 404 if the folder or the named execution doesn't exist.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    adapter = LocalStorageAdapter(folder)
+    fields = body.model_dump(exclude_unset=True)
+    try:
+        note = adapter.write_execution_note(timestamp, **fields)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"folder_name": folder_name, "timestamp": timestamp, **note}
+
+
+@router.delete("/applications/{folder_name}/executions")
+def purge_application_executions(folder_name: str, request: Request) -> dict:
+    """Purge every archived (unlocked) execution for one application.
+
+    A locked execution is exempt (design D5) and is silently skipped, not an
+    error.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    purged = LocalStorageAdapter(folder).purge_executions()
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "purged": purged}
+
+
+@router.delete("/executions")
+def purge_all_executions(request: Request) -> dict:
+    """Purge every archived (unlocked) execution across every application.
+
+    Iterates every folder in the local applications mirror; a folder that
+    fails to purge (unreadable, permissions) is skipped, not fatal to the rest.
+    Locked executions are exempt everywhere, same as the per-entity purge.
+    """
+    local_dir = _local_dir(request)
+    by_folder: dict[str, list[str]] = {}
+    if local_dir.is_dir():
+        for folder in sorted(p for p in local_dir.iterdir() if p.is_dir()):
+            try:
+                purged = LocalStorageAdapter(folder).purge_executions()
+            except OSError:
+                continue
+            if purged:
+                by_folder[folder.name] = purged
+    invalidate_completed_cache()
+    total = sum(len(v) for v in by_folder.values())
+    return {"purged": by_folder, "total": total}

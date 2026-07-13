@@ -4,7 +4,7 @@
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest import TestCase
+from unittest import TestCase, mock
 
 import jobjob.storage.local as MOD
 
@@ -178,6 +178,164 @@ class TestListExecutions(ThisTestCase):
         adapter = MOD.LocalStorageAdapter(root)
 
         self.assertEqual([], adapter.list_executions())
+
+
+class TestPromoteExecution(ThisTestCase):
+    """Test LocalStorageAdapter.promote_execution (phase 6b)."""
+
+    def test_archives_root_first_then_promotes(self) -> None:
+        # Root holds the "current" execution; archive/ts-old holds the one to
+        # promote. ids/entity-tier files must stay at root, untouched.
+        root = self.get_tmpdir()
+        self.make_source_file(root, "metadata.json", '{"entity_id": "abc"}')
+        self.make_source_file(root, "source.json", '{"company": "Acme"}')
+        self.make_source_file(root, "summary.json", "current")
+        (root / "archive" / "ts-old").mkdir(parents=True)
+        self.make_source_file(root / "archive" / "ts-old", "summary.json", "old")
+        adapter = MOD.LocalStorageAdapter(root)
+
+        with mock.patch.object(MOD, "archive_timestamp", return_value="ts-new"):
+            moved = adapter.promote_execution("ts-old")
+
+        with self.subTest("promoted artifact returned"):
+            self.assertEqual(["summary.json"], [m.name for m in moved])
+        with self.subTest("root now holds the promoted content"):
+            self.assertEqual("old", (root / "summary.json").read_text())
+        with self.subTest("current root execution was archived first, under ts-new"):
+            self.assertEqual(
+                "current", (root / "archive" / "ts-new" / "summary.json").read_text()
+            )
+        with self.subTest("promoted archive dir is gone (no longer archived)"):
+            self.assertFalse((root / "archive" / "ts-old").exists())
+        with self.subTest("entity/source tier files untouched at root"):
+            self.assertTrue((root / "metadata.json").is_file())
+            self.assertTrue((root / "source.json").is_file())
+        with self.subTest("no data loss: both executions accounted for"):
+            self.assertEqual({"ts-new"}, set(adapter.list_executions()))
+
+    def test_note_sidecar_does_not_travel_to_root(self) -> None:
+        root = self.get_tmpdir()
+        (root / "archive" / "ts-old").mkdir(parents=True)
+        self.make_source_file(root / "archive" / "ts-old", "summary.json", "old")
+        self.make_source_file(
+            root / "archive" / "ts-old", "execution.json", '{"note": "keep me"}'
+        )
+        adapter = MOD.LocalStorageAdapter(root)
+
+        with mock.patch.object(MOD, "archive_timestamp", return_value="ts-new"):
+            adapter.promote_execution("ts-old")
+
+        self.assertFalse((root / "execution.json").exists())
+
+    def test_raises_when_timestamp_not_archived(self) -> None:
+        adapter = MOD.LocalStorageAdapter(self.get_tmpdir())
+        with self.assertRaises(FileNotFoundError):
+            adapter.promote_execution("nope")
+
+    def test_fresh_root_promote_leaves_no_archive_for_empty_root(self) -> None:
+        # A fresh entity (nothing at root yet) promoting an archived execution:
+        # archive_execution(new_ts) is a no-op, but promote still succeeds.
+        root = self.get_tmpdir()
+        (root / "archive" / "ts-old").mkdir(parents=True)
+        self.make_source_file(root / "archive" / "ts-old", "README.docx", "r")
+        adapter = MOD.LocalStorageAdapter(root)
+
+        with mock.patch.object(MOD, "archive_timestamp", return_value="ts-new"):
+            moved = adapter.promote_execution("ts-old")
+
+        self.assertEqual(["README.docx"], [m.name for m in moved])
+        self.assertEqual("r", (root / "README.docx").read_text())
+        self.assertEqual([], adapter.list_executions())
+
+
+class TestExecutionNote(ThisTestCase):
+    """Test LocalStorageAdapter read/write_execution_note (phase 6b)."""
+
+    def make_archived(self, root: Path, ts: str = "ts1") -> None:
+        (root / "archive" / ts).mkdir(parents=True)
+        self.make_source_file(root / "archive" / ts, "summary.json")
+
+    def test_read_defaults_when_absent(self) -> None:
+        root = self.get_tmpdir()
+        self.make_archived(root)
+        adapter = MOD.LocalStorageAdapter(root)
+        self.assertEqual(
+            {"note": None, "locked": False}, adapter.read_execution_note("ts1")
+        )
+
+    def test_write_then_read_round_trips(self) -> None:
+        root = self.get_tmpdir()
+        self.make_archived(root)
+        adapter = MOD.LocalStorageAdapter(root)
+
+        written = adapter.write_execution_note(
+            "ts1", note="kept for the recruiter callback", locked=True
+        )
+
+        with self.subTest("write returns the merged dict"):
+            self.assertEqual("kept for the recruiter callback", written["note"])
+            self.assertTrue(written["locked"])
+        with self.subTest("read returns the same"):
+            self.assertEqual(written, adapter.read_execution_note("ts1"))
+
+    def test_partial_update_preserves_other_field(self) -> None:
+        root = self.get_tmpdir()
+        self.make_archived(root)
+        adapter = MOD.LocalStorageAdapter(root)
+        adapter.write_execution_note("ts1", note="first", locked=True)
+
+        adapter.write_execution_note("ts1", note="second")
+
+        found = adapter.read_execution_note("ts1")
+        self.assertEqual("second", found["note"])
+        self.assertTrue(found["locked"])  # untouched by the note-only update
+
+    def test_read_tolerates_corrupt_sidecar(self) -> None:
+        root = self.get_tmpdir()
+        self.make_archived(root)
+        (root / "archive" / "ts1" / "execution.json").write_text("not json")
+        adapter = MOD.LocalStorageAdapter(root)
+        self.assertEqual(
+            {"note": None, "locked": False}, adapter.read_execution_note("ts1")
+        )
+
+    def test_write_raises_when_timestamp_not_archived(self) -> None:
+        adapter = MOD.LocalStorageAdapter(self.get_tmpdir())
+        with self.assertRaises(FileNotFoundError):
+            adapter.write_execution_note("nope", note="x")
+
+
+class TestPurgeExecutions(ThisTestCase):
+    """Test LocalStorageAdapter.purge_executions (phase 6b)."""
+
+    def test_purges_unlocked_executions(self) -> None:
+        root = self.get_tmpdir()
+        (root / "archive" / "ts1").mkdir(parents=True)
+        (root / "archive" / "ts2").mkdir(parents=True)
+        adapter = MOD.LocalStorageAdapter(root)
+
+        purged = adapter.purge_executions()
+
+        self.assertEqual({"ts1", "ts2"}, set(purged))
+        self.assertEqual([], adapter.list_executions())
+
+    def test_locked_execution_survives_purge(self) -> None:
+        root = self.get_tmpdir()
+        (root / "archive" / "ts1").mkdir(parents=True)
+        (root / "archive" / "ts2").mkdir(parents=True)
+        adapter = MOD.LocalStorageAdapter(root)
+        adapter.write_execution_note("ts2", locked=True)
+
+        purged = adapter.purge_executions()
+
+        with self.subTest("only the unlocked one purged"):
+            self.assertEqual(["ts1"], purged)
+        with self.subTest("locked execution still present"):
+            self.assertEqual(["ts2"], adapter.list_executions())
+
+    def test_no_op_when_no_archive_dir(self) -> None:
+        adapter = MOD.LocalStorageAdapter(self.get_tmpdir())
+        self.assertEqual([], adapter.purge_executions())
 
 
 # __END__

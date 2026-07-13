@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from jobjob.classify.classify import JD, LINKEDIN_PROFILE, classify_file
+from jobjob.storage import LocalStorageAdapter
 from jobjob.storage.base import ARCHIVE_DIRNAME
 from services import application_source
 from services.application_metadata import (
@@ -195,6 +196,7 @@ def _application_item(
     insights: Optional[dict] = None,
     entity_id: Optional[str] = None,
     posting_url: Optional[str] = None,
+    execution_count: int = 0,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
@@ -206,6 +208,10 @@ def _application_item(
     marks a legacy folder (joins by folder name — see ``run_matches_application``).
     ``posting_url`` (autofill-apply-wiring) is the source tier's ``web_uri``, or
     None when absent — the webapp's Apply row action is gated on this being set.
+    ``execution_count`` (application-identity, phase 6b) is the number of
+    archived (superseded) executions under ``archive/`` — 0 for most
+    applications (only a re-build with "archive instead of overwrite" creates
+    one).
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -237,6 +243,7 @@ def _application_item(
         "drive": drive,
         "entity_id": entity_id,
         "posting_url": posting_url,
+        "execution_count": execution_count,
         **(insights or {"fit": None, "ats_coverage": None}),
         **parsed,
     }
@@ -310,6 +317,10 @@ def _application_items(
                 # tolerant read — a missing/legacy folder just yields no URL,
                 # same posture as application_source.read_source itself.
                 posting_url = application_source.read_source(folder).get("web_uri")
+                # application-identity phase 6b: count of archived (superseded)
+                # executions — surfaced in the Applications table so a user
+                # knows there's history to promote/note/lock/purge.
+                execution_count = len(LocalStorageAdapter(folder).list_executions())
                 items.append(
                     _application_item(
                         folder.name,
@@ -321,6 +332,7 @@ def _application_items(
                         insights=_read_insights(folder, logger),
                         entity_id=entity_id_from_metadata(meta),
                         posting_url=posting_url,
+                        execution_count=execution_count,
                         drive=(
                             {
                                 "found": True,

@@ -11,6 +11,7 @@ import type {
 import { useJobs } from "../hooks/useJobs";
 import AddJdPanel from "../components/AddJdPanel";
 import AtsReportModal from "../components/AtsReportModal";
+import ExecutionsModal from "../components/ExecutionsModal";
 import JobProgressModal from "../components/JobProgressModal";
 import LaunchConfirmModal from "../components/LaunchConfirmModal";
 import NotesModal from "../components/NotesModal";
@@ -234,8 +235,10 @@ export default function ApplicationsPage() {
   const [notesApp, setNotesApp] = useState<CompletedItem | null>(null);
   const [atsApp, setAtsApp] = useState<CompletedItem | null>(null);
   const [sourceApp, setSourceApp] = useState<CompletedItem | null>(null);
+  const [executionsApp, setExecutionsApp] = useState<CompletedItem | null>(null);
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [viewingJobId, setViewingJobId] = useState<string | null>(null);
+  const [purgingAll, setPurgingAll] = useState(false);
 
   const fetchQueue = () =>
     api
@@ -347,6 +350,32 @@ export default function ApplicationsPage() {
             c.folder_name === folderName ? { ...c, note_count: count } : c
           )
     );
+
+  const setExecutionCount = (folderName: string, count: number) =>
+    setCompleted((prev) =>
+      prev === null
+        ? prev
+        : prev.map((c) =>
+            c.folder_name === folderName ? { ...c, execution_count: count } : c
+          )
+    );
+
+  // Global purge (application-identity, phase 6b): delete every unlocked
+  // archived execution across every application, not just one row.
+  const purgeAllExecutions = async () => {
+    if (!confirm("Purge every unlocked archived execution across all applications?")) {
+      return;
+    }
+    setPurgingAll(true);
+    try {
+      await api.del("/tracking/executions");
+      fetchCompleted(true);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setPurgingAll(false);
+    }
+  };
 
   const appLabel = (item: CompletedItem) =>
     item.company ? `${item.company} — ${item.title || ""}`.trim() : item.folder_name;
@@ -478,7 +507,12 @@ export default function ApplicationsPage() {
           label: `Notes${item.note_count ? ` (${item.note_count})` : ""}`,
           onClick: () => setNotesApp(item),
         },
-        { label: "Edit source", onClick: () => setSourceApp(item) }
+        { label: "Edit source", onClick: () => setSourceApp(item) },
+        {
+          label: `Executions${item.execution_count ? ` (${item.execution_count})` : ""}`,
+          onClick: () => setExecutionsApp(item),
+          title: "View/promote/note/lock/purge archived (superseded) executions",
+        }
       );
     }
     if (item.drive?.web_link) {
@@ -495,9 +529,19 @@ export default function ApplicationsPage() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Applications</h1>
-        <button onClick={refresh} className="text-sm text-blue-600 hover:underline">
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={purgeAllExecutions}
+            disabled={purgingAll}
+            className="text-sm text-red-600 hover:underline disabled:opacity-50"
+            title="Delete every unlocked archived execution across all applications"
+          >
+            {purgingAll ? "Purging…" : "Purge all archived executions"}
+          </button>
+          <button onClick={refresh} className="text-sm text-blue-600 hover:underline">
+            Refresh
+          </button>
+        </div>
       </div>
 
       <AddJdPanel
@@ -710,6 +754,14 @@ export default function ApplicationsPage() {
 
       {sourceApp && (
         <SourceEditModal item={sourceApp} onClose={() => setSourceApp(null)} />
+      )}
+
+      {executionsApp && (
+        <ExecutionsModal
+          item={executionsApp}
+          onClose={() => setExecutionsApp(null)}
+          onCountChange={setExecutionCount}
+        />
       )}
     </div>
   );

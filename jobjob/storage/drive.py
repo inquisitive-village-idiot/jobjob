@@ -7,13 +7,22 @@ Archive/promote move by id (``jobjob.gapi.drive.move_to_folder``) rather than
 export/re-import, so a Google Doc's revision history survives (design D2/D7).
 """
 
+import io
+import json
 import logging
 import mimetypes
 from pathlib import Path
 from typing import Any, Optional
 
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+
 from jobjob.gapi import drive as gdrive
-from jobjob.storage.base import ARCHIVE_DIRNAME, PlacedArtifact
+from jobjob.storage.base import (
+    ARCHIVE_DIRNAME,
+    EXECUTION_NOTE_FILENAME,
+    PlacedArtifact,
+    archive_timestamp,
+)
 
 
 class DriveStorageAdapter:
@@ -121,6 +130,143 @@ class DriveStorageAdapter:
             .execute()
         )
         return sorted(f["name"] for f in results.get("files", []))
+
+    def _archived_execution_folder_id(self, timestamp: str) -> Optional[str]:
+        """Return the Drive folder id for ``archive/<timestamp>``, if it exists."""
+        archive_root_id = gdrive._find_in_folder(
+            self.service, ARCHIVE_DIRNAME, self.folder_id
+        )
+        if not archive_root_id:
+            return None
+        return gdrive._find_in_folder(self.service, timestamp, archive_root_id)
+
+    def promote_execution(self, timestamp: str) -> list[PlacedArtifact]:
+        """Archive the current root first, then move ``timestamp`` up to root."""
+        target_id = self._archived_execution_folder_id(timestamp)
+        if not target_id:
+            raise FileNotFoundError(f"No archived execution at {timestamp!r}.")
+
+        # Step 1 — archive whatever is currently at root, under a fresh
+        # timestamp, so the promoted files never share the root with the
+        # outgoing ones (design D2).
+        new_ts = archive_timestamp()
+        if new_ts == timestamp:
+            new_ts = f"{new_ts}-prior"
+        self.archive_execution(new_ts)
+
+        # Step 2 — move the promoted execution's files up to root by id (the
+        # note/lock sidecar describes archived state and does not travel).
+        items = (
+            self.service.files()
+            .list(
+                q=(
+                    f"'{target_id}' in parents and trashed = false "
+                    f"and name != '{EXECUTION_NOTE_FILENAME}'"
+                ),
+                fields="files(id, name)",
+            )
+            .execute()
+            .get("files", [])
+        )
+        moved = []
+        for item in items:
+            gdrive.move_to_folder(
+                self.service,
+                item["id"],
+                self.folder_id,
+                current_parent_id=target_id,
+                logger=self._logger,
+            )
+            moved.append(PlacedArtifact(name=item["name"], location=item["id"]))
+        # Discard the now-empty (bar a possible note sidecar) archived folder.
+        gdrive.delete_file(self.service, target_id, logger=self._logger)
+        return moved
+
+    def _find_note_id(self, dir_id: str) -> Optional[str]:
+        """Return the id of the note/lock sidecar in ``dir_id``, if present."""
+        return gdrive._find_in_folder(self.service, EXECUTION_NOTE_FILENAME, dir_id)
+
+    def _read_note_content(
+        self,
+        note_id: Optional[str],
+        _download_cls: Any = MediaIoBaseDownload,
+    ) -> dict:
+        """Read the sidecar given an already-resolved note id (or None: absent)."""
+        empty = {"note": None, "locked": False}
+        if not note_id:
+            return empty
+        try:
+            buffer = io.BytesIO()
+            downloader = _download_cls(
+                buffer, self.service.files().get_media(fileId=note_id)
+            )
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            data = json.loads(buffer.getvalue().decode("utf-8"))
+        except (OSError, ValueError) as exc:
+            self._logger.warning("Unreadable execution note %s: %s", note_id, exc)
+            return empty
+        if not isinstance(data, dict):
+            return empty
+        return {"note": data.get("note"), "locked": bool(data.get("locked", False))}
+
+    def read_execution_note(
+        self, timestamp: str, _download_cls: Any = MediaIoBaseDownload
+    ) -> dict:
+        """Tolerant read of the note/lock sidecar (default when absent/corrupt)."""
+        dir_id = self._archived_execution_folder_id(timestamp)
+        if not dir_id:
+            return {"note": None, "locked": False}
+        note_id = self._find_note_id(dir_id)
+        return self._read_note_content(note_id, _download_cls=_download_cls)
+
+    def write_execution_note(
+        self,
+        timestamp: str,
+        *,
+        note: Optional[str] = None,
+        locked: Optional[bool] = None,
+        _media_cls: Any = MediaIoBaseUpload,
+        _download_cls: Any = MediaIoBaseDownload,
+    ) -> dict:
+        dir_id = self._archived_execution_folder_id(timestamp)
+        if not dir_id:
+            raise FileNotFoundError(f"No archived execution at {timestamp!r}.")
+        note_id = self._find_note_id(dir_id)
+        current = self._read_note_content(note_id, _download_cls=_download_cls)
+        if note is not None:
+            current["note"] = note
+        if locked is not None:
+            current["locked"] = bool(locked)
+        media = _media_cls(
+            io.BytesIO(json.dumps(current).encode("utf-8")),
+            mimetype="application/json",
+            resumable=False,
+        )
+        if note_id:
+            self.service.files().update(
+                fileId=note_id, media_body=media, fields="id"
+            ).execute()
+        else:
+            self.service.files().create(
+                body={"name": EXECUTION_NOTE_FILENAME, "parents": [dir_id]},
+                media_body=media,
+                fields="id",
+            ).execute()
+        return current
+
+    def purge_executions(self) -> list[str]:
+        """Delete archived executions, skipping any locked one."""
+        purged = []
+        for ts in self.list_executions():
+            if self.read_execution_note(ts).get("locked"):
+                continue
+            dir_id = self._archived_execution_folder_id(ts)
+            if dir_id:
+                gdrive.delete_file(self.service, dir_id, logger=self._logger)
+            purged.append(ts)
+        return purged
 
 
 # __END__

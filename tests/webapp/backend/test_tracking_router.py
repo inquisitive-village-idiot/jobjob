@@ -233,3 +233,158 @@ class TestGetApplicationAts:
     def test_missing_folder_404(self, client):
         resp = client.get(self._url("2026-09-09 - Nope - Role"))
         assert resp.status_code == 404
+
+
+def _executions_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/executions"
+
+
+def _execution_url(folder, timestamp):
+    return f"{_executions_url(folder)}/{timestamp}"
+
+
+class TestListApplicationExecutions:
+    """GET /applications/{folder}/executions (application-identity, phase 6b)."""
+
+    def test_empty_when_no_archive(self, client):
+        resp = client.get(_executions_url(_FOLDER))
+        assert resp.status_code == 200
+        assert resp.json() == {"folder_name": _FOLDER, "executions": []}
+
+    def test_lists_note_and_lock_state(self, client, mirror):
+        archive = mirror / _FOLDER / "archive" / "ts1"
+        archive.mkdir(parents=True)
+        (archive / "summary.json").write_text("{}")
+
+        resp = client.get(_executions_url(_FOLDER))
+
+        assert resp.status_code == 200
+        executions = resp.json()["executions"]
+        assert executions == [{"timestamp": "ts1", "note": None, "locked": False}]
+
+    def test_missing_folder_404(self, client):
+        resp = client.get(_executions_url("2026-09-09 - Nope - Role"))
+        assert resp.status_code == 404
+
+
+class TestPromoteApplicationExecution:
+    """POST .../executions/{timestamp}/promote (application-identity, phase 6b)."""
+
+    def _seed(self, mirror):
+        app_dir = mirror / _FOLDER
+        (app_dir / "summary.json").write_text("current")
+        archive = app_dir / "archive" / "ts-old"
+        archive.mkdir(parents=True)
+        (archive / "summary.json").write_text("old")
+        return app_dir
+
+    def test_promotes_and_archives_current_root_first(self, client, mirror):
+        app_dir = self._seed(mirror)
+
+        resp = client.post(f"{_execution_url(_FOLDER, 'ts-old')}/promote")
+
+        assert resp.status_code == 200, resp.text
+        assert (app_dir / "summary.json").read_text() == "old"
+        # The previously-current root is now archived under a fresh timestamp,
+        # not "ts-old" (which no longer exists — it's been promoted out).
+        archived = {p.name for p in (app_dir / "archive").iterdir()}
+        assert "ts-old" not in archived
+        assert len(archived) == 1
+        body = resp.json()
+        assert body["executions"][0]["timestamp"] in archived
+
+    def test_missing_execution_404(self, client, mirror):
+        self._seed(mirror)
+        resp = client.post(f"{_execution_url(_FOLDER, 'nope')}/promote")
+        assert resp.status_code == 404
+
+    def test_missing_folder_404(self, client):
+        resp = client.post(
+            f"{_execution_url('2026-09-09 - Nope - Role', 'ts1')}/promote"
+        )
+        assert resp.status_code == 404
+
+
+class TestUpdateApplicationExecution:
+    """PATCH .../executions/{timestamp} — note/lock (application-identity, phase 6b)."""
+
+    def _seed(self, mirror, ts="ts1"):
+        archive = mirror / _FOLDER / "archive" / ts
+        archive.mkdir(parents=True)
+        (archive / "summary.json").write_text("{}")
+
+    def test_sets_note_and_lock(self, client, mirror):
+        self._seed(mirror)
+
+        resp = client.patch(
+            _execution_url(_FOLDER, "ts1"),
+            json={"note": "kept for the recruiter callback", "locked": True},
+        )
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["note"] == "kept for the recruiter callback"
+        assert body["locked"] is True
+
+    def test_partial_update_preserves_other_field(self, client, mirror):
+        self._seed(mirror)
+        client.patch(
+            _execution_url(_FOLDER, "ts1"), json={"note": "first", "locked": True}
+        )
+
+        resp = client.patch(_execution_url(_FOLDER, "ts1"), json={"note": "second"})
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["note"] == "second"
+        assert body["locked"] is True
+
+    def test_rejects_unknown_field(self, client, mirror):
+        self._seed(mirror)
+        resp = client.patch(_execution_url(_FOLDER, "ts1"), json={"bogus": "x"})
+        assert resp.status_code == 422
+
+    def test_missing_execution_404(self, client, mirror):
+        resp = client.patch(_execution_url(_FOLDER, "nope"), json={"note": "x"})
+        assert resp.status_code == 404
+
+
+class TestPurgeApplicationExecutions:
+    """DELETE .../executions (per-entity) and /executions (global), phase 6b."""
+
+    def test_per_entity_purge_respects_lock(self, client, mirror):
+        app_dir = mirror / _FOLDER
+        for ts in ("ts1", "ts2"):
+            (app_dir / "archive" / ts).mkdir(parents=True)
+        client.patch(_execution_url(_FOLDER, "ts2"), json={"locked": True})
+
+        resp = client.delete(_executions_url(_FOLDER))
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"folder_name": _FOLDER, "purged": ["ts1"]}
+        remaining = {p.name for p in (app_dir / "archive").iterdir()}
+        assert remaining == {"ts2"}
+
+    def test_global_purge_scope(self, client, mirror):
+        other_folder = "2026-01-02 - Beta - Director"
+        (mirror / other_folder).mkdir()
+        for folder, ts in ((_FOLDER, "ts1"), (other_folder, "tsA")):
+            (mirror / folder / "archive" / ts).mkdir(parents=True)
+
+        resp = client.delete("/api/tracking/executions")
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["total"] == 2
+        assert body["purged"] == {_FOLDER: ["ts1"], other_folder: ["tsA"]}
+
+    def test_global_purge_respects_lock(self, client, mirror):
+        app_dir = mirror / _FOLDER
+        (app_dir / "archive" / "ts1").mkdir(parents=True)
+        client.patch(_execution_url(_FOLDER, "ts1"), json={"locked": True})
+
+        resp = client.delete("/api/tracking/executions")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"purged": {}, "total": 0}
+        assert (app_dir / "archive" / "ts1").is_dir()
