@@ -244,6 +244,91 @@ class TestResetDocToTemplate(ThisTestCase):
             self.assertEqual("DOC", kwargs["fileId"])
 
 
+class TestEnsureSubfolder(ThisTestCase):
+    """Test function."""
+
+    def test_reuses_existing_subfolder(self) -> None:
+        service = self.make_service()
+        self.set_list([{"id": "SUB", "name": "archive"}])
+
+        found = MOD.ensure_subfolder(service, "PARENT", "archive")
+
+        with self.subTest("returns the existing id"):
+            self.assertEqual("SUB", found)
+        with self.subTest("did not create"):
+            self.files.create.assert_not_called()
+
+    def test_creates_when_absent(self) -> None:
+        service = self.make_service()
+        self.set_list([])
+        self.files.create.return_value.execute.return_value = {
+            "id": "NEW",
+            "name": "archive",
+        }
+
+        found = MOD.ensure_subfolder(service, "PARENT", "archive")
+
+        with self.subTest("returns new id"):
+            self.assertEqual("NEW", found)
+        with self.subTest("created under parent as a folder"):
+            _, kwargs = self.files.create.call_args
+            self.assertEqual(["PARENT"], kwargs["body"]["parents"])
+            self.assertEqual(MOD.FOLDER_MIME, kwargs["body"]["mimeType"])
+
+
+class TestMoveToFolder(ThisTestCase):
+    """Test function."""
+
+    def test_moves_with_explicit_current_parent(self) -> None:
+        service = self.make_service()
+        self.files.update.return_value.execute.return_value = {
+            "id": "F1",
+            "parents": ["DEST"],
+        }
+
+        result = MOD.move_to_folder(service, "F1", "DEST", current_parent_id="SRC")
+
+        with self.subTest("returns the updated file"):
+            self.assertEqual({"id": "F1", "parents": ["DEST"]}, result)
+        with self.subTest("added the destination parent"):
+            _, kwargs = self.files.update.call_args
+            self.assertEqual("DEST", kwargs["addParents"])
+        with self.subTest("removed the given current parent"):
+            _, kwargs = self.files.update.call_args
+            self.assertEqual("SRC", kwargs["removeParents"])
+        with self.subTest("did not look up current parents"):
+            self.files.get.assert_not_called()
+
+    def test_looks_up_current_parents_when_not_given(self) -> None:
+        service = self.make_service()
+        self.files.get.return_value.execute.return_value = {"parents": ["OLD1", "OLD2"]}
+        self.files.update.return_value.execute.return_value = {
+            "id": "F1",
+            "parents": ["DEST"],
+        }
+
+        MOD.move_to_folder(service, "F1", "DEST")
+
+        with self.subTest("looked up the file's current parents"):
+            _, kwargs = self.files.get.call_args
+            self.assertEqual("F1", kwargs["fileId"])
+        with self.subTest("removed all looked-up parents"):
+            _, kwargs = self.files.update.call_args
+            self.assertEqual("OLD1,OLD2", kwargs["removeParents"])
+
+    def test_requests_id_and_parents_fields(self) -> None:
+        service = self.make_service()
+        self.files.update.return_value.execute.return_value = {
+            "id": "F1",
+            "parents": [],
+        }
+
+        MOD.move_to_folder(service, "F1", "DEST", current_parent_id="SRC")
+
+        _, kwargs = self.files.update.call_args
+        self.assertEqual("id, parents", kwargs["fields"])
+
+
 class TestExportDocAsPdf(ThisTestCase):
     """Test function."""
 

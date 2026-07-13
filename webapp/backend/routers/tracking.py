@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Tracking API: input queue, completed jobs, and application status."""
 
+import dataclasses as dcs
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from budget import calculate_cost, check_budget, record_run
+from jobjob.apply.recheck import assessment_as_dict, reassess_application
+from jobjob.storage import LocalStorageAdapter
 from security import safe_path
+from services import application_source
 from services.application_metadata import (
     ApplicationStatus,
     add_note,
@@ -14,6 +20,8 @@ from services.application_metadata import (
     read_status,
     write_status,
 )
+from services.dedup_service import delete_application, merge_applications
+from services.reparse_service import ReparseError, reparse_source
 from services.tracking_service import (
     invalidate_completed_cache,
     list_completed,
@@ -85,6 +93,20 @@ def get_completed(request: Request, refresh: bool = False) -> list[dict]:
     )
 
 
+def _local_dir(request: Request) -> Path:
+    """Return the configured local applications mirror, or 400 if unset."""
+    local_dir = _settings(request).get("applications_output_dir")
+    if not local_dir:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
+            ),
+        )
+    return Path(local_dir).expanduser()
+
+
 def _resolve_app_folder(request: Request, folder_name: str) -> Path:
     """Resolve and validate an application folder in the local mirror.
 
@@ -95,15 +117,7 @@ def _resolve_app_folder(request: Request, folder_name: str) -> Path:
         HTTPException: 400 if the mirror is unconfigured or the name is unsafe;
             404 if the folder does not exist.
     """
-    local_dir = _settings(request).get("applications_output_dir")
-    if not local_dir:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Local applications mirror not configured; status writes "
-                "unavailable."
-            ),
-        )
+    local_dir = _local_dir(request)
     # folder_name must be a plain directory name — no separators or traversal.
     if (
         not folder_name
@@ -167,6 +181,23 @@ class NoteCreate(BaseModel):
     text: str
 
 
+@router.get("/applications/{folder_name}/ats")
+def get_application_ats(folder_name: str, request: Request) -> dict:
+    """Re-run the ATS assessment for a processed application, from saved
+    artifacts + one Docs read. Zero AI calls; nothing is mutated.
+
+    Raises:
+        HTTPException: 404 for an unknown folder; 409 when the saved
+            artifacts are missing/invalid (e.g. pre-ATS application).
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    try:
+        assessment = reassess_application(folder)
+    except (FileNotFoundError, ValueError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    return assessment_as_dict(assessment)
+
+
 @router.post("/applications/{folder_name}/notes")
 def add_application_note(folder_name: str, body: NoteCreate, request: Request) -> dict:
     """Append a free-text changelog note to an application's ``metadata.json``."""
@@ -181,4 +212,298 @@ def add_application_note(folder_name: str, body: NoteCreate, request: Request) -
     return {
         "folder_name": folder_name,
         "notes": meta.get("notes") or [],
+    }
+
+
+class SourceUpdate(BaseModel):
+    """Editable source-tier fields (application-identity, phase 1).
+
+    ``extra="forbid"`` is the enforcement point for "``description``/``entity_id``
+    are not editable through this path" — either field on the request body is a
+    422, not a silently-ignored no-op.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    company: Optional[str] = None
+    role: Optional[str] = None
+    web_uri: Optional[str] = None
+    external_ref: Optional[str] = None
+
+
+@router.get("/applications/{folder_name}/source")
+def get_application_source(folder_name: str, request: Request) -> dict:
+    """Return an application's source-tier fields (``source.json``).
+
+    A folder with no ``source.json`` (legacy, or not yet processed under the
+    application-identity model) returns an empty source dict — tolerant, like
+    ``application_source.read_source`` itself.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    return {
+        "folder_name": folder_name,
+        "source": application_source.read_source(folder),
+    }
+
+
+@router.patch("/applications/{folder_name}/source")
+def update_application_source(
+    folder_name: str, body: SourceUpdate, request: Request
+) -> dict:
+    """Correct an application's source fields (company/role/web URI/external ref).
+
+    The motivating case is attaching a posting URL to a PDF drop, or fixing a
+    parse error. ``description`` and ``entity_id`` are not accepted (see
+    ``SourceUpdate``); the parse-once analysis fields and artifacts are untouched.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    fields = body.model_dump(exclude_unset=True)
+    try:
+        source = application_source.edit_source(folder, **fields)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"Could not write source: {exc}")
+    invalidate_completed_cache()
+    return {
+        "folder_name": folder_name,
+        "source": source,
+    }
+
+
+# --- Execution management (application-identity, phase 6b) -----------------
+#
+# An "execution" here is an archived (superseded) build under a folder's
+# archive/<timestamp>/ — the root artifacts are always the primary execution
+# and are not addressed by these routes. See jobjob/storage (StorageAdapter)
+# and openspec/changes/application-identity/design.md D2/D5.
+
+
+def _execution_list(folder: Path) -> list[dict]:
+    """Return archived executions (newest first) with their note/lock state."""
+    adapter = LocalStorageAdapter(folder)
+    timestamps = sorted(adapter.list_executions(), reverse=True)
+    return [{"timestamp": ts, **adapter.read_execution_note(ts)} for ts in timestamps]
+
+
+@router.get("/applications/{folder_name}/executions")
+def get_application_executions(folder_name: str, request: Request) -> dict:
+    """List an application's archived executions, newest first.
+
+    Each entry carries its ``note`` (or None) and ``locked`` flag (purge-exempt).
+    The primary (root) execution is not included — see the module docstring.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    return {"folder_name": folder_name, "executions": _execution_list(folder)}
+
+
+@router.post("/applications/{folder_name}/executions/{timestamp}/promote")
+def promote_application_execution(
+    folder_name: str, timestamp: str, request: Request
+) -> dict:
+    """Make an archived execution primary.
+
+    Strictly ordered (design D2): the current root is archived first, under a
+    fresh timestamp, before the chosen execution's files move up — there is
+    never a window where the two coexist un-archived.
+
+    Raises:
+        HTTPException: 404 if the folder or the named execution doesn't exist.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    adapter = LocalStorageAdapter(folder)
+    try:
+        adapter.promote_execution(timestamp)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "executions": _execution_list(folder)}
+
+
+class ExecutionNoteUpdate(BaseModel):
+    """Editable fields on an archived execution: its note and purge-exempt lock."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    note: Optional[str] = None
+    locked: Optional[bool] = None
+
+
+@router.patch("/applications/{folder_name}/executions/{timestamp}")
+def update_application_execution(
+    folder_name: str, timestamp: str, body: ExecutionNoteUpdate, request: Request
+) -> dict:
+    """Set an archived execution's note ("why we kept this run") and/or lock.
+
+    Only fields explicitly present in the request body change; the other is
+    left as previously stored. A lock exempts the execution from purge.
+
+    Raises:
+        HTTPException: 404 if the folder or the named execution doesn't exist.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    adapter = LocalStorageAdapter(folder)
+    fields = body.model_dump(exclude_unset=True)
+    try:
+        note = adapter.write_execution_note(timestamp, **fields)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    return {"folder_name": folder_name, "timestamp": timestamp, **note}
+
+
+@router.delete("/applications/{folder_name}/executions")
+def purge_application_executions(folder_name: str, request: Request) -> dict:
+    """Purge every archived (unlocked) execution for one application.
+
+    A locked execution is exempt (design D5) and is silently skipped, not an
+    error.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    purged = LocalStorageAdapter(folder).purge_executions()
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "purged": purged}
+
+
+@router.delete("/executions")
+def purge_all_executions(request: Request) -> dict:
+    """Purge every archived (unlocked) execution across every application.
+
+    Iterates every folder in the local applications mirror; a folder that
+    fails to purge (unreadable, permissions) is skipped, not fatal to the rest.
+    Locked executions are exempt everywhere, same as the per-entity purge.
+    """
+    local_dir = _local_dir(request)
+    by_folder: dict[str, list[str]] = {}
+    if local_dir.is_dir():
+        for folder in sorted(p for p in local_dir.iterdir() if p.is_dir()):
+            try:
+                purged = LocalStorageAdapter(folder).purge_executions()
+            except OSError:
+                continue
+            if purged:
+                by_folder[folder.name] = purged
+    invalidate_completed_cache()
+    total = sum(len(v) for v in by_folder.values())
+    return {"purged": by_folder, "total": total}
+
+
+# --- Dedup: merge/delete/re-parse (application-identity, phase 6c) ---------
+#
+# Duplicate *flagging* is computed at listing time (services.tracking_service
+# ._flag_duplicates) from the normalized company+role signal
+# (jobjob.structure.dedup) — it is never auto-merged (design D3). These routes
+# are the user-triggered resolution once a flag is raised, plus the one
+# sanctioned parse-once overwrite (re-parse).
+
+
+class MergeRequest(BaseModel):
+    """The duplicate ("loser") folder to absorb into ``{folder_name}`` (survivor)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    loser_folder_name: str
+
+
+@router.post("/applications/{folder_name}/merge")
+def merge_application(folder_name: str, body: MergeRequest, request: Request) -> dict:
+    """Merge a flagged-duplicate entity into this one (the survivor).
+
+    ``folder_name`` is the SURVIVING entity — it keeps its entity_id, status,
+    and root execution untouched. ``body.loser_folder_name`` is the duplicate
+    being absorbed: its current root execution and every archived execution
+    are re-parented into the survivor's ``archive/``, its changelog notes are
+    unioned in, and its folder is then removed outright. Never automatic
+    (design D3) — always an explicit user action.
+
+    Raises:
+        HTTPException: 404 if either folder doesn't exist; 400 if they're the
+            same folder.
+    """
+    survivor = _resolve_app_folder(request, folder_name)
+    loser = _resolve_app_folder(request, body.loser_folder_name)
+    if survivor == loser:
+        raise HTTPException(
+            status_code=400, detail="Cannot merge a folder into itself."
+        )
+    result = merge_applications(survivor, loser)
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, **result}
+
+
+@router.delete("/applications/{folder_name}/duplicate")
+def delete_duplicate(folder_name: str, request: Request) -> dict:
+    """Delete a flagged-duplicate application entity outright.
+
+    Design D3: dedup flags are advisory only (never auto-merge) — this is the
+    user's explicit "this one is a duplicate, remove it" action. Deletes the
+    whole entity folder — every tier and execution, including any archived
+    ones. Irreversible.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    delete_application(folder)
+    invalidate_completed_cache()
+    return {"folder_name": folder_name, "deleted": True}
+
+
+def _build_reparse_query_service():
+    """Construct the AIClient used for a re-parse call.
+
+    Split out from the endpoint so tests can substitute a stub without a
+    real Anthropic API key configured (mirrors ``jobs._make_build_run``'s
+    construction, just factored for injection).
+    """
+    from jobjob.ailib.client.anthropic import AnthropicAdapter
+    from jobjob.ailib.session import AIClient
+    from jobjob.config import load_settings
+
+    settings = load_settings()
+    client = AIClient(
+        AnthropicAdapter(model=settings.model, api_key=settings.anthropic_api_key)
+    )
+    return client, settings
+
+
+@router.post("/applications/{folder_name}/reparse")
+def reparse_application_source(folder_name: str, request: Request) -> dict:
+    """Re-run JD parsing and OVERWRITE this application's parsed source fields.
+
+    Parse-once (``application_source.ensure_source``) is otherwise sacred — a
+    rebuild's parse step never touches an existing ``source.json``. This is
+    the single sanctioned exception (design D3): an explicit user action to
+    pick up parser/prompt improvements, at the cost of clobbering whatever was
+    there before — including any manual corrections made via **Edit source**.
+    Only ``company``/``role``/``description`` change; ``entity_id``/
+    ``web_uri``/``external_ref`` and every artifact/execution are untouched.
+    The dedup signal is never stored, so nothing further to recompute here —
+    the next listing derives it fresh from the new ``company``/``role``.
+
+    Raises:
+        HTTPException: 404 unknown folder; 402 budget exceeded; 409 no JD
+            file recorded to re-parse from.
+    """
+    folder = _resolve_app_folder(request, folder_name)
+    s = _settings(request)
+    budget_error = check_budget(
+        per_run_budget=s.get("per_run_budget", 2.0),
+        daily_budget=s.get("daily_budget", 20.0),
+    )
+    if budget_error:
+        raise HTTPException(status_code=402, detail=budget_error)
+
+    client, settings = _build_reparse_query_service()
+    try:
+        source = reparse_source(folder, client, use_cache=settings.cache_enabled)
+    except ReparseError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+    usage = getattr(client, "usage", None)
+    if usage is not None:
+        record_run(calculate_cost(dcs.asdict(usage), model=settings.model))
+
+    invalidate_completed_cache()
+    return {
+        "folder_name": folder_name,
+        "source": source,
+        "warning": (
+            "Re-parse overwrote company/role/description; any manual "
+            "corrections to those fields were replaced."
+        ),
     }

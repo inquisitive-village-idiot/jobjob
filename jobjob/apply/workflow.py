@@ -14,7 +14,9 @@ customized Google Doc), and the cover letter (Google Doc).
 import dataclasses as dcs
 import json
 import logging
+import re
 import shutil
+import sys
 import tempfile
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -22,22 +24,25 @@ from typing import Any, Optional
 
 from jobjob.ailib.session import AIClient
 from jobjob.apply.generate.archetype import select_template
+from jobjob.apply.generate.ats import assess_ats
 from jobjob.apply.generate.coverletter import generate_cover_letter_text
 from jobjob.apply.generate.highlights import select_highlights
 from jobjob.apply.generate.parse import parse_job_description
-from jobjob.apply.generate.readme import generate_application_readme
+from jobjob.apply.generate.readme import assess_fit, generate_application_readme
 from jobjob.apply.generate.resume import tailor_resume
 from jobjob.apply.generate.skills import analyze_skills
 from jobjob.apply.output.cover_letter_docx import create_cover_letter_docx
 from jobjob.apply.output.cover_letter_pdf import create_cover_letter_pdf
 from jobjob.classify.classify import JD, classify_file
 from jobjob.gapi import drive as gdrive
-from jobjob.gapi.docs import verify_page_count
+from jobjob.gapi.docs import get_document, verify_page_count
 from jobjob.gapi.service import build_docs_service, build_drive_service
 from jobjob.loader.auth import get_google_credentials
-from jobjob.loader.loadcontent import load_highlights, load_templates
+from jobjob.loader.loadcontent import load_highlights, load_skills, load_templates
 from jobjob.loader.loadreference import load_reference_documents
-from jobjob.structure.applicant import Applicant
+from jobjob.storage import DriveStorageAdapter, LocalStorageAdapter, archive_timestamp
+from jobjob.structure.applicant import Applicant, first_last_name
+from jobjob.structure.fit import fit_summary
 from jobjob.structure.highlight import Highlight, HighlightSet
 from jobjob.structure.job_decription import JobDescription
 from jobjob.structure.reference import ReferenceDocs
@@ -47,6 +52,21 @@ RESUME_NAME = "Resume"
 COVER_LETTER_NAME = "CoverLetter"
 README_NAME = "README"
 SKILLS_NAME = "skills_analysis.json"
+SUMMARY_NAME = "summary.json"
+
+
+def _artifact_names(applicant_name: Optional[str]) -> tuple[str, str]:
+    """Return ``(resume_name, cover_letter_name)`` for this applicant.
+
+    Submitted artifacts (résumé + cover letter only — design D8) are named
+    ``FirstLast_Resume`` / ``FirstLast_CoverLetter``; an applicant with no
+    derivable name falls back to the bare ``Resume``/``CoverLetter`` names used
+    historically. README/JD/JSON sidecars are unaffected and keep their names.
+    """
+    first_last = first_last_name(applicant_name)
+    if not first_last:
+        return RESUME_NAME, COVER_LETTER_NAME
+    return f"{first_last}_{RESUME_NAME}", f"{first_last}_{COVER_LETTER_NAME}"
 
 
 def build_cached_context(
@@ -93,10 +113,66 @@ def build_cached_context(
     return "\n\n".join(parts)
 
 
+# summary.json format version; bump only on a breaking shape change. No reader
+# migration exists yet — the file is written fresh on every run rather than
+# read back and updated in place.
+_SUMMARY_SCHEMA_VERSION = 1
+
+
 def _write_summary(output_dir: Path, results: dict) -> Path:
-    path = Path(output_dir, "summary.json")
-    path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    path = Path(output_dir, SUMMARY_NAME)
+    payload = {"schema_version": _SUMMARY_SCHEMA_VERSION, **results}
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return path
+
+
+def _identity_services():
+    """Best-effort import of the webapp backend's identity-tier services.
+
+    jobjob core does not depend on the webapp backend as a normal import (the
+    dependency runs the other way — see ``webapp/backend/main.py``), but the two
+    ship side by side (dev checkout and the built wheel both put ``webapp/backend``
+    beside the ``jobjob`` package; see the pyproject force-include and
+    ``jobjob.launcher``'s identical ``sys.path`` trick). Loaded lazily and
+    defensively so a build never fails when the backend layout is unusual —
+    callers treat ``(None, None)`` as "identity bookkeeping unavailable" and skip
+    it, logging rather than raising.
+
+    Returns:
+        ``(application_metadata, application_source)`` modules, or ``(None, None)``.
+    """
+    backend_dir = Path(__file__).resolve().parents[2] / "webapp" / "backend"
+    if backend_dir.is_dir() and str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+    try:
+        from services import application_metadata, application_source
+    except ImportError:
+        return None, None
+    return application_metadata, application_source
+
+
+# A URL-captured JD snapshot (jobjob.ingest.jd_source.write_snapshot) leads with a
+# "<!-- source: URL -->" provenance comment; a paste snapshot or PDF drop has none.
+_SNAPSHOT_SOURCE_RE = re.compile(r"^<!--\s*source:\s*(\S+)\s*-->", re.MULTILINE)
+
+
+def _infer_web_uri(job_description_pdf: Path) -> Optional[str]:
+    """Best-effort: recover the source URL from a URL-captured JD snapshot.
+
+    Only ``.md`` snapshots can carry the provenance comment (a PDF drop has no
+    such thing); anything else (wrong suffix, unreadable/binary content) degrades
+    to None. This is advisory identity metadata, never required for the build to
+    succeed.
+    """
+    path = Path(job_description_pdf)
+    if path.suffix.lower() != ".md":
+        return None
+    try:
+        head = path.read_text(encoding="utf-8")[:500]
+    except (OSError, UnicodeDecodeError):
+        return None
+    match = _SNAPSHOT_SOURCE_RE.search(head)
+    return match.group(1) if match else None
 
 
 class OverwriteConflict(Exception):
@@ -133,7 +209,10 @@ def run_application_workflow(
     parent_id: Optional[str] = None,
     reuse_folder_id: Optional[str] = None,
     allow_overwrite: bool = False,
+    archive_on_conflict: bool = False,
     industry: Optional[str] = None,
+    applications_output_dir: Optional[Path] = None,
+    entity_dir: Optional[Path] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _drive_builder: Callable[..., Any] = build_drive_service,
@@ -145,7 +224,10 @@ def run_application_workflow(
         job_description_pdf: Path to the job-description PDF.
         query_service: AIClient (callable + cached context + usage).
         applicant: Applicant identity (for cover-letter headers).
-        output_dir: Local output directory. Defaults to a temp directory.
+        output_dir: Local output directory. Used as-is only as a last-resort
+            fallback (legacy/offline: no ``applications_output_dir`` and no
+            ``entity_dir`` configured); defaults to a fresh temp directory in
+            that case. Superseded by the entity-folder resolution below.
         skip_drive: If True, skip all Google Drive/Docs operations.
         highlight_set: Highlights. Loaded from static content if None.
         reference: Reference docs. Loaded from static reference if None.
@@ -154,14 +236,35 @@ def run_application_workflow(
         template_name: Explicit template name; if None the archetype is auto-detected.
         parent_id: Applications-root folder id (Drive mode).
         reuse_folder_id: Existing Drive folder id to update in place (re-process mode).
+        allow_overwrite: Proceed past a name collision with an existing execution
+            (Drive folder and/or local entity folder) instead of raising
+            ``OverwriteConflict``. Overwrite-in-place stays the default flow.
+        archive_on_conflict: When ``allow_overwrite`` is set and a prior execution
+            is found at the resolved entity folder (Drive and/or local), move its
+            current root artifacts into ``archive/<timestamp>/`` first instead of
+            overwriting them in place. Ignored when there is no prior execution.
         industry: Optional domain/industry context for the active profile, passed to
             the resume-objective prompt so the company is described accurately.
+        applications_output_dir: Root of the local Drive-mirror of application
+            folders. A build materializes ``<root>/<Company - Role>`` under it and
+            places **all** of this execution's artifacts there (identity files
+            and local artifacts alike) — the single entity folder design D7/D2
+            describe. Superseded by ``entity_dir`` when given.
+        entity_dir: Explicit persistent entity folder, overriding the resolution
+            from ``applications_output_dir``. Used by a re-run of a possibly-renamed
+            application to target the existing folder so its entity_id is reused
+            and no overwrite guard applies (this is the local-path equivalent of
+            ``reuse_folder_id``).
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _drive_builder: Injection point for the Drive service builder (testing).
         _docs_builder: Injection point for the Docs service builder (testing).
     Returns:
         A dict of produced paths/ids, job info, and token usage.
+    Raises:
+        OverwriteConflict: A fresh (non-reuse) build resolves to an entity folder
+            (Drive and/or the local mirror) that already holds a prior execution,
+            and neither ``allow_overwrite`` is set.
     """
     _logger = logger or logging.getLogger(__name__)
     results: dict = {}
@@ -174,11 +277,50 @@ def run_application_workflow(
     results["job_info"] = dcs.asdict(job)
     _logger.info("Parsed: %s / %s", job.company_name, job.role_title)
 
-    output_dir = (
-        Path(output_dir) if output_dir else Path(tempfile.mkdtemp(prefix="job_app_"))
-    )
+    # Resolve the ONE entity/output root (design D7): identity (metadata.json /
+    # source.json) and every local artifact this execution produces land in the
+    # same directory — a build no longer splits them across an ephemeral
+    # output_dir and a separately-resolved identity folder. Precedence:
+    #   entity_dir (explicit re-run target; skips the overwrite guard below,
+    #     mirroring reuse_folder_id on the Drive side)
+    #   > applications_output_dir / <Company - Role>  (fresh build into the mirror
+    #     — this is the path the overwrite guard protects)
+    #   > output_dir  (legacy/offline fallback: CLI with no mirror configured)
+    #   > a fresh tempdir
+    mirror_resolved = entity_dir is None and applications_output_dir is not None
+    if entity_dir is not None:
+        output_dir = Path(entity_dir)
+    elif mirror_resolved:
+        output_dir = Path(applications_output_dir) / gdrive.application_folder_name(
+            job.company_name, job.role_title
+        )
+    else:
+        output_dir = (
+            Path(output_dir)
+            if output_dir
+            else Path(tempfile.mkdtemp(prefix="job_app_"))
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     results["output_dir"] = str(output_dir)
+
+    folder_name = gdrive.application_folder_name(job.company_name, job.role_title)
+    local_storage = LocalStorageAdapter(output_dir)
+    archive_ts = archive_timestamp()
+
+    # Local-path overwrite guard (generalizes the Drive-only OverwriteConflict
+    # check to the filesystem side of a build): a fresh build into the mirror
+    # (not an explicit entity_dir reuse target) that lands on a folder already
+    # holding a prior execution (summary.json — its birth certificate) must not
+    # silently clobber it without the caller opting in. Only applies to the
+    # mirror-resolved path; the legacy output_dir-only fallback keeps its
+    # existing (no-guard) behavior, matching the CLI's plain re-run flow.
+    if mirror_resolved and local_storage.exists(SUMMARY_NAME):
+        if not allow_overwrite:
+            raise OverwriteConflict(folder_name)
+        if archive_on_conflict:
+            local_storage.archive_execution(archive_ts)
+
+    resume_name, cover_letter_name = _artifact_names(applicant.name)
 
     highlight_set = highlight_set or load_highlights()
     reference = reference or load_reference_documents()
@@ -194,15 +336,17 @@ def run_application_workflow(
     resume_text = None
     drive_service = None
     folder_id = None
+    resume_doc = None
     if not skip_drive:
         template = _select_resume_template(
             job, query_service, template_id, template_name, use_cache
         )
         results["template"] = template.name
         _logger.info("Selected resume template: %s", template.name)
-        resume_text, drive_service, folder_id = _run_drive_resume_steps(
+        resume_text, drive_service, folder_id, resume_doc = _run_drive_resume_steps(
             job=job,
             output_dir=output_dir,
+            resume_name=resume_name,
             query_service=query_service,
             highlight_set=highlight_set,
             reference=reference,
@@ -211,6 +355,8 @@ def run_application_workflow(
             parent_id=parent_id,
             reuse_folder_id=reuse_folder_id,
             allow_overwrite=allow_overwrite,
+            archive_on_conflict=archive_on_conflict,
+            archive_ts=archive_ts,
             use_cache=use_cache,
             industry=industry,
             results=results,
@@ -220,26 +366,39 @@ def run_application_workflow(
             _docs_builder=_docs_builder,
         )
 
-    # Step 3: cover letter (text + PDF + DOCX).
+    # Step 3: cover letter (text + local PDF always; DOCX is either the local
+    # artifact (skip_drive) or a scratch upload payload converted to a Google Doc
+    # (Drive mode) — Drive mode does not also keep the DOCX locally, since the
+    # gdoc *is* the artifact (no local-docx-plus-gdoc duplication).
     letter = generate_cover_letter_text(
         job, selected, query_service, applicant, use_cache=use_cache
     )
     pdf_path = create_cover_letter_pdf(
         letter,
-        Path(output_dir, f"{COVER_LETTER_NAME}.pdf"),
-        role_title=job.role_title,
-        company_name=job.company_name,
-        applicant=applicant,
-    )
-    docx_path = create_cover_letter_docx(
-        letter,
-        Path(output_dir, f"{COVER_LETTER_NAME}.docx"),
+        Path(output_dir, f"{cover_letter_name}.pdf"),
         role_title=job.role_title,
         company_name=job.company_name,
         applicant=applicant,
     )
     results["cover_letter_pdf"] = str(pdf_path)
-    results["cover_letter_docx"] = str(docx_path)
+
+    scratch_dir = (
+        Path(tempfile.mkdtemp(prefix="job_app_scratch_")) if not skip_drive else None
+    )
+    docx_dest = (
+        Path(scratch_dir, f"{cover_letter_name}.docx")
+        if scratch_dir
+        else Path(output_dir, f"{cover_letter_name}.docx")
+    )
+    docx_path = create_cover_letter_docx(
+        letter,
+        docx_dest,
+        role_title=job.role_title,
+        company_name=job.company_name,
+        applicant=applicant,
+    )
+    if skip_drive:
+        results["cover_letter_docx"] = str(docx_path)
 
     # Step 4: skills analysis (folded into the README, kept locally as data).
     skills = analyze_skills(job, query_service, use_cache=use_cache)
@@ -247,17 +406,43 @@ def run_application_workflow(
     skills_path.write_text(json.dumps(skills, indent=2), encoding="utf-8")
     results["skills_analysis"] = str(skills_path)
 
-    # Step 5: README (summary + folded skills + fit).
+    # Step 4b: ATS assessment of the rendered resume (advisory; None doc =>
+    # skipped section). Uses the declared skills file as the recommendation
+    # allowlist -- honesty layer.
+    try:
+        skill_set = load_skills(logger=_logger)
+    except (OSError, ValueError) as exc:
+        _logger.warning("Skills file unavailable for ATS assessment: %s", exc)
+        skill_set = None
+    ats = assess_ats(resume_doc, job, skills, skill_set=skill_set, logger=_logger)
+    results["ats_coverage"] = ats.coverage_score
+
+    # Fit is computed once here so the machine-readable summary block and the
+    # README render the same assessment.
+    fit = assess_fit(skills, logger=_logger)
+    results["fit"] = fit_summary(fit)
+
+    # Step 5: README (summary + folded skills + fit + ATS). Same scratch-vs-local
+    # split as the cover letter: Drive mode uploads it as a Google Doc and does
+    # not keep the local .docx.
+    readme_dest = (
+        Path(scratch_dir, f"{README_NAME}.docx")
+        if scratch_dir
+        else Path(output_dir, f"{README_NAME}.docx")
+    )
     readme_path = generate_application_readme(
         job,
         skills,
-        Path(output_dir, f"{README_NAME}.docx"),
+        readme_dest,
         issues=results.get("issues"),
         template_name=results.get("template"),
         template_archetype=results.get("template_archetype"),
         resume_changes=results.get("resume_changes"),
+        ats=ats,
+        fit=fit,
     )
-    results["readme"] = str(readme_path)
+    if skip_drive:
+        results["readme"] = str(readme_path)
 
     # Copy the JD into the output directory as JD_<Company>_<Role><ext> (PascalCase).
     # The source suffix is preserved so a text/Markdown snapshot (URL/paste capture)
@@ -279,13 +464,43 @@ def run_application_workflow(
             readme_path=readme_path,
             jd_copy=jd_copy,
             cover_letter_docx=docx_path,
+            cover_letter_name=cover_letter_name,
             logger=_logger,
         )
+        # NOTE: no results["readme"]/["cover_letter_docx"] path in Drive mode — the
+        # gdoc uploaded above IS the artifact; the scratch .docx used to build it
+        # is discarded rather than also kept as a redundant local copy.
+        shutil.rmtree(scratch_dir, ignore_errors=True)
 
     usage = getattr(query_service, "usage", None)
     if usage is not None:
         results["token_usage"] = dcs.asdict(usage)
         _logger.info("%s", usage.summary())
+
+    # Identity core (application-identity, phase 1): mint/reuse this application's
+    # entity_id and write its parse-once source fields. ``output_dir`` IS the
+    # entity folder now (the resolution above), so identity and artifacts always
+    # share one location — no separate id_dir resolution needed here. Best-effort
+    # throughout — a read-only dir or an unavailable backend leaves the folder
+    # legacy (id-less) for this run rather than failing the build.
+    app_metadata, app_source = _identity_services()
+    if app_metadata is not None and app_source is not None:
+        try:
+            entity_id = app_metadata.ensure_entity_id(output_dir)
+            results["entity_id"] = entity_id
+            app_source.ensure_source(
+                output_dir,
+                entity_id=entity_id,
+                company=job.company_name,
+                role=job.role_title,
+                description=job.summary,
+                file_uri=results.get("job_description_pdf"),
+                web_uri=_infer_web_uri(job_description_pdf),
+            )
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 — identity bookkeeping must never fail a build.
+            _logger.warning("Could not record application identity: %s", exc)
 
     _write_summary(output_dir, results)
     return results
@@ -314,6 +529,7 @@ def _select_resume_template(
 def _run_drive_resume_steps(
     job: JobDescription,
     output_dir: Path,
+    resume_name: str,
     query_service: AIClient,
     highlight_set: HighlightSet,
     reference: ReferenceDocs,
@@ -322,6 +538,8 @@ def _run_drive_resume_steps(
     parent_id: Optional[str],
     reuse_folder_id: Optional[str],
     allow_overwrite: bool,
+    archive_on_conflict: bool,
+    archive_ts: str,
     use_cache: bool,
     results: dict,
     logger: logging.Logger,
@@ -345,15 +563,22 @@ def _run_drive_resume_steps(
         logger.info("Reusing existing Drive folder: %s", folder_id)
     else:
         # A fresh apply must not silently overwrite an existing application. Reuse
-        # (reprocess) goes through reuse_folder_id; an explicit override opts in.
-        if not allow_overwrite:
-            existing = gdrive.find_application_folder(
-                drive_service, job.company_name, job.role_title, parent_id=parent_id
-            )
-            if existing:
+        # (reprocess) goes through reuse_folder_id; an explicit override opts in,
+        # and archive_on_conflict additionally moves the prior execution's Drive
+        # docs into archive/<timestamp>/ (move-by-id — revision history survives)
+        # instead of letting the new build overwrite them in place.
+        existing = gdrive.find_application_folder(
+            drive_service, job.company_name, job.role_title, parent_id=parent_id
+        )
+        if existing:
+            if not allow_overwrite:
                 raise OverwriteConflict(
                     gdrive.application_folder_name(job.company_name, job.role_title)
                 )
+            if archive_on_conflict:
+                DriveStorageAdapter(
+                    drive_service, existing, logger=logger
+                ).archive_execution(archive_ts)
         folder_id = gdrive.create_application_folder(
             drive_service,
             job.company_name,
@@ -364,7 +589,7 @@ def _run_drive_resume_steps(
     results["folder_id"] = folder_id
 
     resume_id = gdrive.copy_resume_template(
-        drive_service, folder_id, template.doc_id, name=RESUME_NAME, logger=logger
+        drive_service, folder_id, template.doc_id, name=resume_name, logger=logger
     )
     results["resume_id"] = resume_id
     results["template_archetype"] = template.archetype
@@ -402,10 +627,19 @@ def _run_drive_resume_steps(
 
     # NOTE: export a local PDF copy of the resume; the Drive artifact is the Doc.
     resume_pdf = gdrive.export_doc_as_pdf(
-        drive_service, resume_id, Path(output_dir, f"{RESUME_NAME}.pdf"), logger=logger
+        drive_service, resume_id, Path(output_dir, f"{resume_name}.pdf"), logger=logger
     )
     results["resume_pdf"] = str(resume_pdf)
-    return resume_text, drive_service, folder_id
+
+    # One structural fetch of the updated doc serves the ATS assessment (text
+    # for keyword coverage, structure for parseability). Best-effort: the
+    # assessment degrades to skipped rather than failing the application.
+    resume_doc = None
+    try:
+        resume_doc = get_document(docs_service, resume_id)
+    except Exception as exc:  # noqa: BLE001 — assessment is advisory.
+        logger.warning("Could not fetch resume doc for ATS assessment: %s", exc)
+    return resume_text, drive_service, folder_id, resume_doc
 
 
 def _upload_outputs(
@@ -414,12 +648,17 @@ def _upload_outputs(
     readme_path: Path,
     jd_copy: Path,
     cover_letter_docx: Path,
+    cover_letter_name: str,
     logger: logging.Logger,
 ) -> None:
     """Upload the README, JD, and cover letter to the application's Drive folder.
 
     NOTE: the resume Google Doc is already in the folder (the template copy), so
-        the four folder artifacts are README + JD + resume + cover letter.
+        the four folder artifacts are README + JD + resume + cover letter. The
+        JD copy is placed via the storage adapter (a plain file, dispatched the
+        same way a local-only build would place it); README/cover letter go
+        through the Docs-specific upload helpers directly, since converting a
+        .docx into an editable Google Doc in place isn't a plain-file operation.
     """
     if drive_service is None or folder_id is None:
         return  # EARLY EXIT: nothing to upload.
@@ -427,9 +666,11 @@ def _upload_outputs(
     gdrive.upload_docx_as_google_doc(
         drive_service, readme_path, folder_id, README_NAME, logger=logger
     )
-    gdrive.upload_file(drive_service, jd_copy, folder_id, jd_copy.name, logger=logger)
+    DriveStorageAdapter(drive_service, folder_id, logger=logger).place(
+        jd_copy, jd_copy.name
+    )
     gdrive.upload_docx_as_google_doc(
-        drive_service, cover_letter_docx, folder_id, COVER_LETTER_NAME, logger=logger
+        drive_service, cover_letter_docx, folder_id, cover_letter_name, logger=logger
     )
 
 
@@ -474,7 +715,10 @@ def apply_inputs(
     parent_id: Optional[str] = None,
     data_dir: Optional[Path] = None,
     allow_overwrite: bool = False,
+    archive_on_conflict: bool = False,
     industry: Optional[str] = None,
+    applications_output_dir: Optional[Path] = None,
+    entity_dir: Optional[Path] = None,
     logger: logging.Logger | None = None,
     _credentials_loader: Callable[..., Any] = get_google_credentials,
     _classify: Callable[..., str] = classify_file,
@@ -486,10 +730,12 @@ def apply_inputs(
     anything unsupported) are skipped with a log line — apply's half of the shared
     single-input-directory. Processing continues past a per-file error.
 
-    Each JD in a directory gets its own ``output_dir/<jd-stem>`` subdirectory, since
-    ``run_application_workflow`` writes local artifacts flat into ``output_dir``
-    (the per-application folder is created in Drive, not locally) and would
-    otherwise clobber the previous JD's files.
+    Each JD in a directory gets its own ``output_dir/<jd-stem>`` subdirectory when
+    no ``applications_output_dir`` is configured — the legacy/offline fallback,
+    since in that case ``run_application_workflow`` writes local artifacts flat
+    into ``output_dir`` and would otherwise clobber the previous JD's files. When
+    ``applications_output_dir`` is set (the mainstream case), each JD resolves its
+    own ``<Company - Role>`` entity folder instead, so no subdir is needed.
 
     Arguments:
         input_path: A job-description PDF, or a directory of mixed inputs.
@@ -503,8 +749,16 @@ def apply_inputs(
         parent_id: Applications-root Drive folder id.
         data_dir: Root holding ``completed/``; when set (and not ``skip_drive``), a
             successfully-applied JD is moved into ``<data_dir>/completed/jobs/``.
+        allow_overwrite: Forwarded to ``run_application_workflow``.
+        archive_on_conflict: Forwarded to ``run_application_workflow``.
         industry: Optional domain/industry context for the active profile, forwarded
             to the resume-objective prompt.
+        applications_output_dir: Local Drive-mirror root; forwarded so each JD's
+            identity and artifacts persist into ``<root>/<Company - Role>`` rather
+            than the ephemeral output dir.
+        entity_dir: Explicit persistent identity folder (a single-application re-run
+            targeting an existing/renamed folder). In directory mode leave it None so
+            each JD resolves its own folder under ``applications_output_dir``.
         logger: Optional logger for injection.
         _credentials_loader: Injection point for Google credentials (testing).
         _classify: Injection point for the file classifier (testing).
@@ -551,7 +805,10 @@ def apply_inputs(
                 template_name=template_name,
                 parent_id=parent_id,
                 allow_overwrite=allow_overwrite,
+                archive_on_conflict=archive_on_conflict,
                 industry=industry,
+                applications_output_dir=applications_output_dir,
+                entity_dir=entity_dir,
                 logger=_logger,
                 _credentials_loader=_credentials_loader,
             )

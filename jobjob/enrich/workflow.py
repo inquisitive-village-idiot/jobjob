@@ -5,6 +5,7 @@ import dataclasses as dcs
 import json
 import logging
 import re
+import uuid
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -47,13 +48,16 @@ def enrich_profile(
         _credentials_loader: Injection point for Google credentials (testing).
         _sheets_builder: Injection point for the Sheets service builder (testing).
     Returns:
-        A results dict with the parsed profile (and the appended row when written).
+        A results dict with the parsed profile, its ``entity_id`` (application-
+        identity, phase 1 — minted here so the sheet row and the later local
+        sidecar carry the same id), and the appended row when written.
     Raises:
         ValueError: If writing is requested without a spreadsheet id.
     """
     _logger = logger or logging.getLogger(__name__)
     profile = parse_profile(Path(profile_pdf), query_service, use_cache=use_cache)
-    results = {"profile": dcs.asdict(profile)}
+    entity_id = str(uuid.uuid4())
+    results = {"profile": dcs.asdict(profile), "entity_id": entity_id}
     _logger.info(
         "Parsed profile: %s / %s @ %s", profile.name, profile.role, profile.company
     )
@@ -71,7 +75,12 @@ def enrich_profile(
     creds = _credentials_loader()
     service = _sheets_builder(creds)
     results["row"] = append_profile(
-        service, spreadsheet_id, profile, sheet_name=sheet_name, logger=_logger
+        service,
+        spreadsheet_id,
+        profile,
+        sheet_name=sheet_name,
+        logger=_logger,
+        entity_id=entity_id,
     )
     return results
 
@@ -118,21 +127,60 @@ def completed_profile_name(
     )
 
 
+def _reuse_or_mint_entity_id(sidecar: Path) -> str:
+    """Read-or-mint a contact's entity id from its sidecar (mint-once/reuse).
+
+    Mirrors ``application_metadata.ensure_entity_id``'s contract for the contact
+    tier: a contact has no separate ``metadata.json`` — the sidecar itself is the
+    entity-tier home. A missing or corrupt existing sidecar degrades to minting
+    fresh (tolerant, like every other identity read in this change).
+    """
+    if sidecar.is_file():
+        try:
+            existing = json.loads(sidecar.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            existing = None
+        if isinstance(existing, dict):
+            current = existing.get("entity_id")
+            if isinstance(current, str) and current:
+                return current
+    return str(uuid.uuid4())
+
+
 def write_profile_sidecar(
-    dest: Path, profile: dict, created: date, processed: date
+    dest: Path,
+    profile: dict,
+    created: date,
+    processed: date,
+    *,
+    entity_id: Optional[str] = None,
 ) -> Path:
     """Write a JSON sidecar beside a completed profile with its parsed fields + dates.
 
     The PascalCase filename is lossy; the sidecar preserves the original (spaced)
     parsed values so the dashboard can display them, and is the local, queryable
-    record of the contact. Returns the sidecar path.
+    record of the contact.
+
+    Arguments:
+        dest: The completed profile's file path (the sidecar is its ``.json``).
+        profile: The parsed profile fields.
+        created: The contact's created date.
+        processed: The date this enrichment ran.
+        entity_id: The contact's entity id, normally already minted (and written
+            to the sheet's ID column) by ``enrich_profile``. When omitted, reused
+            from a pre-existing sidecar at ``dest`` if one is found, else minted
+            fresh — the fallback path for a direct/standalone call.
+    Returns:
+        The sidecar path.
     """
+    sidecar = dest.with_suffix(".json")
+    resolved_id = entity_id or _reuse_or_mint_entity_id(sidecar)
     record = {
+        "entity_id": resolved_id,
         **profile,
         "date_created": created.isoformat(),
         "date_processed": processed.isoformat(),
     }
-    sidecar = dest.with_suffix(".json")
     sidecar.write_text(json.dumps(record, indent=2), encoding="utf-8")
     return sidecar
 
@@ -259,9 +307,14 @@ def enrich_inputs(
                     created=created,
                     processed=processed,
                 )
+                entity_id = (
+                    result.get("entity_id") if isinstance(result, dict) else None
+                )
                 try:
                     dest = move_completed_profile(f, data_dir, name, logger=_logger)
-                    write_profile_sidecar(dest, profile, created, processed)
+                    write_profile_sidecar(
+                        dest, profile, created, processed, entity_id=entity_id
+                    )
                 except OSError as exc:
                     _logger.warning("Could not move profile to completed: %s", exc)
             summary["processed"] += 1

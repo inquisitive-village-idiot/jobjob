@@ -3,10 +3,10 @@
 
 Each application folder in the locally-synced Drive mirror may hold a
 ``metadata.json`` written by this module; the Drive sync client uploads it, so
-the metadata travels with the application folder. Schema (version 1)::
+the metadata travels with the application folder. Schema (version 2)::
 
     {
-      "schema_version": 1,
+      "schema_version": 2,
       "status": "APPLIED",
       "status_updated_at": "2026-06-10T18:24:31+00:00",
       "notes": []
@@ -14,6 +14,22 @@ the metadata travels with the application folder. Schema (version 1)::
 
 ``notes`` is reserved for changelog-style annotations (future work); unknown
 keys are preserved verbatim on every write so newer schemas survive round-trips.
+
+``entity_id`` (application-identity, phase 1) is this module's entity-tier
+field: a uuid4 minted once (``ensure_entity_id``) and reused on every rebuild.
+It is additive and round-tripped like any other unknown key — it does **not**
+bump ``schema_version``. Its absence marks a folder as legacy: joins fall back
+to the folder name, and the id is minted lazily on the folder's next natural
+write (no backfill, no mirror rewrite).
+
+Schema versioning: ``schema_version`` is stamped on every write and is the
+single source of truth reads key off; it increments only on format changes.
+Absence of the stamp is a valid ``v0`` (the entire pre-versioning mirror is
+retroactively versioned without touching a byte). ``read_metadata`` runs
+``_migrate`` on every read: files at ``schema_version < 2`` have a stored
+``status: "GENERATED"`` normalized to ``"BUILT"`` (the v1 status vocabulary
+was renamed in the full-build-rename change) — the source file is never
+rewritten by a read; only the next write stamps ``2``.
 
 Errors raise: a corrupt or unreadable metadata file raises ``ValueError`` /
 ``OSError``. Callers iterating many folders (the tracking list) catch, log, and
@@ -23,6 +39,7 @@ skip; single-item callers (the status endpoint) surface the failure.
 import json
 import os
 import tempfile
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -33,7 +50,7 @@ from typing import Optional
 class ApplicationStatus(str, Enum):
     """Lifecycle status of a job application."""
 
-    GENERATED = "GENERATED"  # default: artifacts produced, nothing submitted
+    BUILT = "BUILT"  # default: artifacts produced, nothing submitted
     APPLIED = "APPLIED"
     IGNORED = "IGNORED"
     INTERVIEWING = "INTERVIEWING"
@@ -43,9 +60,9 @@ class ApplicationStatus(str, Enum):
     WITHDRAWN = "WITHDRAWN"
 
 
-DEFAULT_STATUS = ApplicationStatus.GENERATED
+DEFAULT_STATUS = ApplicationStatus.BUILT
 METADATA_FILENAME = "metadata.json"
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 # Kinds of changelog note. "status" entries are auto-logged on a status transition;
 # "note" entries are free-text annotations the user adds. Mirrored by NOTE_KINDS in
@@ -73,10 +90,86 @@ def status_from_metadata(meta: dict) -> Optional[ApplicationStatus]:
     return ApplicationStatus(raw) if raw is not None else None
 
 
+def entity_id_from_metadata(meta: dict) -> Optional[str]:
+    """Return the ``entity_id`` recorded in a metadata dict, if any.
+
+    Arguments:
+        meta: A parsed metadata dict (e.g. from :func:`read_metadata`).
+    Returns:
+        The entity id, or None when absent (a legacy record — see
+        ``ensure_entity_id``).
+    """
+    value = meta.get("entity_id")
+    return value if isinstance(value, str) and value else None
+
+
+def read_entity_id(folder: Path) -> Optional[str]:
+    """Return the entity id recorded for an application folder, if any.
+
+    Arguments:
+        folder: The application folder in the local mirror.
+    Returns:
+        The entity id, or None when no metadata file or no ``entity_id`` field
+        exists (a legacy folder — joins by name, per the application-identity
+        design).
+    Raises:
+        ValueError: The metadata file is corrupt.
+        OSError: The metadata file cannot be read.
+    """
+    return entity_id_from_metadata(read_metadata(folder))
+
+
+def ensure_entity_id(folder: Path) -> str:
+    """Read-or-mint-and-write the folder's stable ``entity_id``.
+
+    Mint-once / reuse-on-rebuild: an existing ``entity_id`` is always reused
+    (no write happens); only a folder with none gets a freshly minted uuid4,
+    written back with ``status``/``notes``/other keys preserved unchanged. This
+    is the entity tier's home (``metadata.json``) — called at build/enrich time
+    so a legacy (id-less) folder gains an id lazily, on its next natural write,
+    per the application-identity design (no backfill, no mirror rewrite).
+
+    Arguments:
+        folder: The application folder in the local mirror.
+    Returns:
+        The entity id (existing or freshly minted).
+    Raises:
+        ValueError: An existing metadata file is corrupt (not overwritten).
+        OSError: The file cannot be read or written.
+    """
+    data = read_metadata(folder)
+    existing = entity_id_from_metadata(data)
+    if existing:
+        return existing
+    new_id = str(uuid.uuid4())
+    data["schema_version"] = _SCHEMA_VERSION
+    data["entity_id"] = new_id
+    _write_metadata(folder, data)
+    return new_id
+
+
+def _migrate(data: dict) -> dict:
+    """Normalize a metadata dict read from disk to the current in-memory shape.
+
+    Keyed on ``schema_version`` (absent ⇒ ``0``), not on the app version. A file
+    at ``schema_version < 2`` (the full-build-rename cutover) has a stored
+    ``status: "GENERATED"`` normalized to ``"BUILT"``; a ``v2`` file is already
+    post-rename and passed through unchanged. This is a read-only shim — the
+    source file is never rewritten here, only the next write stamps the new
+    version. Shaped as a single migration step now (YAGNI on a full registry),
+    but structured so later non-trivial format changes can grow it into a chain.
+    """
+    if data.get("schema_version", 0) < 2 and data.get("status") == "GENERATED":
+        data = {**data, "status": "BUILT"}
+    return data
+
+
 def read_metadata(folder: Path) -> dict:
     """Return the metadata dict for an application folder.
 
     A missing file is the normal state for most folders and returns ``{}``.
+    The returned dict is migrated to the current schema (see :func:`_migrate`);
+    the file on disk is left untouched by a read.
 
     Arguments:
         folder: The application folder in the local mirror.
@@ -92,7 +185,7 @@ def read_metadata(folder: Path) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError(f"{path} does not contain a JSON object")
-    return data
+    return _migrate(data)
 
 
 def read_status(folder: Path) -> Optional[ApplicationStatus]:
@@ -186,6 +279,40 @@ def write_status(folder: Path, status: ApplicationStatus) -> dict:
             else f"Status set to {status.value}"
         )
         _append_note(data, text, NOTE_STATUS, now)
+    return _write_metadata(folder, data)
+
+
+def union_notes(folder: Path, incoming: list[dict]) -> dict:
+    """Merge externally-sourced changelog notes into this folder's metadata.
+
+    Used by application-identity dedup merge (design D3): the "loser" entity's
+    notes are unioned into the surviving entity's changelog, then sorted by
+    timestamp. Only ``notes`` changes here — ``entity_id``/``status`` (and
+    everything else) are left exactly as they were; the caller
+    (``services.dedup_service.merge_applications``) owns those invariants. An
+    entry already present (identical ``ts``/``kind``/``text``) is not
+    re-added, so calling this twice with the same ``incoming`` is a no-op the
+    second time.
+
+    Arguments:
+        folder: The surviving entity's folder.
+        incoming: Note entries to merge in (e.g. the loser's ``notes`` list).
+    Returns:
+        The full metadata dict as written.
+    Raises:
+        ValueError: An existing metadata file is corrupt (not overwritten).
+        OSError: The file cannot be read or written.
+    """
+    data = read_metadata(folder)
+    data.setdefault("schema_version", _SCHEMA_VERSION)
+    existing = data.setdefault("notes", [])
+    seen = {(n.get("ts"), n.get("kind"), n.get("text")) for n in existing}
+    for note in incoming:
+        key = (note.get("ts"), note.get("kind"), note.get("text"))
+        if key not in seen:
+            existing.append(note)
+            seen.add(key)
+    existing.sort(key=lambda n: n.get("ts") or "")
     return _write_metadata(folder, data)
 
 

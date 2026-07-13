@@ -16,27 +16,33 @@ def _nav_link(page: Page, label: str):
     return page.locator(f"//nav//a[normalize-space(text())='{label}']")
 
 
-def test_dashboard_loads(page: Page, live_app: str) -> None:
-    """The SPA mounts and the Dashboard renders its heading."""
+def test_applications_loads(page: Page, live_app: str) -> None:
+    """The SPA mounts and the Applications page renders its heading."""
     page.goto(live_app + "/")
-    expect(page.locator("//h1[normalize-space()='Dashboard']")).to_be_visible()
+    expect(page.locator("//h1[normalize-space()='Applications']")).to_be_visible()
 
 
 def test_nav_shows_core_links(page: Page, live_app: str) -> None:
-    """The primary nav exposes the expected destinations."""
+    """The primary nav exposes the entity/execution destinations."""
     page.goto(live_app + "/")
     expect(page.locator("nav").first).to_be_visible()
-    for label in ("Dashboard", "Queue", "Static Content", "Prompts"):
+    for label in ("Applications", "Contacts", "Queue", "Profiles"):
         expect(_nav_link(page, label)).to_be_visible()
 
 
-def test_navigate_to_prompts_page(page: Page, live_app: str) -> None:
-    """Clicking the Prompts nav link loads the prompt editor with its catalog."""
+def test_prompts_via_account_menu(page: Page, live_app: str) -> None:
+    """Prompts is reachable from the account menu (demoted from the nav)."""
     page.goto(live_app + "/")
-    _nav_link(page, "Prompts").click()
+    page.locator("header button[title='Profile and settings']").click()
+    page.locator("//button[normalize-space(text())='Prompts']").click()
     expect(page.locator("//h1[normalize-space()='Prompts']")).to_be_visible()
-    # The catalog lists the generation prompts; "Cover letter" is one of them.
     expect(page.locator("body")).to_contain_text("Cover letter")
+
+
+def test_legacy_dashboard_hash_falls_back(page: Page, live_app: str) -> None:
+    """Pre-restructure bookmarks (#dashboard) land on the Applications page."""
+    page.goto(live_app + "/#dashboard")
+    expect(page.locator("//h1[normalize-space()='Applications']")).to_be_visible()
 
 
 def test_settings_cog_opens_config(page: Page, live_app: str) -> None:

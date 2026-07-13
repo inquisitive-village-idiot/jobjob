@@ -127,6 +127,31 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
             summary = json.loads(Path(out, "summary.json").read_text())
             self.assertEqual("Acme", summary["job_info"]["company_name"])
             self.assertIn("token_usage", summary)
+        with self.subTest("summary carries a schema version stamp"):
+            summary = json.loads(Path(out, "summary.json").read_text())
+            self.assertEqual(MOD._SUMMARY_SCHEMA_VERSION, summary["schema_version"])
+
+    def test_persists_fit_block_in_summary(self) -> None:
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+
+        MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        summary = json.loads(Path(out, "summary.json").read_text())
+        fit = summary["fit"]
+        with self.subTest("compact shape"):
+            expected = {"band", "role_fit", "preference_fit"}
+            found = set(fit)
+            self.assertEqual(expected, found)
+        with self.subTest("band is a known value"):
+            self.assertIn(fit["band"], ("Strong", "Moderate", "Weak"))
 
     def test_writes_readme_artifact(self) -> None:
         out = self.get_tmpdir()
@@ -140,6 +165,331 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
             use_cache=False,
         )
         self.assertTrue(Path(results["readme"]).is_file())
+
+    def test_mints_entity_id_and_source_into_output_dir_fallback(self) -> None:
+        # Legacy/offline fallback: with no applications_output_dir and no
+        # entity_dir, identity lands in output_dir (the CLI-with-no-mirror case).
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+
+        results = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        with self.subTest("entity_id present in results"):
+            self.assertIn("entity_id", results)
+            self.assertTrue(results["entity_id"])
+        with self.subTest("entity_id written to metadata.json"):
+            meta = json.loads(Path(out, "metadata.json").read_text())
+            self.assertEqual(results["entity_id"], meta["entity_id"])
+        with self.subTest("source.json written with parsed fields"):
+            source = json.loads(Path(out, "source.json").read_text())
+            self.assertEqual("Acme", source["company"])
+            self.assertEqual("Principal Engineer", source["role"])
+            self.assertEqual(results["entity_id"], source["entity_id"])
+
+    def test_reuses_entity_id_and_does_not_overwrite_source_on_rebuild(self) -> None:
+        # Fallback path (output_dir as the identity dir): reuse + parse-once still
+        # hold when a single stable output_dir is the persistent folder.
+        out = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+        common_kwargs = dict(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+        )
+
+        first = MOD.run_application_workflow(
+            query_service=self.make_query_service(), **common_kwargs
+        )
+        # Simulate a user correction to the parse-once source fields between builds.
+        from services import application_source
+
+        application_source.edit_source(out, company="Acme Corrected")
+
+        second = MOD.run_application_workflow(
+            query_service=self.make_query_service(), **common_kwargs
+        )
+
+        with self.subTest("entity_id reused, not regenerated"):
+            self.assertEqual(first["entity_id"], second["entity_id"])
+        with self.subTest("user correction to source survives the rebuild"):
+            source = json.loads(Path(out, "source.json").read_text())
+            self.assertEqual("Acme Corrected", source["company"])
+
+    def test_persists_identity_to_mirror_folder_and_reuses_id(self) -> None:
+        # The important end-to-end case: identity persists to the local mirror's
+        # "<Company - Role>" folder (NOT the ephemeral output_dir), and a SECOND
+        # build reuses the same entity_id via that persistent folder.
+        out1 = self.get_tmpdir()
+        out2 = self.get_tmpdir()
+        mirror = self.get_tmpdir()
+        jd_pdf = fixture_path("job_description_acme")
+        folder = mirror / "Acme - Principal Engineer"
+
+        first = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out1,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+
+        with self.subTest("identity lands in the mirror folder, not output_dir"):
+            self.assertTrue((folder / "metadata.json").is_file())
+            self.assertTrue((folder / "source.json").is_file())
+            self.assertFalse((out1 / "metadata.json").exists())
+            self.assertFalse((out1 / "source.json").exists())
+        with self.subTest("source carries the parsed fields"):
+            source = json.loads((folder / "source.json").read_text())
+            self.assertEqual("Acme", source["company"])
+            self.assertEqual(first["entity_id"], source["entity_id"])
+
+        # A second build must reuse the id via the persistent mirror folder
+        # rather than minting a fresh one. The mirror folder already holds the
+        # first execution, so this re-build trips the local overwrite guard —
+        # the user "relaunches with override" (allow_overwrite), the same opt-in
+        # the Drive path has always required.
+        second = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out2,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+            applications_output_dir=mirror,
+            allow_overwrite=True,
+        )
+        with self.subTest("entity_id reused across rebuilds via the mirror"):
+            self.assertEqual(first["entity_id"], second["entity_id"])
+            meta = json.loads((folder / "metadata.json").read_text())
+            self.assertEqual(first["entity_id"], meta["entity_id"])
+
+    def test_entity_dir_override_reuses_existing_renamed_folder_id(self) -> None:
+        # A re-run points entity_dir at the application's CURRENT (renamed) folder
+        # that already carries an entity_id; that id must be reused, not re-minted.
+        out = self.get_tmpdir()
+        renamed = self.get_tmpdir() / "APPLIED Acme - Principal Engineer"
+        renamed.mkdir(parents=True)
+        (renamed / "metadata.json").write_text(
+            json.dumps(
+                {"schema_version": 2, "status": "APPLIED", "entity_id": "e-kept"}
+            )
+        )
+        jd_pdf = fixture_path("job_description_acme")
+
+        results = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+            entity_dir=renamed,
+        )
+
+        with self.subTest("pre-existing id reused"):
+            self.assertEqual("e-kept", results["entity_id"])
+        with self.subTest("identity written into the renamed folder"):
+            self.assertTrue((renamed / "source.json").is_file())
+            meta = json.loads((renamed / "metadata.json").read_text())
+            self.assertEqual("e-kept", meta["entity_id"])
+            # status preserved, not clobbered by the id write
+            self.assertEqual("APPLIED", meta["status"])
+
+    def test_entity_dir_takes_precedence_over_applications_output_dir(self) -> None:
+        out = self.get_tmpdir()
+        mirror = self.get_tmpdir()
+        entity_dir = self.get_tmpdir() / "Explicit Folder"
+        entity_dir.mkdir(parents=True)
+        jd_pdf = fixture_path("job_description_acme")
+
+        MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            use_cache=False,
+            applications_output_dir=mirror,
+            entity_dir=entity_dir,
+        )
+
+        with self.subTest("identity in the explicit entity_dir"):
+            self.assertTrue((entity_dir / "metadata.json").is_file())
+        with self.subTest("mirror-resolved folder was not used"):
+            self.assertFalse((mirror / "Acme - Principal Engineer").exists())
+
+    def test_places_local_artifacts_in_the_entity_folder_not_output_dir(self) -> None:
+        # Unified placement (design D7): with a mirror configured, every local
+        # artifact lands in the "<Company - Role>" entity folder, and the passed
+        # output_dir is NOT used.
+        out = self.get_tmpdir()
+        mirror = self.get_tmpdir()
+        folder = mirror / "Acme - Principal Engineer"
+        jd_pdf = fixture_path("job_description_acme")
+
+        results = MOD.run_application_workflow(
+            job_description_pdf=jd_pdf,
+            output_dir=out,
+            skip_drive=True,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="Tila Mer"),
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+
+        with self.subTest("artifacts in the entity folder"):
+            self.assertTrue((folder / "summary.json").is_file())
+            self.assertTrue((folder / "skills_analysis.json").is_file())
+            self.assertTrue((folder / "TilaMer_CoverLetter.pdf").is_file())
+        with self.subTest("FirstLast naming applied to the cover letter (D8)"):
+            self.assertEqual(
+                str(folder / "TilaMer_CoverLetter.pdf"), results["cover_letter_pdf"]
+            )
+        with self.subTest("passed output_dir left unused"):
+            self.assertFalse((out / "summary.json").exists())
+
+    def test_archive_on_conflict_moves_prior_execution_and_writes_new_at_root(
+        self,
+    ) -> None:
+        # Archive-on-overwrite (design D2/D5): a re-build that opts out of an
+        # in-place overwrite moves the prior execution into archive/<ts>/ and
+        # writes the new one at root; the entity_id survives, and a user note on
+        # metadata.json is preserved (entity tier).
+        mirror = self.get_tmpdir()
+        folder = mirror / "Acme - Principal Engineer"
+        jd_pdf = fixture_path("job_description_acme")
+        common = dict(
+            job_description_pdf=jd_pdf,
+            skip_drive=True,
+            applicant=Applicant(name="Tila Mer"),
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+
+        first = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            **common,
+        )
+        # A user note on the entity tier (must survive the archive move).
+        from services.application_metadata import add_note
+
+        add_note(folder, "keep this one")
+
+        second = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            allow_overwrite=True,
+            archive_on_conflict=True,
+            **common,
+        )
+
+        with self.subTest("prior execution moved under archive/<ts>/"):
+            archived = list((folder / "archive").iterdir())
+            self.assertEqual(1, len(archived))
+            self.assertTrue((archived[0] / "summary.json").is_file())
+        with self.subTest("new execution written at root"):
+            self.assertTrue((folder / "summary.json").is_file())
+            self.assertTrue((folder / "TilaMer_CoverLetter.pdf").is_file())
+        with self.subTest("entity_id preserved across the archive re-build"):
+            self.assertEqual(first["entity_id"], second["entity_id"])
+        with self.subTest("entity-tier files stay at root (not archived)"):
+            self.assertTrue((folder / "metadata.json").is_file())
+            self.assertTrue((folder / "source.json").is_file())
+            meta = json.loads((folder / "metadata.json").read_text())
+            self.assertTrue(
+                any("keep this one" in str(n) for n in meta.get("notes", []))
+            )
+        with self.subTest("no nested archive"):
+            self.assertFalse(
+                (folder / "archive" / archived[0].name / "archive").exists()
+            )
+
+    def test_archive_promote_round_trip_preserves_identity_and_lands_at_root(
+        self,
+    ) -> None:
+        # Integration seam (docs-tests-overview): a build -> re-build-with-
+        # archive -> promote cycle, crossing the apply workflow (identity +
+        # archive_on_conflict) and the storage layer's promote_execution,
+        # exactly as the Applications page's Executions panel drives it.
+        # The entity tier (entity_id, notes) must survive the whole cycle
+        # and the promoted (first build's) artifacts must land back at root.
+        from jobjob.storage.local import LocalStorageAdapter
+        from services.application_metadata import add_note, read_metadata
+
+        mirror = self.get_tmpdir()
+        folder = mirror / "Acme - Principal Engineer"
+        jd_pdf = fixture_path("job_description_acme")
+        common = dict(
+            job_description_pdf=jd_pdf,
+            skip_drive=True,
+            applicant=Applicant(name="Tila Mer"),
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+
+        first = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            **common,
+        )
+        add_note(folder, "kept for the recruiter's version of the JD")
+
+        second = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            allow_overwrite=True,
+            archive_on_conflict=True,
+            **common,
+        )
+        self.assertEqual(first["entity_id"], second["entity_id"])
+
+        adapter = LocalStorageAdapter(folder)
+        (archived_ts,) = adapter.list_executions()
+        second_root_cover_letter = (folder / "TilaMer_CoverLetter.pdf").read_bytes()
+        first_archived_cover_letter = (
+            folder / "archive" / archived_ts / "TilaMer_CoverLetter.pdf"
+        ).read_bytes()
+
+        adapter.promote_execution(archived_ts)
+
+        with self.subTest("entity_id untouched by promote"):
+            meta = read_metadata(folder)
+            self.assertEqual(first["entity_id"], meta["entity_id"])
+        with self.subTest("note survives promote"):
+            meta = read_metadata(folder)
+            self.assertTrue(
+                any(
+                    "kept for the recruiter's version of the JD" in n.get("text", "")
+                    for n in meta.get("notes", [])
+                )
+            )
+        with self.subTest("promoted (first build's) artifacts now at root"):
+            self.assertEqual(
+                first_archived_cover_letter,
+                (folder / "TilaMer_CoverLetter.pdf").read_bytes(),
+            )
+        with self.subTest("outgoing (second build's) artifacts moved to archive"):
+            (new_ts,) = adapter.list_executions()
+            self.assertEqual(
+                second_root_cover_letter,
+                (folder / "archive" / new_ts / "TilaMer_CoverLetter.pdf").read_bytes(),
+            )
+        with self.subTest("entity-tier files never archived"):
+            self.assertTrue((folder / "metadata.json").is_file())
+            self.assertTrue((folder / "source.json").is_file())
+            self.assertFalse((folder / "archive" / new_ts / "metadata.json").exists())
 
     def test_does_not_authenticate_with_google_when_skipping(self) -> None:
         out = self.get_tmpdir()
@@ -301,8 +651,14 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             names = {
                 c.args[3] for c in mocks["upload_docx_as_google_doc"].call_args_list
             }
-            self.assertEqual({MOD.README_NAME, MOD.COVER_LETTER_NAME}, names)
-        with self.subTest("JD uploaded as a file"):
+            # README keeps its name; the cover letter is FirstLast-named (D8):
+            # applicant "J. Doe" -> "JDoe_CoverLetter".
+            self.assertEqual({MOD.README_NAME, "JDoe_CoverLetter"}, names)
+        with self.subTest("resume copied under the FirstLast name"):
+            self.assertEqual(
+                "JDoe_Resume", mocks["copy_resume_template"].call_args.kwargs["name"]
+            )
+        with self.subTest("JD uploaded as a file (via the storage adapter)"):
             self.assertEqual(1, mocks["upload_file"].call_count)
 
     def test_passes_only_enabled_sections_to_tailor_resume(self) -> None:
@@ -327,6 +683,27 @@ class TestRunApplicationWorkflowDrive(ThisTestCase):
             self.assertEqual(("Objective",), tuple(s.heading for s in passed))
         with self.subTest("only enabled sections survive the filter"):
             self.assertTrue(all(s.enabled for s in passed))
+
+
+class TestInferWebUri(ThisTestCase):
+    """Best-effort recovery of a URL-snapshot's source URL."""
+
+    def test_recovers_url_from_snapshot_comment(self) -> None:
+        snapshot = Path(self.get_tmpdir(), "jd.md")
+        snapshot.write_text(
+            "<!-- source: https://example.test/jobs/123 -->\n"
+            "<!-- captured: 2026-07-07T00:00:00 -->\n\nRole text.\n"
+        )
+        self.assertEqual("https://example.test/jobs/123", MOD._infer_web_uri(snapshot))
+
+    def test_none_for_paste_snapshot_without_source_comment(self) -> None:
+        snapshot = Path(self.get_tmpdir(), "jd.md")
+        snapshot.write_text("<!-- captured: 2026-07-07T00:00:00 -->\n\nRole text.\n")
+        self.assertIsNone(MOD._infer_web_uri(snapshot))
+
+    def test_none_for_non_md_suffix(self) -> None:
+        pdf = fixture_path("job_description_acme")
+        self.assertIsNone(MOD._infer_web_uri(pdf))
 
 
 class TestApplyInputs(ThisTestCase):
@@ -360,6 +737,67 @@ class TestApplyInputs(ThisTestCase):
         self.assertEqual(0, summary["failed"])
         run.assert_called_once()
         self.assertIn("job", run.call_args.args[0].name)
+
+    def test_threads_applications_output_dir_persisting_identity_and_reusing_id(
+        self,
+    ) -> None:
+        # End-to-end through the real workflow (model mocked): apply_inputs forwards
+        # applications_output_dir so identity persists in the mirror folder, and a
+        # re-run reuses the same entity_id from that persistent folder.
+        jd_pdf = fixture_path("job_description_acme")
+        mirror = self.get_tmpdir()
+        folder = mirror / "Acme - Principal Engineer"
+
+        first = MOD.apply_inputs(
+            jd_pdf,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            output_dir=self.get_tmpdir(),
+            skip_drive=True,
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+        first_id = first["items"][0]["result"]["entity_id"]
+
+        with self.subTest("identity persisted in the mirror folder"):
+            meta = json.loads((folder / "metadata.json").read_text())
+            self.assertEqual(first_id, meta["entity_id"])
+            self.assertTrue((folder / "source.json").is_file())
+
+        # The mirror folder already holds the first execution, so the re-run
+        # trips the local overwrite guard; the user relaunches with override.
+        second = MOD.apply_inputs(
+            jd_pdf,
+            query_service=self.make_query_service(),
+            applicant=Applicant(name="J. Doe"),
+            output_dir=self.get_tmpdir(),
+            skip_drive=True,
+            use_cache=False,
+            applications_output_dir=mirror,
+            allow_overwrite=True,
+        )
+        second_id = second["items"][0]["result"]["entity_id"]
+
+        with self.subTest("re-run reuses the persisted entity_id"):
+            self.assertEqual(first_id, second_id)
+
+    def test_forwards_identity_kwargs_to_workflow(self) -> None:
+        folder = self.make_dir(["alpha.pdf"])
+        mirror = self.get_tmpdir()
+
+        with mock.patch.object(MOD, "run_application_workflow") as run:
+            MOD.apply_inputs(
+                folder,
+                query_service=mock.MagicMock(),
+                applicant=mock.MagicMock(),
+                applications_output_dir=mirror,
+                _classify=lambda path, **_: MOD.JD,
+            )
+
+        with self.subTest("applications_output_dir forwarded"):
+            self.assertEqual(mirror, run.call_args.kwargs["applications_output_dir"])
+        with self.subTest("entity_dir stays None in directory mode"):
+            self.assertIsNone(run.call_args.kwargs["entity_dir"])
 
     def test_per_jd_output_subdir(self) -> None:
         folder = self.make_dir(["alpha.pdf", "beta.pdf"])

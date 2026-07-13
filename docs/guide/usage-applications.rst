@@ -14,8 +14,14 @@ In the app
 
 #. **Add a job posting** — click **Add JD**, then *paste the text*, *fetch a URL*, or
    *upload a PDF*. (You can also drop a PDF into ``<jobjob folder>/data/jobs/``.)
-#. Open the **Queue** tab, find the posting, and click **Apply**.
-#. Watch progress. The finished application appears on the **Dashboard**.
+#. On the **Applications** page, find the posting (state *Queued*) and choose
+   **Build** from its actions.
+#. Watch progress. While a document-generation run is in flight the row shows a
+   live **Building…** indicator — even if the build was launched from a batch,
+   a schedule, or another browser tab — and clears automatically (the page
+   refreshes the run listing every few seconds). The finished application
+   flips to *Built* in the same table; past runs (and any errors) stay on the
+   **Queue** page.
 
 .. warning::
 
@@ -28,7 +34,13 @@ On the command line
 
 ::
 
-   jobjob apply <job_description.pdf> [options]
+   jobjob build <job_description.pdf> [options]
+
+.. note::
+
+   ``jobjob apply`` means something different than it used to — it now runs
+   assisted browser auto-fill (formerly ``jobjob autofill``), not document
+   generation. Document generation is ``jobjob build``.
 
 The positional argument is a job-description PDF, or a directory of mixed inputs (only
 job descriptions are processed; other files are skipped).
@@ -55,7 +67,23 @@ job descriptions are processed; other files are skipped).
 
 Example — local only, custom output folder::
 
-   jobjob apply path/to/job.pdf --skip-drive -o ./out
+   jobjob build path/to/job.pdf --skip-drive -o ./out
+
+Re-checking a resume
+--------------------
+
+::
+
+   jobjob ats <output_dir>
+
+Re-assesses a processed application's résumé against its job description — keyword
+coverage plus parseability checks — and prints a plain-text report. Point it at the
+application's output directory (the one containing ``summary.json``).
+
+Use it while iterating: edit the résumé Google Doc, run ``jobjob ats``, repeat. The
+assessment is rebuilt from the saved artifacts plus one Google Docs read of the current
+résumé — **no AI calls**, so the loop is free. Applications generated with
+``--skip-drive`` have no résumé Doc to read and report a skipped assessment.
 
 What you need
 -------------
@@ -69,15 +97,128 @@ What you need
 Where output lands
 ------------------
 
-**Locally**, under ``<jobjob folder>/data/completed/`` (or ``--output``)::
+Every build materializes one **entity folder** — ``Company - Role`` — under your
+configured output dir and places *all* of that build's artifacts there (identity
+files and generated documents alike). The submitted résumé and cover letter are
+named after the applicant: ``FirstLast_Resume`` / ``FirstLast_CoverLetter`` (from
+``APPLICANT_NAME``, keeping generational suffixes like ``Jr``/``III`` but dropping
+credentials such as ``PhD``); the README, JD copy, and JSON sidecars keep their
+names. The file extension is whatever the artifact actually is — a real
+``.pdf``/``.docx`` locally, an editable Google Doc when Drive-backed.
 
-   YYYY-MM-DD - Company - Role/
-     JD_Company_Role.pdf   Resume.pdf   CoverLetter.pdf / .docx
-     skills_analysis.json  README.docx  summary.json
+**Locally** (``--skip-drive`` or when Drive is not connected)::
 
-**On Google Drive** (if connected): a folder ``YYYY-MM-DD - Company - Role`` under your
-``APPLICATIONS_OUTPUT_DRIVE_ID``, holding the README, JD copy, Résumé, and CoverLetter
-as editable Google Docs.
+   Company - Role/
+     JD_Company_Role.pdf   FirstLast_CoverLetter.pdf   skills_analysis.json
+     README.docx           summary.json                metadata.json  source.json
+
+**On Google Drive** (if connected): a folder ``Company - Role`` under your
+``APPLICATIONS_OUTPUT_DRIVE_ID`` holding the README, JD copy, ``FirstLast_Resume``,
+and ``FirstLast_CoverLetter`` as editable Google Docs. In Drive mode the Google Doc
+*is* the artifact — the tool does not also leave a redundant local ``.docx`` copy.
+
+Re-building and archived executions
+-----------------------------------
+
+Overwriting the previous build **in place** stays the default: re-building an
+application updates its artifacts and (on Drive) preserves each document's
+revision history. A local re-build onto an existing application is guarded — it
+asks you to confirm rather than silently overwriting. When you opt to keep the
+old run instead of overwriting it, the prior execution's root artifacts move into
+an ``archive/<timestamp>/`` subfolder (a complete, self-contained snapshot) and
+the new build writes at the root. The entity's ``metadata.json`` / ``source.json``
+and its status/notes stay at the root across all executions; ``archive/`` never
+counts toward an application's completeness.
+
+Managing archived executions
+-----------------------------
+
+The Applications table's row actions include **Executions** (labeled with a
+count once at least one archived execution exists), opening a panel over that
+application's ``archive/<timestamp>/`` history:
+
+- **Promote** makes an archived execution primary. The current root is
+  archived first, under a fresh timestamp, and only then does the chosen
+  execution's files move up to the root — there is never a moment where the
+  two are both un-archived, so nothing is lost either way.
+- **Note** — a short free-text reminder of why a given run was kept (e.g. "kept
+  for the recruiter's version of the JD"). Saved per archived execution.
+- **Lock** exempts an execution from purge; unlock it to make it eligible
+  again. Locking is per execution, not per application.
+- **Purge unlocked** deletes every unlocked archived execution for that one
+  application. A page-level **Purge all archived executions** button (next to
+  Refresh) does the same across every application in the local mirror in one
+  action — locked executions are skipped everywhere, not just per-application.
+
+None of this touches an application's primary (root) artifacts, status, or
+notes; it only manages the ``archive/`` history alongside them.
+
+Identity: entity, source, and executions
+-----------------------------------------
+
+Each application folder now carries a stable ``entity_id`` (a uuid minted once,
+in ``metadata.json``, and reused across re-builds/renames) plus a ``source.json``
+recording the posting itself — company, role, a one-time summary, and any file
+or web URI. The summary/company/role are written **once**, at first build; a
+re-build reads them back rather than overwriting them, so a correction survives.
+Correct a parse mistake (company, role, posting URL, or an external requisition
+id) from the application's row actions (**Edit source**) — this never touches
+the résumé, cover letter, or any other artifact. A folder built before this
+change has neither field; it behaves exactly as it always has (joined by folder
+name) until its next build, when the id is added automatically.
+
+**Re-parse** (row actions) is the one sanctioned exception to "parse-once": it
+re-runs JD parsing and overwrites ``company``/``role``/``description`` with
+whatever the parser produces this time — including clobbering any manual
+correction made via **Edit source**. Use it to pick up a prompt or model
+improvement; the confirmation dialog and the response both say plainly that
+it's a destructive overwrite. Nothing else about the application changes — no
+artifacts are regenerated, and its ``entity_id``/status/execution history are
+untouched.
+
+Possible duplicates
+--------------------
+
+The Applications table computes a normalized **company + role** signal for
+every application at listing time — casefold, collapsed whitespace, and a
+small common-abbreviation map (``Inc``/``Incorporated``, ``Corp``/
+``Corporation``, ``Co``/``Company``, ``Ltd``/``Limited``, ``Sr``/``Senior``,
+``Jr``/``Junior``). It's read from each application's ``source.json`` (falling
+back to the folder name for a legacy application with none), so it survives a
+folder rename but is never itself stored anywhere — recomputed fresh on every
+listing.
+
+Two or more applications with a matching signal show a small **Possible
+duplicate** badge next to the company name (and a row action of the same
+name). Clicking it opens a panel listing the other matching application(s)
+with two per-item choices:
+
+- **Merge into "…"** re-parents the other application's current build and
+  every one of its archived executions into *this* application's
+  ``archive/`` history, unions its changelog notes in, and then removes its
+  (now-empty) folder. The application you opened the panel from is always the
+  survivor — it keeps its ``entity_id``, status, and root (primary) execution
+  exactly as they were.
+- **Delete** removes the other application outright — every tier and
+  execution, irreversibly.
+
+Duplicate detection is **advisory only** — a flag for you to look at, never an
+automatic merge. Two applications that happen to share a company and role but
+aren't actually duplicates (e.g. two genuinely separate postings) are left
+alone unless you act on the badge.
+
+Applying from the dashboard
+----------------------------
+
+The Applications table's row actions include **Apply** — assisted browser
+auto-fill (``jobjob apply``, see above) launched for that application, gated on
+a posting URL: it's disabled with a tooltip until one is present (a URL/text
+ingest captures it automatically; a PDF drop needs one attached via **Edit
+source** first). Launching it starts a detached background process — the run
+shows up in the Queue like any other job, with the fill report in its log —
+and opens a real browser window on the machine running the dashboard for you
+to finish account creation, custom widgets, screening questions, and the
+submit.
 
 See also
 --------

@@ -39,6 +39,8 @@ classifiers = [
 # Assisted browser auto-fill (`jobjob autofill`). After installing, run
 # `playwright install chromium` once to fetch the browser.
 autofill = [
+    # Runtime dependency of the autofill feature — distinct from the test
+    # group's playwright, which drives the frontend e2e suite.
     "playwright>=1.40",
 ]
 
@@ -61,6 +63,8 @@ test = [
     "coverage>=7.2.0",
     "fastapi>=0.136.3",
     "httpx>=0.28.1",
+    # Frontend e2e tests — intentionally duplicates the `autofill` extra's
+    # runtime pin; tests must not depend on an optional feature being installed.
     "playwright>=1.40",
 ]
 docs = [
@@ -91,6 +95,9 @@ include = ["jobjob"]
 # content into the wheel. force-include is required because static/ and dist/ are
 # gitignored (hatchling respects VCS ignores by default). Paths land beside the
 # jobjob package so the webapp's __file__-relative path resolution works installed.
+# NOTE: jobjob/data/ (skill cloud + ESCO notice) needs no force-include: the
+# `!jobjob/data/` gitignore negation makes git track it, so hatchling ships it
+# with the package. Verify with: uv build --wheel && unzip -l dist/*.whl
 [tool.hatch.build.targets.wheel.force-include]
 "webapp/backend" = "webapp/backend"
 "webapp/frontend/dist" = "webapp/frontend/dist"

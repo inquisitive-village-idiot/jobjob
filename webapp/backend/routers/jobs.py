@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jobs API: launch apply/enrich jobs with SSE progress streaming.
+"""Jobs API: launch build/enrich jobs with SSE progress streaming.
 
 Runs each job in a background thread and streams log records as SSE events.
 The cost guard is checked before launch; successful runs are moved to the
@@ -10,6 +10,8 @@ import asyncio
 import json
 import logging
 import queue
+import subprocess
+import sys
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -21,12 +23,16 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from budget import calculate_cost, check_budget, record_run
+from jobjob.autofill.adapters import select_adapter
+from jobjob.autofill.runner import FILL_COMPLETE_SENTINEL
 from jobjob.ingest.jd_source import (
     JDIngestError,
     snapshot_from_text,
     snapshot_from_url,
 )
 from security import safe_path
+from services import application_source, run_history
+from services.application_metadata import read_entity_id
 from services.tracking_service import list_queue
 
 router = APIRouter()
@@ -82,6 +88,7 @@ class ApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class UrlApplyRequest(BaseModel):
@@ -91,6 +98,7 @@ class UrlApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class TextApplyRequest(BaseModel):
@@ -100,17 +108,28 @@ class TextApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class RerunRequest(BaseModel):
     folder_name: str
     skip_drive: bool = False
     model: Optional[str] = None  # per-run override; not persisted to config/.env
+    entity_id: Optional[str] = None  # prefer id resolution when the caller has one
 
 
 class EnrichRequest(BaseModel):
     profile_path: str
     dry_run: bool = False
+
+
+class ApplyAutofillRequest(BaseModel):
+    """Identifies the application to autofill. At least one field is required;
+    ``entity_id`` is preferred (survives a folder rename) — see
+    ``_resolve_apply_folder``."""
+
+    folder_name: Optional[str] = None
+    entity_id: Optional[str] = None
 
 
 class ScheduleRequest(BaseModel):
@@ -125,7 +144,26 @@ def _app_settings(request: Request) -> dict:
     return request.app.state.settings
 
 
-def _start_job(fn, *args, **kwargs) -> str:
+def _runs_dir(settings: dict) -> Path:
+    return run_history.runs_dir(Path(settings["applications_input_dir"]))
+
+
+def _start_job(
+    fn,
+    *,
+    runs_dir: Optional[Path] = None,
+    kind: str = "build",
+    label: str = "",
+    paths: tuple[str, ...] = (),
+    folder_name: Optional[str] = None,
+) -> str:
+    """Run ``fn`` in a background thread with SSE logs and a persisted run.
+
+    The run record + log file land under ``runs_dir`` (see
+    ``services.run_history``) so failures survive restarts; ``runs_dir=None``
+    keeps the job in-memory only (tests). Persistence problems never fail the
+    job.
+    """
     job_id = str(uuid.uuid4())
     log_q: queue.Queue = queue.Queue()
     _jobs[job_id] = {
@@ -136,26 +174,77 @@ def _start_job(fn, *args, **kwargs) -> str:
         "overwrite_conflict": False,
         "folder_name": None,
     }
+    if runs_dir is not None:
+        run_history.start_run(
+            runs_dir,
+            job_id,
+            kind=kind,
+            label=label,
+            paths=paths,
+            folder_name=folder_name,
+        )
 
     def run() -> None:
+        formatter = logging.Formatter("%(name)s: %(message)s")
         handler = _QueueHandler(log_q)
-        handler.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+        handler.setFormatter(formatter)
         root = logging.getLogger("jobjob")
         root.addHandler(handler)
+        # Tee the same records into the run's log file (persisted history).
+        file_handler: Optional[logging.Handler] = None
+        if runs_dir is not None:
+            try:
+                file_handler = logging.FileHandler(
+                    run_history.log_path(runs_dir, job_id), encoding="utf-8"
+                )
+                file_handler.setFormatter(formatter)
+                root.addHandler(file_handler)
+            except OSError as exc:
+                logging.getLogger(__name__).warning(
+                    "Run log unavailable for %s: %s", job_id, exc
+                )
+        # Compute the terminal state into locals first; the in-memory job's
+        # ``status`` is flipped to that terminal value only AFTER the run record
+        # is persisted (below). A waiter that polls ``status`` must never observe
+        # "completed"/"failed" before the on-disk record is finalized — otherwise
+        # it can read a record that finish_run has not yet stamped (e.g. with the
+        # entity_id from the result).
+        terminal_status = "failed"
+        terminal_error: Optional[str] = None
+        result = None
         try:
-            result = fn(*args, **kwargs)
+            result = fn()
             _jobs[job_id]["result"] = result
-            _jobs[job_id]["status"] = "completed"
+            terminal_status = "completed"
         except _OverwriteConflictJob as exc:
-            _jobs[job_id]["error"] = str(exc)
+            terminal_error = str(exc)
             _jobs[job_id]["overwrite_conflict"] = True
             _jobs[job_id]["folder_name"] = exc.folder_name
-            _jobs[job_id]["status"] = "failed"
         except Exception as exc:
-            _jobs[job_id]["error"] = str(exc)
-            _jobs[job_id]["status"] = "failed"
+            terminal_error = str(exc)
         finally:
+            _jobs[job_id]["error"] = terminal_error
             root.removeHandler(handler)
+            if file_handler is not None:
+                root.removeHandler(file_handler)
+                file_handler.close()
+            if runs_dir is not None:
+                # entity_id (application-identity, phase 1): the workflow stamps it
+                # onto the result dict once the build/enrich mints or reuses it, so
+                # it's only ever present here on a real (build/enrich) completion —
+                # batch/schedule results and failures naturally omit it (legacy).
+                entity_id = (
+                    result.get("entity_id") if isinstance(result, dict) else None
+                )
+                run_history.finish_run(
+                    runs_dir,
+                    job_id,
+                    status=terminal_status,
+                    error=terminal_error,
+                    entity_id=entity_id,
+                )
+            # Record persisted; NOW publish the terminal status to any waiter.
+            _jobs[job_id]["status"] = terminal_status
             log_q.put(None)
 
     threading.Thread(target=run, daemon=True).start()
@@ -165,7 +254,7 @@ def _start_job(fn, *args, **kwargs) -> str:
 # ── Single-item endpoints ──────────────────────────────────────────────────────
 
 
-def _make_apply_run(
+def _make_build_run(
     jd_path: Path,
     *,
     skip_drive: bool,
@@ -174,22 +263,31 @@ def _make_apply_run(
     no_cache: bool = False,
     clear_cache: bool = False,
     allow_overwrite: bool = False,
+    archive_on_conflict: bool = False,
     model: Optional[str] = None,
+    entity_dir: Optional[Path] = None,
 ):
-    """Build the background ``_run`` closure for an apply job.
+    """Build the background ``_run`` closure for a build job.
 
     Routes through ``apply_inputs`` (the shared CLI entry point), using the current
     configuration (``load_settings`` → model, applicant, credentials). ``move_data_dir``
     is passed straight through as ``apply_inputs``'s ``data_dir``: a real path moves
-    the JD into ``<data_dir>/completed/`` on success (normal apply); ``None`` skips
+    the JD into ``<data_dir>/completed/`` on success (normal build); ``None`` skips
     the move, which is what a re-run wants since its JD already lives in
     ``completed/jobs/``.
 
     ``model`` is an optional per-run override (not persisted): it replaces the
-    configured model for this run only. Because the response cache is keyed on the
-    prompt alone, an
-    override also bypasses the cache — otherwise the configured model's cached response
-    would be served and the override silently ignored.
+    configured model for this run only. The response cache key is model-scoped, so
+    the override is cached under its own entry rather than colliding with -- or
+    being forced to bypass -- the configured model's cache.
+
+    ``entity_dir`` pins the persistent identity folder (a re-run of a possibly-renamed
+    application targets its existing mirror folder so the entity_id is reused). Fresh
+    builds leave it None and resolve their folder under ``applications_output_dir``.
+
+    ``archive_on_conflict`` only has an effect together with ``allow_overwrite``:
+    instead of overwriting a prior execution in place, its root artifacts move into
+    ``archive/<timestamp>/`` first (application-identity phase 2).
     """
 
     def _run() -> dict:
@@ -205,8 +303,7 @@ def _make_apply_run(
             _clear_cache()
 
         effective_model = model or settings.model
-        # A model override must bypass the prompt-keyed cache (see docstring).
-        use_cache = settings.cache_enabled and not no_cache and model is None
+        use_cache = settings.cache_enabled and not no_cache
 
         client = AIClient(
             AnthropicAdapter(model=effective_model, api_key=settings.anthropic_api_key)
@@ -222,7 +319,10 @@ def _make_apply_run(
             parent_id=settings.applications_output_drive_id,
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
+            archive_on_conflict=archive_on_conflict,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
+            entity_dir=entity_dir,
             logger=logging.getLogger("jobjob.apply"),
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -243,9 +343,9 @@ def _make_apply_run(
     return _run
 
 
-@router.post("/apply")
-def launch_apply(body: ApplyRequest, request: Request) -> dict:
-    """Start an apply job for one JD. Returns {job_id}."""
+@router.post("/build")
+def launch_build(body: ApplyRequest, request: Request) -> dict:
+    """Start a build job for one JD. Returns {job_id}."""
     s = _app_settings(request)
 
     budget_error = check_budget(
@@ -259,7 +359,7 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
     if not jd_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {jd_path}")
 
-    run = _make_apply_run(
+    run = _make_build_run(
         jd_path,
         skip_drive=body.skip_drive,
         move_data_dir=Path(s["applications_input_dir"]),
@@ -267,11 +367,19 @@ def launch_apply(body: ApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
-    return {"job_id": _start_job(run)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(s),
+        kind="build",
+        label=jd_path.name,
+        paths=(str(jd_path),),
+    )
+    return {"job_id": job_id}
 
 
-def _launch_snapshot_apply(
+def _launch_snapshot_build(
     snapshot: Path,
     *,
     settings: dict,
@@ -280,14 +388,15 @@ def _launch_snapshot_apply(
     no_cache: bool,
     clear_cache: bool,
     allow_overwrite: bool,
+    archive_on_conflict: bool = False,
 ) -> dict:
-    """Feed a freshly-written snapshot into the shared apply pipeline.
+    """Feed a freshly-written snapshot into the shared build pipeline.
 
-    Mirrors :func:`launch_apply`: the snapshot is just another JD input under
+    Mirrors :func:`launch_build`: the snapshot is just another JD input under
     ``data/jobs/``, so it flows through ``apply_inputs`` unchanged and is moved into
     ``completed/`` on success.
     """
-    run = _make_apply_run(
+    run = _make_build_run(
         snapshot,
         skip_drive=skip_drive,
         move_data_dir=Path(settings["applications_input_dir"]),
@@ -295,18 +404,26 @@ def _launch_snapshot_apply(
         no_cache=no_cache,
         clear_cache=clear_cache,
         allow_overwrite=allow_overwrite,
+        archive_on_conflict=archive_on_conflict,
     )
-    return {"job_id": _start_job(run), "snapshot": str(snapshot)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(settings),
+        kind="build",
+        label=snapshot.name,
+        paths=(str(snapshot),),
+    )
+    return {"job_id": job_id, "snapshot": str(snapshot)}
 
 
-@router.post("/apply/from-url")
-def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
-    """Capture a job posting from a URL, then apply. Returns {job_id, snapshot}.
+@router.post("/build/from-url")
+def launch_build_from_url(body: UrlApplyRequest, request: Request) -> dict:
+    """Capture a job posting from a URL, then build. Returns {job_id, snapshot}.
 
     A server-side GET + readability extraction writes a durable snapshot into
     ``data/jobs/``; when the cheap fetch is thin (a JS-rendered board) and the
     browser extra is installed, it falls back to a headless render before
-    extracting. The snapshot then runs through the normal apply pipeline. Only when
+    extracting. The snapshot then runs through the normal build pipeline. Only when
     both paths come up short is it rejected with a 422 so the user can fall back to
     PDF upload or paste-text.
     """
@@ -325,7 +442,7 @@ def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
     except JDIngestError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    return _launch_snapshot_apply(
+    return _launch_snapshot_build(
         snapshot,
         settings=s,
         skip_drive=body.skip_drive,
@@ -333,15 +450,16 @@ def launch_apply_from_url(body: UrlApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
 
 
-@router.post("/apply/from-text")
-def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
-    """Capture a job posting from pasted text, then apply. Returns {job_id, snapshot}.
+@router.post("/build/from-text")
+def launch_build_from_text(body: TextApplyRequest, request: Request) -> dict:
+    """Capture a job posting from pasted text, then build. Returns {job_id, snapshot}.
 
     The reliable fallback for boards a plain GET can't read: the pasted text is
-    snapshotted into ``data/jobs/`` and runs through the normal apply pipeline.
+    snapshotted into ``data/jobs/`` and runs through the normal build pipeline.
     """
     s = _app_settings(request)
 
@@ -358,7 +476,7 @@ def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
     except JDIngestError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    return _launch_snapshot_apply(
+    return _launch_snapshot_build(
         snapshot,
         settings=s,
         skip_drive=body.skip_drive,
@@ -366,6 +484,7 @@ def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
 
 
@@ -375,26 +494,64 @@ def launch_apply_from_text(body: TextApplyRequest, request: Request) -> dict:
 _JD_GLOBS = ("JD_*.pdf", "JobDescription_*.pdf")
 
 
+def _resolve_folder_name_by_entity_id(
+    applications_local_dir: Optional[str], entity_id: str
+) -> Optional[str]:
+    """Return the current folder name carrying ``entity_id``, if found.
+
+    Scans the synced Drive applications mirror's metadata.json files — the
+    entity tier survives a folder rename, so this is how a rerun request keyed
+    by id (rather than a possibly-stale folder name) finds its target.
+    """
+    if not applications_local_dir:
+        return None
+    local = Path(applications_local_dir).expanduser()
+    if not local.is_dir():
+        return None
+    for folder in local.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            if read_entity_id(folder) == entity_id:
+                return folder.name
+        except (ValueError, OSError):
+            continue
+    return None
+
+
 def _find_rerun_jd(
     data_dir: Path,
     applications_local_dir: Optional[str],
     folder_name: str,
+    *,
+    entity_id: Optional[str] = None,
 ) -> Optional[Path]:
     """Resolve a completed application's source JD for re-running.
+
+    When ``entity_id`` is given, the target application folder is resolved by id
+    first (survives a rename since the last run) — see
+    ``_resolve_folder_name_by_entity_id``; if no folder carries that id (or none
+    was given — the legacy path), falls back to ``folder_name`` unchanged.
 
     Looks first in ``<data_dir>/completed/jobs/<folder_name><ext>`` (where a webapp/CLI
     completion files the JD), then in the synced Drive application folder
     ``<applications_local_dir>/<folder_name>/`` (most completed applications only have
     their JD here). Returns the path, or None when neither location has it.
     """
+    resolved_name = folder_name
+    if entity_id:
+        by_id = _resolve_folder_name_by_entity_id(applications_local_dir, entity_id)
+        if by_id:
+            resolved_name = by_id
+
     jobs_dir = Path(data_dir) / "completed" / "jobs"
     for ext in (".pdf", ".png", ".jpg", ".jpeg", ".md", ".txt"):
-        candidate = jobs_dir / f"{folder_name}{ext}"
+        candidate = jobs_dir / f"{resolved_name}{ext}"
         if candidate.is_file():
             return candidate
 
     if applications_local_dir:
-        app_folder = Path(applications_local_dir).expanduser() / folder_name
+        app_folder = Path(applications_local_dir).expanduser() / resolved_name
         if app_folder.is_dir():
             matches = sorted(
                 m for pattern in _JD_GLOBS for m in app_folder.glob(pattern)
@@ -404,9 +561,9 @@ def _find_rerun_jd(
     return None
 
 
-@router.post("/apply/rerun")
-def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
-    """Re-run apply for a completed application, reusing its JD in place.
+@router.post("/build/rerun")
+def launch_build_rerun(body: RerunRequest, request: Request) -> dict:
+    """Re-run build for a completed application, reusing its JD in place.
 
     The JD is resolved from ``folder_name`` in one of two places, then re-run with
     ``move_data_dir=None`` so it is *not* moved — it stays put. Current config and
@@ -431,6 +588,7 @@ def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
         Path(s["applications_input_dir"]),
         s.get("applications_output_dir"),
         body.folder_name,
+        entity_id=body.entity_id,
     )
     jd_path = safe_path(found) if found is not None else None
 
@@ -443,10 +601,216 @@ def launch_apply_rerun(body: RerunRequest, request: Request) -> dict:
             ),
         )
 
-    run = _make_apply_run(
-        jd_path, skip_drive=body.skip_drive, move_data_dir=None, model=body.model
+    # Pin the persistent identity folder to the application's CURRENT (possibly
+    # renamed) mirror folder so the entity_id is reused rather than re-minted —
+    # this is the rename-safe path. Without a mirror root, identity falls back to
+    # the workflow's output_dir (legacy).
+    local_dir = s.get("applications_output_dir")
+    entity_dir = Path(local_dir).expanduser() / body.folder_name if local_dir else None
+
+    run = _make_build_run(
+        jd_path,
+        skip_drive=body.skip_drive,
+        move_data_dir=None,
+        model=body.model,
+        entity_dir=entity_dir,
     )
-    return {"job_id": _start_job(run)}
+    job_id = _start_job(
+        run,
+        runs_dir=_runs_dir(s),
+        kind="build",
+        label=f"Re-build: {body.folder_name}",
+        paths=(str(jd_path),),
+        folder_name=body.folder_name,
+    )
+    return {"job_id": job_id}
+
+
+# ── Autofill (apply) launch — detached subprocess, never blocks a worker ──────
+
+
+def _resolve_apply_folder(
+    request: Request, folder_name: Optional[str], entity_id: Optional[str]
+) -> Path:
+    """Resolve the target application's mirror folder for an autofill launch.
+
+    Prefers ``entity_id`` (survives a folder rename since the last run) via
+    :func:`_resolve_folder_name_by_entity_id` when given and found; falls back
+    to ``folder_name``. Validation mirrors ``routers.tracking._resolve_app_folder``
+    (no separators/traversal) — this endpoint reads (not writes) the folder but
+    must stay inside the configured mirror root all the same.
+
+    Raises:
+        HTTPException: 400 when the mirror is unconfigured, neither identifier
+            resolves to a name, or the name is unsafe; 404 when the folder
+            doesn't exist.
+    """
+    s = _app_settings(request)
+    local_dir = s.get("applications_output_dir")
+    if not local_dir:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Local applications mirror not configured "
+                "(set APPLICATIONS_OUTPUT_DIR)."
+            ),
+        )
+
+    resolved_name = folder_name
+    if entity_id:
+        by_id = _resolve_folder_name_by_entity_id(local_dir, entity_id)
+        if by_id:
+            resolved_name = by_id
+
+    if (
+        not resolved_name
+        or resolved_name != Path(resolved_name).name
+        or "\\" in resolved_name
+        or resolved_name.startswith(".")
+    ):
+        raise HTTPException(
+            status_code=400, detail="folder_name or entity_id is required."
+        )
+
+    try:
+        folder = safe_path(Path(local_dir).expanduser() / resolved_name)
+    except PermissionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="Application folder not found.")
+    return folder
+
+
+# How long to wait for the fill report before giving up on *this job* (the
+# detached subprocess and its browser are left running regardless — see
+# design.md; killing it here would defeat the point of detaching it).
+_APPLY_REPORT_TIMEOUT = 30.0
+
+
+def _spawn_autofill_subprocess(url: str) -> subprocess.Popen:
+    """Launch ``python -m jobjob apply <url> --assisted-detached`` detached.
+
+    ``start_new_session=True`` puts the child in its own session/process group
+    so it outlives this request/thread — it is never joined or waited on here.
+    ``--assisted-detached`` forces the runner's non-TTY "wait for window close"
+    mode (this process's own stdin isn't a TTY either since stdout is piped, but
+    the flag makes the intent explicit regardless).
+    """
+    return subprocess.Popen(
+        [sys.executable, "-m", "jobjob", "apply", url, "--assisted-detached"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        start_new_session=True,
+    )
+
+
+def _pump_autofill_stdout(
+    process: subprocess.Popen,
+    report_seen: threading.Event,
+    state: dict,
+    logger: logging.Logger,
+) -> None:
+    """Drain the detached subprocess's stdout into the log, in its own thread.
+
+    Runs as a daemon thread that outlives the launching job: each line is logged
+    through ``logger`` (a child of "jobjob", so it's captured by ``_start_job``'s
+    handler wiring into both the SSE stream and the persisted run log — no extra
+    plumbing needed here). The runner prints a machine sentinel
+    (``FILL_COMPLETE_SENTINEL``) right after the fill report on the detached
+    path; seeing it sets the event so the launching job can complete without
+    waiting for the subprocess to exit (which may be long after, once the human
+    closes the browser). The sentinel line itself is not logged — it's a marker,
+    not output. If the stream ends before the sentinel ever appeared (e.g.
+    Playwright not installed, no adapter), the event is still set so the waiting
+    job doesn't hang for the full timeout.
+    """
+    try:
+        stdout = process.stdout
+        assert stdout is not None
+        for line in iter(stdout.readline, ""):
+            text = line.rstrip("\n")
+            if text == FILL_COMPLETE_SENTINEL:
+                state["seen"] = True
+                report_seen.set()
+                continue
+            if text:
+                logger.info(text)
+    finally:
+        state["exited"] = True
+        report_seen.set()
+
+
+@router.post("/apply")
+def launch_autofill(body: ApplyAutofillRequest, request: Request) -> dict:
+    """Launch the assisted autofill (Playwright) step for a built application.
+
+    Resolves the application's posting URL from its source tier
+    (``source.json``'s ``web_uri``) — 400s when absent, or when no adapter
+    recognizes the host (a cheap pre-check; no browser involved). On success,
+    spawns the autofill CLI as a **detached** subprocess (see
+    ``_spawn_autofill_subprocess``) and records the run with ``kind="apply"``.
+    The job is marked complete once the fill report is captured from the
+    subprocess's stdout (see ``_pump_autofill_stdout``) — the human finishing in
+    the browser is never awaited by a worker thread (see design.md).
+    """
+    s = _app_settings(request)
+    folder = _resolve_apply_folder(request, body.folder_name, body.entity_id)
+
+    source = application_source.read_source(folder)
+    url = source.get("web_uri")
+    if not url:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No posting URL on this application — attach one via source "
+                "editing before applying."
+            ),
+        )
+    if select_adapter(url) is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No auto-fill adapter recognizes this URL: {url}.",
+        )
+
+    try:
+        entity_id = read_entity_id(folder)
+    except (ValueError, OSError):
+        entity_id = None
+
+    def _run() -> dict:
+        process = _spawn_autofill_subprocess(url)
+        report_seen = threading.Event()
+        state = {"seen": False, "exited": False}
+        threading.Thread(
+            target=_pump_autofill_stdout,
+            args=(process, report_seen, state, logging.getLogger("jobjob.autofill")),
+            daemon=True,
+        ).start()
+
+        got_event = report_seen.wait(timeout=_APPLY_REPORT_TIMEOUT)
+        if not got_event or not state["seen"]:
+            detail = (
+                "Auto-fill exited before filling anything; see the run log."
+                if state["exited"]
+                else "Auto-fill did not report back in time; see the run log."
+            )
+            raise RuntimeError(detail)
+
+        result: dict = {"posting_url": url, "pid": process.pid}
+        if entity_id:
+            result["entity_id"] = entity_id
+        return result
+
+    job_id = _start_job(
+        _run,
+        runs_dir=_runs_dir(s),
+        kind="apply",
+        label=f"Apply: {folder.name}",
+        paths=(url,),
+        folder_name=folder.name,
+    )
+    return {"job_id": job_id}
 
 
 @router.post("/enrich")
@@ -500,15 +864,22 @@ def launch_enrich(body: EnrichRequest, request: Request) -> dict:
             record_run(cost)
         return result
 
-    return {"job_id": _start_job(_run)}
+    job_id = _start_job(
+        _run,
+        runs_dir=_runs_dir(s),
+        kind="enrich",
+        label=profile_path.name,
+        paths=(str(profile_path),),
+    )
+    return {"job_id": job_id}
 
 
 # ── Batch endpoints ────────────────────────────────────────────────────────────
 
 
-@router.post("/apply-all")
-def launch_apply_all(request: Request) -> dict:
-    """Start apply jobs for every JD in the queue, sequentially (returns
+@router.post("/build-all")
+def launch_build_all(request: Request) -> dict:
+    """Start build jobs for every JD in the queue, sequentially (returns
     ``{job_id, count}``)."""
     s = _app_settings(request)
     data_dir = Path(s["applications_input_dir"])
@@ -549,6 +920,7 @@ def launch_apply_all(request: Request) -> dict:
             parent_id=settings.applications_output_drive_id,
             data_dir=data_dir,
             industry=settings.industry,
+            applications_output_dir=settings.applications_output_dir,
             logger=_logger,
             _credentials_loader=build_credentials_loader(settings),
         )
@@ -559,7 +931,14 @@ def launch_apply_all(request: Request) -> dict:
                 record_run(calculate_cost(result["token_usage"], model=settings.model))
         return summary
 
-    return {"job_id": _start_job(_run_all), "count": count}
+    job_id = _start_job(
+        _run_all,
+        runs_dir=_runs_dir(s),
+        kind="batch",
+        label=f"Build all JDs ({count})",
+        paths=tuple(i["path"] for i in items),
+    )
+    return {"job_id": job_id, "count": count}
 
 
 @router.post("/enrich-all")
@@ -611,7 +990,14 @@ def launch_enrich_all(request: Request) -> dict:
                 record_run(calculate_cost(result["token_usage"], model=settings.model))
         return summary
 
-    return {"job_id": _start_job(_run_all), "count": count}
+    job_id = _start_job(
+        _run_all,
+        runs_dir=_runs_dir(s),
+        kind="batch",
+        label=f"Enrich all profiles ({count})",
+        paths=tuple(i["path"] for i in items),
+    )
+    return {"job_id": job_id, "count": count}
 
 
 # ── Schedule endpoint ──────────────────────────────────────────────────────────
@@ -726,6 +1112,7 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
                     use_cache=settings.cache_enabled,
                     parent_id=settings.applications_output_drive_id,
                     data_dir=data_dir,
+                    applications_output_dir=settings.applications_output_dir,
                     logger=_logger,
                     _credentials_loader=creds_loader,
                 )
@@ -776,7 +1163,13 @@ def launch_schedule(body: ScheduleRequest, request: Request) -> dict:
 
         return {"processed": len(results), "items": results}
 
-    job_id = _start_job(_run_scheduled)
+    job_id = _start_job(
+        _run_scheduled,
+        runs_dir=_runs_dir(s),
+        kind="schedule",
+        label=f"Schedule ({count})",
+        paths=tuple(str(p) for p in valid_paths),
+    )
     _jobs[job_id]["schedule"] = {
         "mode": body.mode,
         "concurrency": concurrency,
@@ -855,13 +1248,39 @@ def job_status(job_id: str) -> dict:
 
 
 @router.get("")
-def list_jobs() -> list[dict]:
-    return [
+def list_jobs(request: Request) -> list[dict]:
+    """Merged run history: persisted records + live in-memory jobs, newest first.
+
+    Live jobs that never persisted (e.g. the runs dir was unwritable) are
+    appended from the in-memory table so nothing running ever hides.
+    """
+    runs = _runs_dir(_app_settings(request))
+    items = run_history.list_runs(runs, _jobs)
+    listed = {i["run_id"] for i in items}
+    items.extend(
         {
-            "job_id": jid,
+            "run_id": jid,
+            "kind": "build",
+            "label": "",
+            "paths": [],
+            "folder_name": j.get("folder_name"),
             "status": j["status"],
-            "has_result": j.get("result") is not None,
             "error": j.get("error"),
+            "started_at": None,
+            "finished_at": None,
+            "has_log": False,
         }
         for jid, j in reversed(list(_jobs.items()))
-    ]
+        if jid not in listed
+    )
+    return items
+
+
+@router.get("/{job_id}/log")
+def job_log(job_id: str, request: Request) -> dict:
+    """Return a persisted run's stored log text."""
+    runs = _runs_dir(_app_settings(request))
+    log_text = run_history.read_log(runs, job_id)
+    if log_text is None:
+        raise HTTPException(status_code=404, detail="No stored log for this run.")
+    return {"run_id": job_id, "log": log_text}

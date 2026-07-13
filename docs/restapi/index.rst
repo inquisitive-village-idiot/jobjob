@@ -65,13 +65,19 @@ and response shapes.
        ``save`` them into a profile.
    * - jobs
      - ``/api/jobs``
-     - Launch work: ``apply`` (and ``apply/from-url``, ``apply/from-text``,
-       ``apply/rerun``), ``enrich``, batch ``apply-all`` / ``enrich-all``, ``schedule``
-       runs, and poll a job's ``progress`` / ``status``.
+     - Launch work: ``build`` (and ``build/from-url``, ``build/from-text``,
+       ``build/rerun``), assisted browser auto-fill (``apply``), ``enrich``, batch
+       ``build-all`` / ``enrich-all``, ``schedule`` runs; poll a job's
+       ``progress`` / ``status``; list the merged run history (``GET``, live jobs
+       merged with persisted records — see :doc:`/library/architecture`) and read
+       a run's ``log``.
    * - tracking
      - ``/api/tracking``
      - The ``queue`` and ``completed`` lists; update an application's ``status`` and read
-       or append its ``notes``.
+       or append its ``notes``; read and correct its ``source`` (entity/source
+       identity), or ``reparse`` the JD; list, promote, note, lock/unlock, and
+       delete archived ``executions``; flag and ``merge`` or delete possible
+       ``duplicate`` applications.
    * - update
      - ``/api/update``
      - Check for and apply jobjob version updates (**Settings → Update**).

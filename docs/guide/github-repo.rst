@@ -77,7 +77,7 @@ the app write straight into your repository.
 4. Keep it in sync
 ------------------
 
-Edits you make in the **Static Content** tab change the files in the repo folder.
+Edits you make on the **Profiles** page change the files in the repo folder.
 Commit and push them like any other change::
 
    cd ~/Documents/jobjob/profiles/mine

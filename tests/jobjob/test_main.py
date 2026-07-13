@@ -33,4 +33,32 @@ class TestDispatch(TestCase):
         self.assertEqual(0, MOD.main(["--help"]))
 
 
+class TestFullBuildRenameCommands(TestCase):
+    """`build`/`apply`/dropped-`autofill` wiring (full-build-rename)."""
+
+    def test_build_dispatches_to_document_generation(self) -> None:
+        result = MOD.COMMANDS["build"]
+        expected = MOD.apply_main
+        found = result
+        self.assertIs(expected, found)
+
+    def test_apply_dispatches_to_autofill(self) -> None:
+        result = MOD.COMMANDS["apply"]
+        expected = MOD.autofill_main
+        found = result
+        self.assertIs(expected, found)
+
+    def test_autofill_is_no_longer_a_command(self) -> None:
+        result = "autofill" in MOD.COMMANDS
+        expected = False
+        found = result
+        self.assertEqual(expected, found)
+
+    def test_autofill_command_returns_2(self) -> None:
+        result = MOD.main(["autofill"])
+        expected = 2
+        found = result
+        self.assertEqual(expected, found)
+
+
 # __END__

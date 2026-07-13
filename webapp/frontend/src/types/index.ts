@@ -70,7 +70,7 @@ export interface DriveState {
 // Mirrors ApplicationStatus in webapp/backend/services/application_metadata.py —
 // keep in sync.
 export const APP_STATUSES = [
-  "GENERATED",
+  "BUILT",
   "APPLIED",
   "IGNORED",
   "INTERVIEWING",
@@ -93,6 +93,77 @@ export interface AppNote {
   text: string;
 }
 
+// A persisted execution record from GET /jobs — mirrors
+// services/run_history.py.
+export interface RunRecord {
+  run_id: string;
+  kind: "build" | "enrich" | "batch" | "schedule" | "apply";
+  label: string;
+  paths: string[];
+  folder_name?: string | null;
+  // application-identity (phase 1): present once the entity id is known
+  // (stamped at finish time); absent on a legacy (id-less) application.
+  entity_id?: string | null;
+  status: "running" | "completed" | "failed";
+  error?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  has_log: boolean;
+}
+
+// application-identity (phase 1): the source tier (source.json) — mirrors
+// services/application_source.py. Editable via PATCH .../source is limited to
+// company/role/web_uri/external_ref; description/entity_id are not.
+export interface ApplicationSource {
+  schema_version?: number;
+  entity_id?: string;
+  company?: string;
+  role?: string;
+  description?: string;
+  file_uri?: string | null;
+  web_uri?: string | null;
+  external_ref?: string | null;
+}
+
+// Editable subset of ApplicationSource — mirrors routers/tracking.py's
+// SourceUpdate (extra="forbid": description/entity_id are rejected).
+export interface ApplicationSourceEdit {
+  company?: string;
+  role?: string;
+  web_uri?: string;
+  external_ref?: string;
+}
+
+// Compact fit block persisted in summary.json — mirrors fit_summary() in
+// jobjob/structure/fit.py; keep in sync. Null axes = not computable.
+export interface FitSummary {
+  band?: string;
+  role_fit?: number | null;
+  preference_fit?: number | null;
+}
+
+// ATS assessment payload from GET /tracking/applications/{folder}/ats —
+// mirrors AtsAssessment (assessment_as_dict) in jobjob/apply/recheck.py.
+export interface AtsCheckResult {
+  name: string;
+  passed: boolean;
+  reason: string;
+}
+
+export interface AtsReport {
+  skipped: boolean;
+  coverage_score: number | null;
+  present: string[];
+  missing_evidenced: string[];
+  missing_unevidenced: string[];
+  unmapped: string[];
+  recommendations: string[];
+  skills_file_candidates: string[];
+  upskill_targets: string[];
+  checks: AtsCheckResult[];
+  fit_gaps: string[];
+}
+
 export interface CompletedItem {
   name: string;
   path: string;
@@ -100,17 +171,43 @@ export interface CompletedItem {
   type: "jd" | "profile";
   status: "completed" | "error";
   drive: DriveState | null;
+  // application-identity (phase 1): null marks a legacy (id-less) application —
+  // it joins by folder_name, same as before this field existed.
+  entity_id?: string | null;
+  // autofill-apply-wiring: the source tier's web_uri, or null/absent when no
+  // posting URL is attached — gates the row-menu Apply action.
+  posting_url?: string | null;
+  // application-identity (phase 6b): count of archived (superseded)
+  // executions under archive/ — 0 for most applications.
+  execution_count?: number;
+  // application-identity (phase 6c): computed fresh at listing time from the
+  // normalized company+role signal (never persisted — a flag for the user,
+  // never an auto-merge). possible_duplicate is false / duplicate_group is
+  // null for the vast majority of applications.
+  possible_duplicate?: boolean;
+  duplicate_group?: string | null;
   // Parsed from "YYYY-MM-DD - Company - Role" (applications only).
   date?: string;
   company?: string;
   title?: string;
-  app_status?: AppStatus; // metadata.json > folder-name prefix > GENERATED
+  app_status?: AppStatus; // metadata.json > folder-name prefix > BUILT
   status_writable?: boolean; // false when only the Drive API fallback is in use
   note_count?: number; // changelog notes recorded for the application
+  // Insights from summary.json (local mirror only; absent on older applications).
+  fit?: FitSummary | null;
+  ats_coverage?: number | null;
   // Profiles only — parsed from "<created>-<processed>-<Company>-<Person>" (sidecar preferred).
   person?: string;
   date_created?: string;
   date_processed?: string;
+}
+
+// One archived (superseded) execution — mirrors GET .../executions in
+// routers/tracking.py (application-identity, phase 6b).
+export interface ExecutionRecord {
+  timestamp: string;
+  note: string | null;
+  locked: boolean;
 }
 
 export interface TomlFile {

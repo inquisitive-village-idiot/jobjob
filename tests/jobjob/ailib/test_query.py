@@ -151,7 +151,25 @@ class TestQueryService(ThisTestCase):
         mock_cache = mock.MagicMock()
         with mock.patch.object(MOD.cachemanager, "get_cache", return_value=mock_cache):
             MOD._default_save_cache("prompt_key", {"data": 1})
-        mock_cache.save_to_cache.assert_called_once_with("prompt_key", {"data": 1})
+        mock_cache.save_to_cache.assert_called_once_with(
+            "prompt_key", {"data": 1}, model=None
+        )
+
+    def test_default_save_cache_passes_model_through(self) -> None:
+        mock_cache = mock.MagicMock()
+        with mock.patch.object(MOD.cachemanager, "get_cache", return_value=mock_cache):
+            MOD._default_save_cache("prompt_key", {"data": 1}, model="claude-x")
+        mock_cache.save_to_cache.assert_called_once_with(
+            "prompt_key", {"data": 1}, model="claude-x"
+        )
+
+    def test_default_load_cache_passes_model_through(self) -> None:
+        mock_cache = mock.MagicMock()
+        mock_cache.load_from_cache.return_value = "resp"
+        with mock.patch.object(MOD.cachemanager, "get_cache", return_value=mock_cache):
+            result = MOD._default_load_cache("prompt", model="claude-x")
+        mock_cache.load_from_cache.assert_called_once_with("prompt", model="claude-x")
+        self.assertEqual("resp", result)
 
     def test_use_cache_true_wires_default_load_and_save(self) -> None:
         mock_service = mock.MagicMock(__name__="svc", return_value='{"ok": true}')
@@ -166,6 +184,42 @@ class TestQueryService(ThisTestCase):
             )
         mock_load.assert_called_once()
         mock_save.assert_called_once()
+
+    def test_default_cache_wiring_is_model_scoped(self) -> None:
+        cases = [
+            ("model-bearing service", "model-a", "model-a"),
+            ("service without .model", mock.sentinel.no_model_attr, None),
+        ]
+        for name, service_model, expected_model in cases:
+            with self.subTest(name):
+                mock_cache = mock.MagicMock()
+                mock_cache.load_from_cache.side_effect = MOD.cachemanager.CacheMissError
+                mock_service = mock.MagicMock(
+                    __name__="svc", return_value='{"ok": true}'
+                )
+                if service_model is not mock.sentinel.no_model_attr:
+                    mock_service.model = service_model
+                else:
+                    del mock_service.model
+
+                with mock.patch.object(
+                    MOD.cachemanager, "get_cache", return_value=mock_cache
+                ):
+                    MOD.query_ai_service(
+                        prompt="a prompt",
+                        use_cache=True,
+                        _query_service=mock_service,
+                    )
+
+                with self.subTest("loaded under model-scoped key"):
+                    expected = mock.call("a prompt", model=expected_model)
+                    found = mock_cache.load_from_cache.call_args
+                    self.assertEqual(expected, found)
+
+                with self.subTest("saved under model-scoped key"):
+                    expected = mock.call("a prompt", {"ok": True}, model=expected_model)
+                    found = mock_cache.save_to_cache.call_args
+                    self.assertEqual(expected, found)
 
     def test_extract_json_from_response_by_default(self) -> None:
         mock_service = mock.MagicMock(__name__="service")

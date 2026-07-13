@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import DashboardPage from "./pages/DashboardPage";
+import ApplicationsPage from "./pages/ApplicationsPage";
+import ContactsPage from "./pages/ContactsPage";
 import QueuePage from "./pages/QueuePage";
 import ConfigPage from "./pages/ConfigPage";
-import StaticContentPage from "./pages/StaticContentPage";
+import ProfilesPage from "./pages/ProfilesPage";
 import PromptsPage from "./pages/PromptsPage";
 import AccountMenu from "./components/AccountMenu";
 import Footer from "./components/Footer";
@@ -10,20 +11,35 @@ import SetupWizard from "./components/SetupWizard";
 import { api } from "./api/client";
 import type { SetupStatus } from "./types";
 
-type Page = "dashboard" | "queue" | "config" | "static" | "prompts";
+type Page = "applications" | "contacts" | "queue" | "profiles" | "config" | "prompts";
 
-// Config is reached via the account menu (Settings), not the main nav.
+// Entities (Applications, Contacts, Profiles) vs. executions (Queue). Config
+// is reached via the account menu (Settings); Prompts also lives in the menu.
 const NAV: { id: Page; label: string }[] = [
-  { id: "dashboard", label: "Dashboard" },
+  { id: "applications", label: "Applications" },
+  { id: "contacts", label: "Contacts" },
   { id: "queue", label: "Queue" },
-  { id: "static", label: "Static Content" },
-  { id: "prompts", label: "Prompts" },
+  { id: "profiles", label: "Profiles" },
 ];
-const PAGES: Page[] = ["dashboard", "queue", "static", "prompts", "config"];
+const PAGES: Page[] = [
+  "applications",
+  "contacts",
+  "queue",
+  "profiles",
+  "prompts",
+  "config",
+];
+
+// Pre-restructure hashes (bookmarks) map onto the new pages.
+const LEGACY_HASHES: Record<string, Page> = {
+  dashboard: "applications",
+  static: "profiles",
+};
 
 function pageFromHash(hash: string): Page {
-  const id = hash.replace("#", "") as Page;
-  return PAGES.includes(id) ? id : "dashboard";
+  const id = hash.replace("#", "");
+  if (id in LEGACY_HASHES) return LEGACY_HASHES[id];
+  return PAGES.includes(id as Page) ? (id as Page) : "applications";
 }
 
 export default function App() {
@@ -63,8 +79,8 @@ export default function App() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 flex items-center gap-6 h-12">
           <a
-            href="#dashboard"
-            onClick={(e) => navigate("dashboard", e)}
+            href="#applications"
+            onClick={(e) => navigate("applications", e)}
             className="font-semibold text-gray-900 text-sm tracking-tight hover:text-blue-600"
           >
             jobjob
@@ -110,16 +126,24 @@ export default function App() {
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
-            <AccountMenu onSettings={goToConfig} onSetup={() => setShowWizard(true)} />
+            <AccountMenu
+              onSettings={goToConfig}
+              onSetup={() => setShowWizard(true)}
+              onPrompts={() => {
+                window.location.hash = "prompts";
+                setPage("prompts");
+              }}
+            />
           </div>
         </div>
       </header>
 
       <main className="py-6">
-        {page === "dashboard" && <DashboardPage />}
+        {page === "applications" && <ApplicationsPage />}
+        {page === "contacts" && <ContactsPage />}
         {page === "queue" && <QueuePage />}
         {page === "config" && <ConfigPage />}
-        {page === "static" && <StaticContentPage />}
+        {page === "profiles" && <ProfilesPage />}
         {page === "prompts" && <PromptsPage />}
       </main>
 

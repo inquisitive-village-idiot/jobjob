@@ -1,207 +1,218 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
-import type { QueueItem, ScheduledJob } from "../types";
+import type { QueueItem, RunRecord, ScheduledJob } from "../types";
 import type { Job } from "../hooks/useJobs";
 import { useJobs } from "../hooks/useJobs";
 import JobProgressModal from "../components/JobProgressModal";
-import LaunchConfirmModal from "../components/LaunchConfirmModal";
 import ScheduleModal from "../components/ScheduleModal";
-import AddJdPanel from "../components/AddJdPanel";
-import { FloatingOutline, useScrollSpy } from "../components/PageOutline";
-import type { OutlineItem } from "../components/PageOutline";
+
+// Queue = executions. Entities live on Applications/Contacts; this page shows
+// the persisted run history (with logs, surviving restarts) and scheduling.
+const POLL_MS = 5000;
+
+const KIND_LABELS: Record<RunRecord["kind"], string> = {
+  build: "Build",
+  enrich: "Enrich",
+  batch: "Batch",
+  schedule: "Schedule",
+  apply: "Apply",
+};
+
+const STATUS_STYLES: Record<RunRecord["status"], string> = {
+  running: "bg-blue-100 text-blue-800 border-blue-200",
+  completed: "bg-green-100 text-green-800 border-green-200",
+  failed: "bg-red-100 text-red-700 border-red-200",
+};
+
+function formatTs(ts?: string | null): string {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? ts : d.toLocaleString();
+}
+
+function RunRow({ run }: { run: RunRecord }) {
+  const [expanded, setExpanded] = useState(false);
+  const [log, setLog] = useState<string | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
+
+  const toggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && log === null && run.has_log) {
+      try {
+        const r = await api.get<{ log: string }>(`/jobs/${run.run_id}/log`);
+        setLog(r.log);
+      } catch (e) {
+        setLogError(String(e instanceof Error ? e.message : e));
+      }
+    }
+  };
+
+  return (
+    <li className="bg-white">
+      <button
+        onClick={toggle}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+      >
+        <span
+          className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium
+            border shrink-0 ${STATUS_STYLES[run.status]}`}
+        >
+          {run.status}
+        </span>
+        <span className="text-xs text-gray-400 shrink-0 w-16">
+          {KIND_LABELS[run.kind] ?? run.kind}
+        </span>
+        <span className="text-sm font-medium text-gray-900 truncate">
+          {run.label || run.run_id}
+        </span>
+        <span className="ml-auto text-xs text-gray-400 shrink-0 tabular-nums">
+          {formatTs(run.started_at)}
+        </span>
+        <span className="text-gray-300 shrink-0">{expanded ? "▴" : "▾"}</span>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-3 space-y-2">
+          {run.error && <p className="text-xs text-red-600">{run.error}</p>}
+          {run.has_log ? (
+            log === null && !logError ? (
+              <p className="text-xs text-gray-400">Loading log…</p>
+            ) : logError ? (
+              <p className="text-xs text-red-600">{logError}</p>
+            ) : (
+              <pre
+                className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded
+                  p-3 max-h-64 overflow-auto whitespace-pre-wrap"
+              >
+                {log}
+              </pre>
+            )
+          ) : (
+            <p className="text-xs text-gray-400">No stored log for this run.</p>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
 
 export default function QueuePage() {
-  const [queue, setQueue] = useState<QueueItem[] | null>(null);
+  const [runs, setRuns] = useState<RunRecord[] | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledJob[] | null>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<QueueItem | null>(null);
-  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
   const [scheduling, setScheduling] = useState(false);
+  const [viewingJobId, setViewingJobId] = useState<string | null>(null);
 
-  const fetchQueue = () =>
-    api
-      .get<QueueItem[]>("/tracking/queue")
-      .then(setQueue)
-      .catch((e) => setError(String(e)));
-
+  const fetchRuns = useCallback(
+    () =>
+      api
+        .get<RunRecord[]>("/jobs")
+        .then(setRuns)
+        .catch((e) => setError(String(e))),
+    []
+  );
   const fetchScheduled = () =>
     api
       .get<ScheduledJob[]>("/jobs/scheduled")
       .then(setScheduled)
       .catch((e) => setError(String(e)));
+  const fetchQueue = () =>
+    api
+      .get<QueueItem[]>("/tracking/queue")
+      .then(setQueue)
+      .catch(() => setQueue([]));
 
-  const {
-    launchApply,
-    launchApplyFromSource,
-    relaunchApply,
-    deleteQueued,
-    launchEnrich,
-    launchBatch,
-    launchSchedule,
-    runningJobForPath,
-    getJob,
-  } = useJobs(() => {
-    fetchQueue();
+  const { launchSchedule, getJob } = useJobs(() => {
+    fetchRuns();
     fetchScheduled();
   });
 
   useEffect(() => {
     setError(null);
-    fetchQueue();
+    fetchRuns();
     fetchScheduled();
-  }, []);
+    fetchQueue();
+  }, [fetchRuns]);
 
-  const activeId = useScrollSpy(
-    ["q-queued", "q-apply", "q-enrich"],
-    [queue, scheduled]
-  );
-
-  const jdQueue = queue?.filter((q) => q.subfolder === "jobs") ?? [];
-  const profileQueue = queue?.filter((q) => q.subfolder === "profiles") ?? [];
-  const runningScheduled = scheduled?.filter((s) => s.status === "running") ?? [];
-
-  const outline: OutlineItem[] = [
-    { id: "q-queued", label: "Queued" },
-    { id: "q-apply", label: "Apply" },
-    { id: "q-enrich", label: "Enrich" },
-  ];
-
-  const confirmLaunch = async ({ skipDrive }: { skipDrive: boolean }) => {
-    if (!confirming) return;
-    const item = confirming;
-    const jobId =
-      item.subfolder === "profiles"
-        ? await launchEnrich(item)
-        : await launchApply(item, { skipDrive });
-    setConfirming(null);
-    setViewingJobId(jobId);
-  };
-
-  const processAll = async (type: "apply" | "enrich") => {
-    const endpoint = type === "apply" ? "/jobs/apply-all" : "/jobs/enrich-all";
-    const label = type === "apply" ? "Apply all JDs" : "Enrich all profiles";
-    try {
-      const jobId = await launchBatch(endpoint, label);
-      setViewingJobId(jobId);
-    } catch (e) {
-      setError(String(e));
-    }
-  };
+  // Poll while anything is running so live runs settle into the history.
+  useEffect(() => {
+    if (!runs?.some((r) => r.status === "running")) return;
+    const t = setInterval(fetchRuns, POLL_MS);
+    return () => clearInterval(t);
+  }, [runs, fetchRuns]);
 
   if (error) return <div className="p-6 text-red-600">{error}</div>;
 
   const viewingJob = getJob(viewingJobId);
+  const runningScheduled = scheduled?.filter((s) => s.status === "running") ?? [];
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Queue</h1>
-
-      <div className="relative">
-        <FloatingOutline items={outline} activeId={activeId} />
-        <div className="space-y-6">
-          {/* Queued section */}
-          <div id="q-queued" className="scroll-mt-16">
-            <ScheduledSection
-              items={runningScheduled}
-              loading={scheduled === null}
-              onSchedule={() => setScheduling(true)}
-              getJob={getJob}
-              onView={setViewingJobId}
-            />
-          </div>
-
-          {/* Apply section */}
-          <div id="q-apply" className="scroll-mt-16 space-y-4">
-            <AddJdPanel
-              onSubmit={async (source, opts) => {
-                const jobId = await launchApplyFromSource(source, opts);
-                setViewingJobId(jobId);
-                return jobId;
-              }}
-            />
-            <QueueSection
-              title="Apply"
-              items={queue === null ? null : jdQueue}
-              emptyText="No pending JDs in data/jobs/."
-              actionLabel="Apply"
-              onLaunch={setConfirming}
-              onView={setViewingJobId}
-              runningJobForPath={runningJobForPath}
-              onRefresh={fetchQueue}
-              onProcessAll={jdQueue.length > 0 ? () => processAll("apply") : undefined}
-            />
-          </div>
-
-          {/* Enrich section */}
-          <div id="q-enrich" className="scroll-mt-16">
-            <QueueSection
-              title="Enrich"
-              items={queue === null ? null : profileQueue}
-              emptyText="No pending profiles in data/profiles/."
-              actionLabel="Enrich"
-              onLaunch={setConfirming}
-              onView={setViewingJobId}
-              runningJobForPath={runningJobForPath}
-              onRefresh={fetchQueue}
-              onProcessAll={
-                profileQueue.length > 0 ? () => processAll("enrich") : undefined
-              }
-            />
-          </div>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-gray-900">Queue</h1>
+        <button
+          onClick={() => {
+            setError(null);
+            fetchRuns();
+            fetchScheduled();
+          }}
+          className="text-sm text-blue-600 hover:underline"
+        >
+          Refresh
+        </button>
       </div>
 
-      {confirming && (
-        <LaunchConfirmModal
-          item={confirming}
-          onClose={() => setConfirming(null)}
-          onConfirm={confirmLaunch}
-        />
-      )}
+      {/* Scheduled batches */}
+      <ScheduledSection
+        items={runningScheduled}
+        loading={scheduled === null}
+        onSchedule={() => setScheduling(true)}
+        getJob={getJob}
+        onView={setViewingJobId}
+      />
+
+      {/* Run history */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          Runs {runs && `— ${runs.length}`}
+        </h2>
+        {runs === null ? (
+          <p className="text-gray-400 text-sm">Loading…</p>
+        ) : runs.length === 0 ? (
+          <p className="text-gray-400 text-sm">
+            No runs yet — build an application from the Applications page.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+            {runs.map((run) => (
+              <RunRow key={run.run_id} run={run} />
+            ))}
+          </ul>
+        )}
+      </section>
 
       {scheduling && (
         <ScheduleModal
-          items={queue ?? []}
+          items={queue}
           onClose={() => setScheduling(false)}
           onConfirm={async (params) => {
             const jobId = await launchSchedule(params);
             setScheduling(false);
             setViewingJobId(jobId);
+            fetchRuns();
           }}
         />
       )}
 
       {viewingJob && (
-        <JobProgressModal
-          job={viewingJob}
-          onClose={() => setViewingJobId(null)}
-          onRelaunch={
-            viewingJob.kind === "apply" && viewingJob.path
-              ? async (allowOverwrite) => {
-                  const id = await relaunchApply(viewingJob, {
-                    skipDrive: false,
-                    allowOverwrite,
-                  });
-                  setViewingJobId(id);
-                }
-              : undefined
-          }
-          onClearDelete={
-            viewingJob.kind === "apply" && viewingJob.path
-              ? async () => {
-                  await deleteQueued(viewingJob.path!);
-                  setViewingJobId(null);
-                  fetchQueue();
-                }
-              : undefined
-          }
-        />
+        <JobProgressModal job={viewingJob} onClose={() => setViewingJobId(null)} />
       )}
     </div>
   );
 }
 
-// ── Queued / Scheduled section ─────────────────────────────────────────────────
+// ── Scheduled batches ──────────────────────────────────────────────────────────
 
 function ScheduledSection({
   items,
@@ -222,7 +233,7 @@ function ScheduledSection({
     <section>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-          Queued {!loading && `— ${totalItems} item${totalItems !== 1 ? "s" : ""}`}
+          Scheduled {!loading && `— ${totalItems} item${totalItems !== 1 ? "s" : ""}`}
         </h2>
         <button
           onClick={onSchedule}
@@ -305,113 +316,6 @@ function ScheduledSection({
             );
           })}
         </div>
-      )}
-    </section>
-  );
-}
-
-// ── Queue section ──────────────────────────────────────────────────────────────
-
-function Spinner() {
-  return (
-    <span
-      className="inline-block w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-600
-        rounded-full animate-spin"
-      aria-hidden
-    />
-  );
-}
-
-function QueueSection({
-  title,
-  items,
-  emptyText,
-  actionLabel,
-  onLaunch,
-  onView,
-  runningJobForPath,
-  onRefresh,
-  onProcessAll,
-}: {
-  title: string;
-  items: QueueItem[] | null;
-  emptyText: string;
-  actionLabel: string;
-  onLaunch: (item: QueueItem) => void;
-  onView: (jobId: string) => void;
-  runningJobForPath: (path: string) => Job | undefined;
-  onRefresh: () => void;
-  onProcessAll?: () => void;
-}) {
-  return (
-    <section>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-          {title} — {items?.length ?? "…"}
-        </h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onRefresh}
-            className="px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200
-              rounded hover:bg-gray-50"
-          >
-            Refresh
-          </button>
-          {onProcessAll && (
-            <button
-              onClick={onProcessAll}
-              className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded
-                hover:bg-blue-700"
-            >
-              {actionLabel} All
-            </button>
-          )}
-        </div>
-      </div>
-
-      {items === null ? (
-        <p className="text-gray-400 text-sm">Loading…</p>
-      ) : items.length === 0 ? (
-        <p className="text-gray-400 text-sm">{emptyText}</p>
-      ) : (
-        <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
-          {items.map((item) => {
-            const job = runningJobForPath(item.path);
-            return (
-              <li
-                key={item.path}
-                className="flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50"
-              >
-                <span className="text-sm font-medium text-gray-900 truncate">
-                  {item.name}
-                </span>
-                {job ? (
-                  <div className="ml-4 shrink-0 flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Spinner />
-                      Running…
-                    </span>
-                    <button
-                      onClick={() => onView(job.id)}
-                      className="px-3 py-1 text-xs font-medium text-blue-600 border
-                        border-blue-200 rounded hover:bg-blue-50"
-                    >
-                      View
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => onLaunch(item)}
-                    className="ml-4 shrink-0 px-3 py-1 text-xs font-medium text-white
-                      bg-blue-600 rounded hover:bg-blue-700"
-                  >
-                    {actionLabel}
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ul>
       )}
     </section>
   );

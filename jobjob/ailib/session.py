@@ -39,6 +39,11 @@ class AIClient:
         self.usage = TokenUsage()
         self._cached_context: Optional[str] = None
 
+    @property
+    def model(self) -> Optional[str]:
+        """The adapter's model identifier, if any (tolerant: None if absent)."""
+        return getattr(self.adapter, "model", None)
+
     def set_cached_context(self, context: str) -> None:
         """Set the stable context sent (cached) on every subsequent call."""
         self._cached_context = context
