@@ -41,13 +41,30 @@ A three-tier data model, with files remaining the source of truth:
 
 Plus the physical layout that makes multiple executions non-intrusive:
 
+- **One output dir + a storage adapter** (see design D7). A build
+  materializes the entity folder `<Company> - <Role>` under the single
+  user-defined output dir and places **all** of that execution's artifacts
+  there — phase-1 wrote identity to the entity folder but artifacts still
+  land in a tempdir/`output_dir`, so phase 2 first unifies placement. Whether
+  an operation touches Drive or the local filesystem is an adapter choice
+  **dispatched per file type** (Google Docs → Drive API; plain files →
+  pathlib), extensible to other backends. The seam mirrors the existing
+  `AIAdapter` idiom.
 - The entity folder keeps **exactly today's name and root contents** — the
   primary execution's artifacts live at the folder root, always. Superseded
   executions (only when the user opts out of overwrite) move into
   `archive/<timestamp>/` as complete, self-contained snapshots. "Which one
   do I want?" is answered by location, never memory. Promote = swap an
   archive dir with the root (root archived first, then promoted files moved
-  up). Legacy folders are already conformant (root artifacts, no archive).
+  up). **Archive/promote is adapter-dispatched**: a Drive-managed Doc is
+  reparented via **API move-by-id** (`files.update` add/removeParents —
+  revision history preserved via the immutable doc id); a local file moves on
+  the filesystem. Legacy folders are already conformant (root artifacts, no
+  archive).
+- **Submitted-artifact naming** (design D8): résumé/cover are named
+  `FirstLast_Resume` / `FirstLast_CoverLetter` from `Applicant.name` (strip
+  credentials + punctuation, keep generational suffixes); extension is
+  whatever the file actually is.
 - Overwrite stays the default. Non-Drive users get a destructive-overwrite
   warning (Drive users are protected by Docs revision history); a checkbox
   opts into archive-instead.
@@ -66,19 +83,30 @@ Plus the physical layout that makes multiple executions non-intrusive:
 Explicitly **not** in scope: SQLite as a primary store (permitted later only
 as a rebuildable index over the files), re-keying the response cache by
 entity (see `model-scoped-cache` for the cache fix), editing
-requirements/skills (bleeds into re-assessment), automatic folder renames.
+requirements/skills (bleeds into re-assessment), automatic folder renames,
+and **decoupling résumé/cover/README generation from Google Docs** (tracked
+separately in `provider-agnostic-generation`). The storage adapter here
+places and archives whatever artifacts each mode produces today; it does not
+re-platform generation.
 
 ## Phasing
 
-1. **Identity core**: entity_id + `source.json` written at process time;
-   run records gain `entity_id`; joins prefer id with name fallback
+1. **Identity core** (done): entity_id + `source.json` written at process
+   time; run records gain `entity_id`; joins prefer id with name fallback
    (absence = legacy, exactly today's behavior); source-field editing
    (enables URL-attach for autofill); contacts sidecar id + sheet column.
-2. **Dedup**: normalized signal, duplicate flagging, merge/delete flows;
+2. **Storage adapter + placement + archive-on-overwrite** (D7/D8): the
+   `StorageAdapter` seam with Local/Drive impls, new `gapi/drive`
+   `move_to_folder`/`ensure_subfolder`, unify artifact placement into the
+   entity folder, archive-on-overwrite (overwrite stays default; opt-out →
+   `archive/<ts>`), `FirstLast` naming, exclude `archive/` from the
+   completeness count. This materializes the D2 layout the later phases
+   assume, so it lands first.
+3. **Execution management**: overwrite checkbox + destructive warning,
+   promote, per-execution notes, purge + lock, executions-per-entity in the
+   Applications table.
+4. **Dedup**: normalized signal, duplicate flagging, merge/delete flows;
    explicit re-parse action.
-3. **Versioned executions**: overwrite checkbox + destructive warning,
-   `archive/` layout, promote, per-execution notes, purge + lock,
-   executions-per-entity in the Applications table.
 
 ## Capabilities
 
@@ -95,7 +123,12 @@ requirements/skills (bleeds into re-assessment), automatic folder renames.
 ## Impact
 
 - `jobjob/apply/workflow.py` + `jobjob/enrich/workflow.py`: mint entity ids,
-  write `source.json`, archive-on-no-overwrite.
+  write `source.json`, place artifacts in the entity folder via the storage
+  adapter, archive-on-no-overwrite.
+- `jobjob/storage/` (new): `StorageAdapter` Protocol + `LocalStorageAdapter`
+  / `DriveStorageAdapter`.
+- `jobjob/gapi/drive.py`: new `move_to_folder` / `ensure_subfolder`
+  primitives (reparent-by-id for archive/promote).
 - `webapp/backend/services/` (tracking, application_metadata, run_history):
   id joins, source read/merge, archive handling, dedup signal.
 - `webapp/backend/routers/`: source-edit endpoint, archive/promote/purge/lock
