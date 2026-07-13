@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from jobjob.classify.classify import JD, LINKEDIN_PROFILE, classify_file
+from jobjob.storage.base import ARCHIVE_DIRNAME
 from services import application_source
 from services.application_metadata import (
     DEFAULT_STATUS,
@@ -29,6 +30,16 @@ from services.drive_service import list_application_folders
 
 # A completed application folder holds README + JD + resume + cover letter.
 _EXPECTED_ARTIFACTS = 4
+
+# Bookkeeping/tiers that are never counted as execution artifacts: metadata.json
+# (entity tier) and source.json (source tier) describe the application across
+# every execution, not one build's output; archive/ (application-identity phase
+# 2) holds *superseded* executions' artifacts, not the current one. Excluding
+# all three keeps the completeness count measuring only the primary execution's
+# root artifacts, exactly as metadata.json was already carved out.
+_NON_ARTIFACT_NAMES = frozenset(
+    {METADATA_FILENAME, application_source.SOURCE_FILENAME, ARCHIVE_DIRNAME}
+)
 
 # Cache for the completed list. It is expensive to build (one Drive lookup per
 # item), and the underlying state only changes when a job moves a file into the
@@ -277,10 +288,14 @@ def _application_items(
             for folder in sorted(
                 (p for p in local.iterdir() if p.is_dir()), key=lambda p: p.name
             ):
-                # metadata.json is bookkeeping, not an artifact — don't let it
-                # tip an incomplete folder over the completeness threshold.
+                # metadata.json/source.json/archive/ are bookkeeping or superseded
+                # executions, not this execution's artifacts — don't let them tip
+                # an incomplete folder over the completeness threshold (or mask
+                # one that's actually incomplete).
                 complete = (
-                    sum(1 for p in folder.iterdir() if p.name != METADATA_FILENAME)
+                    sum(
+                        1 for p in folder.iterdir() if p.name not in _NON_ARTIFACT_NAMES
+                    )
                     >= _EXPECTED_ARTIFACTS
                 )
                 try:

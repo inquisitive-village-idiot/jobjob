@@ -88,6 +88,7 @@ class ApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class UrlApplyRequest(BaseModel):
@@ -97,6 +98,7 @@ class UrlApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class TextApplyRequest(BaseModel):
@@ -106,6 +108,7 @@ class TextApplyRequest(BaseModel):
     no_cache: bool = False
     clear_cache: bool = False
     allow_overwrite: bool = False
+    archive_on_conflict: bool = False
 
 
 class RerunRequest(BaseModel):
@@ -200,19 +203,27 @@ def _start_job(
                 logging.getLogger(__name__).warning(
                     "Run log unavailable for %s: %s", job_id, exc
                 )
+        # Compute the terminal state into locals first; the in-memory job's
+        # ``status`` is flipped to that terminal value only AFTER the run record
+        # is persisted (below). A waiter that polls ``status`` must never observe
+        # "completed"/"failed" before the on-disk record is finalized — otherwise
+        # it can read a record that finish_run has not yet stamped (e.g. with the
+        # entity_id from the result).
+        terminal_status = "failed"
+        terminal_error: Optional[str] = None
+        result = None
         try:
             result = fn()
             _jobs[job_id]["result"] = result
-            _jobs[job_id]["status"] = "completed"
+            terminal_status = "completed"
         except _OverwriteConflictJob as exc:
-            _jobs[job_id]["error"] = str(exc)
+            terminal_error = str(exc)
             _jobs[job_id]["overwrite_conflict"] = True
             _jobs[job_id]["folder_name"] = exc.folder_name
-            _jobs[job_id]["status"] = "failed"
         except Exception as exc:
-            _jobs[job_id]["error"] = str(exc)
-            _jobs[job_id]["status"] = "failed"
+            terminal_error = str(exc)
         finally:
+            _jobs[job_id]["error"] = terminal_error
             root.removeHandler(handler)
             if file_handler is not None:
                 root.removeHandler(file_handler)
@@ -222,19 +233,18 @@ def _start_job(
                 # onto the result dict once the build/enrich mints or reuses it, so
                 # it's only ever present here on a real (build/enrich) completion —
                 # batch/schedule results and failures naturally omit it (legacy).
-                completed_result = _jobs[job_id].get("result")
                 entity_id = (
-                    completed_result.get("entity_id")
-                    if isinstance(completed_result, dict)
-                    else None
+                    result.get("entity_id") if isinstance(result, dict) else None
                 )
                 run_history.finish_run(
                     runs_dir,
                     job_id,
-                    status=_jobs[job_id]["status"],
-                    error=_jobs[job_id]["error"],
+                    status=terminal_status,
+                    error=terminal_error,
                     entity_id=entity_id,
                 )
+            # Record persisted; NOW publish the terminal status to any waiter.
+            _jobs[job_id]["status"] = terminal_status
             log_q.put(None)
 
     threading.Thread(target=run, daemon=True).start()
@@ -253,6 +263,7 @@ def _make_build_run(
     no_cache: bool = False,
     clear_cache: bool = False,
     allow_overwrite: bool = False,
+    archive_on_conflict: bool = False,
     model: Optional[str] = None,
     entity_dir: Optional[Path] = None,
 ):
@@ -273,6 +284,10 @@ def _make_build_run(
     ``entity_dir`` pins the persistent identity folder (a re-run of a possibly-renamed
     application targets its existing mirror folder so the entity_id is reused). Fresh
     builds leave it None and resolve their folder under ``applications_output_dir``.
+
+    ``archive_on_conflict`` only has an effect together with ``allow_overwrite``:
+    instead of overwriting a prior execution in place, its root artifacts move into
+    ``archive/<timestamp>/`` first (application-identity phase 2).
     """
 
     def _run() -> dict:
@@ -304,6 +319,7 @@ def _make_build_run(
             parent_id=settings.applications_output_drive_id,
             data_dir=move_data_dir,
             allow_overwrite=allow_overwrite,
+            archive_on_conflict=archive_on_conflict,
             industry=settings.industry,
             applications_output_dir=settings.applications_output_dir,
             entity_dir=entity_dir,
@@ -351,6 +367,7 @@ def launch_build(body: ApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
     job_id = _start_job(
         run,
@@ -371,6 +388,7 @@ def _launch_snapshot_build(
     no_cache: bool,
     clear_cache: bool,
     allow_overwrite: bool,
+    archive_on_conflict: bool = False,
 ) -> dict:
     """Feed a freshly-written snapshot into the shared build pipeline.
 
@@ -386,6 +404,7 @@ def _launch_snapshot_build(
         no_cache=no_cache,
         clear_cache=clear_cache,
         allow_overwrite=allow_overwrite,
+        archive_on_conflict=archive_on_conflict,
     )
     job_id = _start_job(
         run,
@@ -431,6 +450,7 @@ def launch_build_from_url(body: UrlApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
 
 
@@ -464,6 +484,7 @@ def launch_build_from_text(body: TextApplyRequest, request: Request) -> dict:
         no_cache=body.no_cache,
         clear_cache=body.clear_cache,
         allow_overwrite=body.allow_overwrite,
+        archive_on_conflict=body.archive_on_conflict,
     )
 
 

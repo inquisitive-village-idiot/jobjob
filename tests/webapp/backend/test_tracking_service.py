@@ -111,6 +111,32 @@ class TestApplicationItemsLocalMirror:
         (item,) = self._items(tmp_path)
         assert item["status"] == "completed"
 
+    def test_source_json_not_counted_as_artifact(self, tmp_path):
+        # source.json (application-identity phase 1) is source-tier bookkeeping,
+        # not an execution artifact — same carve-out as metadata.json.
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer", artifacts=3)
+        (folder / "source.json").write_text(json.dumps({"company": "Acme"}))
+        (item,) = self._items(tmp_path)
+        assert item["status"] == "error"  # still incomplete: 3 real artifacts
+
+    def test_archive_dir_not_counted_as_artifact(self, tmp_path):
+        # archive/ (application-identity phase 2) holds superseded executions'
+        # artifacts, not this execution's — must not inflate the count.
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer", artifacts=3)
+        archive = folder / "archive" / "2026-07-05T09.12.03"
+        archive.mkdir(parents=True)
+        (archive / "old_artifact_1.pdf").write_text("x")
+        (archive / "old_artifact_2.pdf").write_text("x")
+        (item,) = self._items(tmp_path)
+        assert item["status"] == "error"  # still incomplete: 3 real artifacts
+
+    def test_complete_folder_with_source_and_archive_present(self, tmp_path):
+        folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer", artifacts=4)
+        (folder / "source.json").write_text(json.dumps({"company": "Acme"}))
+        (folder / "archive" / "ts1").mkdir(parents=True)
+        (item,) = self._items(tmp_path)
+        assert item["status"] == "completed"
+
     def test_insights_read_from_summary(self, tmp_path):
         folder = _make_app_folder(tmp_path, "2026-01-01 - Acme - Engineer")
         (folder / "summary.json").write_text(

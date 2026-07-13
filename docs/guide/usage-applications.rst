@@ -97,15 +97,38 @@ What you need
 Where output lands
 ------------------
 
-**Locally**, under ``<jobjob folder>/data/completed/`` (or ``--output``)::
+Every build materializes one **entity folder** — ``Company - Role`` — under your
+configured output dir and places *all* of that build's artifacts there (identity
+files and generated documents alike). The submitted résumé and cover letter are
+named after the applicant: ``FirstLast_Resume`` / ``FirstLast_CoverLetter`` (from
+``APPLICANT_NAME``, keeping generational suffixes like ``Jr``/``III`` but dropping
+credentials such as ``PhD``); the README, JD copy, and JSON sidecars keep their
+names. The file extension is whatever the artifact actually is — a real
+``.pdf``/``.docx`` locally, an editable Google Doc when Drive-backed.
 
-   YYYY-MM-DD - Company - Role/
-     JD_Company_Role.pdf   Resume.pdf   CoverLetter.pdf / .docx
-     skills_analysis.json  README.docx  summary.json
+**Locally** (``--skip-drive`` or when Drive is not connected)::
 
-**On Google Drive** (if connected): a folder ``YYYY-MM-DD - Company - Role`` under your
-``APPLICATIONS_OUTPUT_DRIVE_ID``, holding the README, JD copy, Résumé, and CoverLetter
-as editable Google Docs.
+   Company - Role/
+     JD_Company_Role.pdf   FirstLast_CoverLetter.pdf   skills_analysis.json
+     README.docx           summary.json                metadata.json  source.json
+
+**On Google Drive** (if connected): a folder ``Company - Role`` under your
+``APPLICATIONS_OUTPUT_DRIVE_ID`` holding the README, JD copy, ``FirstLast_Resume``,
+and ``FirstLast_CoverLetter`` as editable Google Docs. In Drive mode the Google Doc
+*is* the artifact — the tool does not also leave a redundant local ``.docx`` copy.
+
+Re-building and archived executions
+-----------------------------------
+
+Overwriting the previous build **in place** stays the default: re-building an
+application updates its artifacts and (on Drive) preserves each document's
+revision history. A local re-build onto an existing application is guarded — it
+asks you to confirm rather than silently overwriting. When you opt to keep the
+old run instead of overwriting it, the prior execution's root artifacts move into
+an ``archive/<timestamp>/`` subfolder (a complete, self-contained snapshot) and
+the new build writes at the root. The entity's ``metadata.json`` / ``source.json``
+and its status/notes stay at the root across all executions; ``archive/`` never
+counts toward an application's completeness.
 
 Identity: entity, source, and executions
 -----------------------------------------
