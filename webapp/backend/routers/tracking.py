@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from budget import calculate_cost, check_budget, record_run
 from jobjob.apply.recheck import assessment_as_dict, reassess_application
-from jobjob.storage import LocalStorageAdapter
+from jobjob.storage.local import LocalStorageAdapter
 from security import safe_path
 from services import application_source
 from services.application_metadata import (

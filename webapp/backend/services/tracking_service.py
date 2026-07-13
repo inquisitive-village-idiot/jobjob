@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Optional
 
 from jobjob.classify.classify import JD, LINKEDIN_PROFILE, classify_file
-from jobjob.storage import LocalStorageAdapter
 from jobjob.storage.base import ARCHIVE_DIRNAME
+from jobjob.storage.local import LocalStorageAdapter
 from jobjob.structure.dedup import dedup_signal
 from services import application_source
 from services.application_metadata import (

@@ -40,7 +40,9 @@ from jobjob.gapi.service import build_docs_service, build_drive_service
 from jobjob.loader.auth import get_google_credentials
 from jobjob.loader.loadcontent import load_highlights, load_skills, load_templates
 from jobjob.loader.loadreference import load_reference_documents
-from jobjob.storage import DriveStorageAdapter, LocalStorageAdapter, archive_timestamp
+from jobjob.storage.base import archive_timestamp
+from jobjob.storage.drive import DriveStorageAdapter
+from jobjob.storage.local import LocalStorageAdapter
 from jobjob.structure.applicant import Applicant, first_last_name
 from jobjob.structure.fit import fit_summary
 from jobjob.structure.highlight import Highlight, HighlightSet
