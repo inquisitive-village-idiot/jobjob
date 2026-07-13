@@ -9,7 +9,11 @@ import jobjob.structure.dedup as MOD
 LOGGER = logging.getLogger(__name__)
 
 
-class TestNormalizeToken(TestCase):
+class ThisTestCase(TestCase):
+    """Base test case for the module."""
+
+
+class TestNormalizeToken(ThisTestCase):
     """Test normalize_token."""
 
     def test_table(self) -> None:
@@ -35,7 +39,7 @@ class TestNormalizeToken(TestCase):
                 self.assertEqual(expected, MOD.normalize_token(raw))
 
 
-class TestDedupSignal(TestCase):
+class TestDedupSignal(ThisTestCase):
     """Test dedup_signal."""
 
     def test_company_and_role_join_with_pipe(self) -> None:
