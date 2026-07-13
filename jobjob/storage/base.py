@@ -154,5 +154,35 @@ class StorageAdapter(Protocol):
         """
         ...
 
+    def merge_from(
+        self, other: "StorageAdapter", timestamp: str
+    ) -> list[PlacedArtifact]:
+        """Absorb another entity's executions into this one's archive (dedup merge).
+
+        ``other`` is the "loser" duplicate entity (design D3); ``self`` is the
+        surviving one. Moves everything currently at ``other``'s root (its
+        primary execution, bar entity-tier files) into ``self``'s
+        ``archive/<timestamp>/``, exactly as if it were being archived — then
+        re-parents each of ``other``'s own already-archived executions into
+        ``self``'s ``archive/`` too. A name collision with one of ``self``'s
+        own archived timestamps is resolved by suffixing (``<ts>-merged``,
+        then ``<ts>-merged-2``, ...) rather than overwriting.
+
+        Does not touch ``other``'s entity-tier files (``metadata.json``/
+        ``source.json``) or remove its directory/folder — the caller (
+        ``services.dedup_service.merge_applications``) owns the notes-union
+        and deleting the now-empty loser afterward.
+
+        Arguments:
+            other: The duplicate entity's adapter (the "loser"), same backend
+                type as ``self``.
+            timestamp: Fresh timestamp under which ``other``'s current root
+                execution (if any) is archived.
+        Returns:
+            The artifacts moved (the absorbed root execution, plus every
+            re-parented archived one).
+        """
+        ...
+
 
 # __END__

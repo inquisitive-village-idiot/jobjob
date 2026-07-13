@@ -212,3 +212,57 @@ class TestNotes:
 
     def test_read_notes_empty_when_no_file(self, tmp_path):
         assert MOD.read_notes(tmp_path) == []
+
+
+class TestUnionNotes:
+    """application-identity phase 6c dedup merge: notes unioned, id/status untouched."""
+
+    def test_appends_incoming_notes(self, tmp_path):
+        MOD.add_note(tmp_path, "existing note")
+        written = MOD.union_notes(
+            tmp_path,
+            [{"ts": "2026-01-01T00:00:00+00:00", "kind": "note", "text": "from loser"}],
+        )
+        texts = [n["text"] for n in written["notes"]]
+        assert "existing note" in texts
+        assert "from loser" in texts
+
+    def test_sorted_by_timestamp(self, tmp_path):
+        MOD.add_note(tmp_path, "second", kind="note")
+        written = MOD.union_notes(
+            tmp_path,
+            [{"ts": "2000-01-01T00:00:00+00:00", "kind": "note", "text": "first"}],
+        )
+        assert [n["text"] for n in written["notes"]] == ["first", "second"]
+
+    def test_duplicate_entry_not_re_added(self, tmp_path):
+        note = {"ts": "2026-01-01T00:00:00+00:00", "kind": "note", "text": "dup"}
+        MOD.union_notes(tmp_path, [note])
+        written = MOD.union_notes(tmp_path, [note])
+        assert len(written["notes"]) == 1
+
+    def test_does_not_touch_entity_id_or_status(self, tmp_path):
+        MOD.ensure_entity_id(tmp_path)
+        MOD.write_status(tmp_path, MOD.ApplicationStatus.APPLIED)
+        before = MOD.read_metadata(tmp_path)
+
+        MOD.union_notes(
+            tmp_path,
+            [{"ts": "2026-02-02T00:00:00+00:00", "kind": "note", "text": "from loser"}],
+        )
+
+        after = MOD.read_metadata(tmp_path)
+        assert after["entity_id"] == before["entity_id"]
+        assert after["status"] == before["status"]
+
+    def test_empty_incoming_is_a_no_op(self, tmp_path):
+        MOD.add_note(tmp_path, "existing")
+        written = MOD.union_notes(tmp_path, [])
+        assert len(written["notes"]) == 1
+
+    def test_no_existing_metadata_file(self, tmp_path):
+        written = MOD.union_notes(
+            tmp_path, [{"ts": "2026-01-01T00:00:00+00:00", "kind": "note", "text": "x"}]
+        )
+        assert len(written["notes"]) == 1
+        assert written["schema_version"] == MOD._SCHEMA_VERSION

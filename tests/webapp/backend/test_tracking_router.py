@@ -388,3 +388,201 @@ class TestPurgeApplicationExecutions:
         assert resp.status_code == 200
         assert resp.json() == {"purged": {}, "total": 0}
         assert (app_dir / "archive" / "ts1").is_dir()
+
+
+def _merge_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/merge"
+
+
+def _duplicate_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/duplicate"
+
+
+def _reparse_url(folder):
+    return f"/api/tracking/applications/{urllib.parse.quote(folder)}/reparse"
+
+
+_LOSER = "2026-01-02 - Acme Inc - Engineer"
+
+
+class TestMergeApplication:
+    """POST .../applications/{folder}/merge (application-identity, phase 6c)."""
+
+    def test_merges_loser_into_survivor(self, client, mirror):
+        (mirror / _LOSER).mkdir()
+        (mirror / _LOSER / "summary.json").write_text("loser-current")
+
+        resp = client.post(_merge_url(_FOLDER), json={"loser_folder_name": _LOSER})
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["folder_name"] == _FOLDER
+        assert body["merged_artifacts"] == 1
+        assert not (mirror / _LOSER).exists()
+        archived = list((mirror / _FOLDER / "archive").iterdir())
+        assert len(archived) == 1
+        assert (archived[0] / "summary.json").read_text() == "loser-current"
+
+    def test_rejects_merging_folder_into_itself(self, client):
+        resp = client.post(_merge_url(_FOLDER), json={"loser_folder_name": _FOLDER})
+        assert resp.status_code == 400
+
+    def test_missing_survivor_404(self, client, mirror):
+        (mirror / _LOSER).mkdir()
+        resp = client.post(
+            _merge_url("2026-09-09 - Nope - Role"),
+            json={"loser_folder_name": _LOSER},
+        )
+        assert resp.status_code == 404
+
+    def test_missing_loser_404(self, client):
+        resp = client.post(
+            _merge_url(_FOLDER),
+            json={"loser_folder_name": "2026-09-09 - Nope - Role"},
+        )
+        assert resp.status_code == 404
+
+    def test_rejects_unknown_field(self, client, mirror):
+        (mirror / _LOSER).mkdir()
+        resp = client.post(
+            _merge_url(_FOLDER),
+            json={"loser_folder_name": _LOSER, "bogus": "x"},
+        )
+        assert resp.status_code == 422
+
+    def test_invalidates_completed_cache(self, client, mirror, monkeypatch):
+        from services import tracking_service
+
+        (mirror / _LOSER).mkdir()
+        monkeypatch.setattr(
+            tracking_service, "_completed_cache", {"key": "k", "items": []}
+        )
+        resp = client.post(_merge_url(_FOLDER), json={"loser_folder_name": _LOSER})
+        assert resp.status_code == 200
+        assert tracking_service._completed_cache is None
+
+
+class TestDeleteDuplicate:
+    """DELETE .../applications/{folder}/duplicate (application-identity, phase 6c)."""
+
+    def test_deletes_the_folder(self, client, mirror):
+        resp = client.delete(_duplicate_url(_FOLDER))
+        assert resp.status_code == 200, resp.text
+        assert resp.json() == {"folder_name": _FOLDER, "deleted": True}
+        assert not (mirror / _FOLDER).exists()
+
+    def test_missing_folder_404(self, client):
+        resp = client.delete(_duplicate_url("2026-09-09 - Nope - Role"))
+        assert resp.status_code == 404
+
+    def test_invalidates_completed_cache(self, client, monkeypatch):
+        from services import tracking_service
+
+        monkeypatch.setattr(
+            tracking_service, "_completed_cache", {"key": "k", "items": []}
+        )
+        resp = client.delete(_duplicate_url(_FOLDER))
+        assert resp.status_code == 200
+        assert tracking_service._completed_cache is None
+
+
+class TestReparseApplication:
+    """POST .../applications/{folder}/reparse (application-identity, phase 6c)."""
+
+    def _stub_query_service(self, monkeypatch, *, model="claude-sonnet-4-6"):
+        settings = type(
+            "S",
+            (),
+            {"model": model, "anthropic_api_key": "k", "cache_enabled": True},
+        )()
+        client = object()
+        monkeypatch.setattr(
+            "routers.tracking._build_reparse_query_service",
+            lambda: (client, settings),
+        )
+        return client
+
+    def test_missing_folder_404(self, client):
+        resp = client.post(_reparse_url("2026-09-09 - Nope - Role"))
+        assert resp.status_code == 404
+
+    def test_budget_exceeded_returns_402(self, client, monkeypatch):
+        monkeypatch.setattr(
+            "routers.tracking.check_budget", lambda **k: "Daily budget exceeded"
+        )
+        resp = client.post(_reparse_url(_FOLDER))
+        assert resp.status_code == 402
+
+    def test_no_jd_recorded_returns_409(self, client, mirror, monkeypatch):
+        monkeypatch.setattr("routers.tracking.check_budget", lambda **k: None)
+        self._stub_query_service(monkeypatch)
+        resp = client.post(_reparse_url(_FOLDER))
+        assert resp.status_code == 409
+
+    def test_happy_path_overwrites_source_and_warns(self, client, mirror, monkeypatch):
+        from services import application_source
+
+        jd = mirror / _FOLDER / "jd.pdf"
+        jd.write_text("jd content")
+        application_source.write_source(
+            mirror / _FOLDER,
+            {
+                "entity_id": "e1",
+                "company": "Old Co",
+                "role": "Old Role",
+                "file_uri": str(jd),
+            },
+        )
+        monkeypatch.setattr("routers.tracking.check_budget", lambda **k: None)
+        monkeypatch.setattr("routers.tracking.record_run", lambda cost: None)
+        self._stub_query_service(monkeypatch)
+
+        class _FreshJob:
+            company_name = "Acme Corp"
+            role_title = "Staff Engineer"
+            summary = "new summary"
+
+        monkeypatch.setattr(
+            "routers.tracking.reparse_source",
+            lambda folder, client, use_cache=True: application_source.write_source(
+                folder,
+                {
+                    **application_source.read_source(folder),
+                    "company": _FreshJob.company_name,
+                    "role": _FreshJob.role_title,
+                    "description": _FreshJob.summary,
+                },
+            ),
+        )
+
+        resp = client.post(_reparse_url(_FOLDER))
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["source"]["company"] == "Acme Corp"
+        assert body["source"]["role"] == "Staff Engineer"
+        assert "overwrote" in body["warning"].lower()
+
+    def test_invalidates_completed_cache(self, client, mirror, monkeypatch):
+        from services import application_source, tracking_service
+
+        jd = mirror / _FOLDER / "jd.pdf"
+        jd.write_text("jd content")
+        application_source.write_source(mirror / _FOLDER, {"file_uri": str(jd)})
+        monkeypatch.setattr("routers.tracking.check_budget", lambda **k: None)
+        monkeypatch.setattr("routers.tracking.record_run", lambda cost: None)
+        self._stub_query_service(monkeypatch)
+        monkeypatch.setattr(
+            "routers.tracking.reparse_source",
+            lambda folder, client, use_cache=True: application_source.read_source(
+                folder
+            ),
+        )
+        monkeypatch.setattr(
+            tracking_service, "_completed_cache", {"key": "k", "items": []}
+        )
+
+        resp = client.post(_reparse_url(_FOLDER))
+
+        assert resp.status_code == 200
+        assert tracking_service._completed_cache is None

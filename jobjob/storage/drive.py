@@ -268,5 +268,93 @@ class DriveStorageAdapter:
             purged.append(ts)
         return purged
 
+    def merge_from(
+        self, other: "DriveStorageAdapter", timestamp: str
+    ) -> list[PlacedArtifact]:
+        """Absorb ``other``'s Drive-backed executions into this entity (dedup merge).
+
+        See ``StorageAdapter.merge_from`` for the full contract. Everything
+        moves by id (``move_to_folder``) — a Google Doc keeps its id and
+        revision history throughout; no export/re-import happens. ``other``'s
+        entity-tier files and folder are left untouched here (the caller
+        removes them once notes are unioned).
+        """
+        moved: list[PlacedArtifact] = []
+        archive_root_id = gdrive.ensure_subfolder(
+            self.service, self.folder_id, ARCHIVE_DIRNAME, logger=self._logger
+        )
+
+        # Absorb the loser's current root execution (if any) under a fresh
+        # timestamp subfolder.
+        items = (
+            self.service.files()
+            .list(
+                q=(
+                    f"'{other.folder_id}' in parents and trashed = false "
+                    f"and name != '{ARCHIVE_DIRNAME}'"
+                ),
+                fields="files(id, name)",
+            )
+            .execute()
+            .get("files", [])
+        )
+        if items:
+            dest_dir_id = gdrive.ensure_subfolder(
+                self.service, archive_root_id, timestamp, logger=self._logger
+            )
+            for item in items:
+                gdrive.move_to_folder(
+                    self.service,
+                    item["id"],
+                    dest_dir_id,
+                    current_parent_id=other.folder_id,
+                    logger=self._logger,
+                )
+                moved.append(PlacedArtifact(name=item["name"], location=item["id"]))
+
+        # Re-parent the loser's own already-archived executions, whole
+        # subfolder by id; a timestamp collision is renamed with a suffix.
+        # (Resolved directly here — one lookup — rather than via
+        # ``other.list_executions()``/``other._archived_execution_folder_id``,
+        # which would each re-derive the loser's archive root separately.)
+        other_archive_root_id = gdrive._find_in_folder(
+            self.service, ARCHIVE_DIRNAME, other.folder_id
+        )
+        subfolders = (
+            self.service.files()
+            .list(
+                q=(
+                    f"'{other_archive_root_id}' in parents and trashed = false "
+                    f"and mimeType = '{gdrive.FOLDER_MIME}'"
+                ),
+                fields="files(id, name)",
+            )
+            .execute()
+            .get("files", [])
+            if other_archive_root_id
+            else []
+        )
+        for sub in subfolders:
+            ts, src_id = sub["name"], sub["id"]
+            dest_ts = ts
+            attempt = 0
+            while gdrive._find_in_folder(self.service, dest_ts, archive_root_id):
+                attempt += 1
+                dest_ts = f"{ts}-merged" if attempt == 1 else f"{ts}-merged-{attempt}"
+            gdrive.move_to_folder(
+                self.service,
+                src_id,
+                archive_root_id,
+                current_parent_id=other_archive_root_id,
+                logger=self._logger,
+            )
+            if dest_ts != ts:
+                self.service.files().update(
+                    fileId=src_id, body={"name": dest_ts}, fields="id, name"
+                ).execute()
+            moved.append(PlacedArtifact(name=dest_ts, location=src_id))
+
+        return moved
+
 
 # __END__

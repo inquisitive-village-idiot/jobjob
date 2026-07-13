@@ -305,6 +305,89 @@ class TestExecutionNote(ThisTestCase):
             adapter.write_execution_note("nope", note="x")
 
 
+class TestMergeFrom(ThisTestCase):
+    """Test LocalStorageAdapter.merge_from (application-identity phase 6c dedup)."""
+
+    def test_absorbs_losers_root_execution_under_fresh_timestamp(self) -> None:
+        survivor_root = self.get_tmpdir() / "Acme - Engineer"
+        survivor_root.mkdir()
+        loser_root = self.get_tmpdir() / "Acme Inc - Engineer"
+        loser_root.mkdir()
+        self.make_source_file(loser_root, "summary.json", "loser-current")
+        self.make_source_file(loser_root, "metadata.json", '{"entity_id": "loser"}')
+        survivor = MOD.LocalStorageAdapter(survivor_root)
+        loser = MOD.LocalStorageAdapter(loser_root)
+
+        moved = survivor.merge_from(loser, "ts-new")
+
+        with self.subTest("root execution landed in survivor's archive/ts-new"):
+            dest = survivor_root / "archive" / "ts-new" / "summary.json"
+            self.assertEqual("loser-current", dest.read_text())
+        with self.subTest("returned as a moved artifact"):
+            self.assertEqual(["summary.json"], [m.name for m in moved])
+        with self.subTest("loser's entity-tier file left untouched (caller's job)"):
+            self.assertTrue((loser_root / "metadata.json").is_file())
+        with self.subTest("loser's root artifact is gone (moved, not copied)"):
+            self.assertFalse((loser_root / "summary.json").exists())
+
+    def test_reparents_losers_archived_executions(self) -> None:
+        survivor_root = self.get_tmpdir()
+        loser_root = self.get_tmpdir()
+        (loser_root / "archive" / "ts-old").mkdir(parents=True)
+        self.make_source_file(loser_root / "archive" / "ts-old", "summary.json", "old")
+        survivor = MOD.LocalStorageAdapter(survivor_root)
+        loser = MOD.LocalStorageAdapter(loser_root)
+
+        moved = survivor.merge_from(loser, "ts-new")
+
+        with self.subTest("archived execution re-parented under its own timestamp"):
+            dest = survivor_root / "archive" / "ts-old" / "summary.json"
+            self.assertEqual("old", dest.read_text())
+        with self.subTest("returned as moved"):
+            self.assertEqual(["summary.json"], [m.name for m in moved])
+        with self.subTest("gone from the loser"):
+            self.assertFalse((loser_root / "archive" / "ts-old").exists())
+
+    def test_timestamp_collision_is_suffixed_not_overwritten(self) -> None:
+        survivor_root = self.get_tmpdir()
+        (survivor_root / "archive" / "ts1").mkdir(parents=True)
+        self.make_source_file(
+            survivor_root / "archive" / "ts1", "summary.json", "survivor-original"
+        )
+        loser_root = self.get_tmpdir()
+        (loser_root / "archive" / "ts1").mkdir(parents=True)
+        self.make_source_file(
+            loser_root / "archive" / "ts1", "summary.json", "loser-dup"
+        )
+        survivor = MOD.LocalStorageAdapter(survivor_root)
+        loser = MOD.LocalStorageAdapter(loser_root)
+
+        survivor.merge_from(loser, "ts-new")
+
+        with self.subTest("survivor's original ts1 untouched"):
+            self.assertEqual(
+                "survivor-original",
+                (survivor_root / "archive" / "ts1" / "summary.json").read_text(),
+            )
+        with self.subTest("loser's ts1 landed under a suffixed name"):
+            self.assertEqual(
+                "loser-dup",
+                (survivor_root / "archive" / "ts1-merged" / "summary.json").read_text(),
+            )
+
+    def test_no_op_when_loser_has_nothing(self) -> None:
+        survivor_root = self.get_tmpdir()
+        survivor_root.mkdir(exist_ok=True)
+        loser_root = self.get_tmpdir() / "never-built"
+        survivor = MOD.LocalStorageAdapter(survivor_root)
+        loser = MOD.LocalStorageAdapter(loser_root)
+
+        moved = survivor.merge_from(loser, "ts-new")
+
+        self.assertEqual([], moved)
+        self.assertFalse((survivor_root / "archive").exists())
+
+
 class TestPurgeExecutions(ThisTestCase):
     """Test LocalStorageAdapter.purge_executions (phase 6b)."""
 

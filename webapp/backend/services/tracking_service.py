@@ -7,6 +7,7 @@ Completed:    ``data/completed/jobs/``   — JDs, verified against Drive (4 arti
               ``data/completed/`` root    — legacy JD items (treated as JDs).
 """
 
+import hashlib
 import json
 import logging
 import re
@@ -18,6 +19,7 @@ from typing import Optional
 from jobjob.classify.classify import JD, LINKEDIN_PROFILE, classify_file
 from jobjob.storage import LocalStorageAdapter
 from jobjob.storage.base import ARCHIVE_DIRNAME
+from jobjob.structure.dedup import dedup_signal
 from services import application_source
 from services.application_metadata import (
     DEFAULT_STATUS,
@@ -197,6 +199,8 @@ def _application_item(
     entity_id: Optional[str] = None,
     posting_url: Optional[str] = None,
     execution_count: int = 0,
+    dedup_company: Optional[str] = None,
+    dedup_role: Optional[str] = None,
 ) -> dict:
     """Build a completed-application item, including parsed date/company/title.
 
@@ -212,6 +216,13 @@ def _application_item(
     archived (superseded) executions under ``archive/`` — 0 for most
     applications (only a re-build with "archive instead of overwrite" creates
     one).
+    ``dedup_company``/``dedup_role`` (application-identity, phase 6c) are the
+    source tier's parse-once ``company``/``role`` fields, when known — the
+    dedup signal prefers them (they survive a folder rename) over the
+    folder-name-parsed fallback, which only a legacy (no ``source.json``)
+    folder ever falls back to. ``possible_duplicate``/``duplicate_group`` are
+    always seeded False/None here; ``list_completed`` sets them across the
+    full list (grouping needs every item, not just this one).
     """
     parsed = _parse_app_name(folder_name)
     prefix_status = parsed.pop("prefix_status")
@@ -231,6 +242,11 @@ def _application_item(
         if metadata_status
         else prefix_status or DEFAULT_STATUS.value
     )
+    # application-identity, phase 6c: normalized company+role dedup signal.
+    # An empty signal (blank company/role both sides) never groups.
+    signal = dedup_signal(
+        dedup_company or parsed.get("company"), dedup_role or parsed.get("title")
+    )
     return {
         "name": folder_name,
         "path": path,
@@ -244,6 +260,9 @@ def _application_item(
         "entity_id": entity_id,
         "posting_url": posting_url,
         "execution_count": execution_count,
+        "dedup_signal": signal or None,
+        "possible_duplicate": False,
+        "duplicate_group": None,
         **(insights or {"fit": None, "ats_coverage": None}),
         **parsed,
     }
@@ -262,6 +281,34 @@ def run_matches_application(run: Mapping, item: Mapping) -> bool:
     if run_id and item_id:
         return run_id == item_id
     return run.get("folder_name") == item.get("folder_name")
+
+
+def _flag_duplicates(items: list[dict]) -> None:
+    """Flag possible-duplicate applications in place (application-identity, D3).
+
+    Groups completed *application* items (``type == "jd"``) by their
+    normalized company+role ``dedup_signal``; any group with more than one
+    member is flagged ``possible_duplicate = True`` with a shared
+    ``duplicate_group`` id. The id is a short hash of the signal purely as a
+    compact, stable-within-this-listing key for the UI to group rows by — it
+    is recomputed fresh on every call, never persisted (the normalized signal
+    itself is the substance, per design D3). Items with no signal (blank
+    company/role — typically a pre-identity legacy folder) are never grouped.
+    Never auto-merges anything; this only sets flags for the UI to surface.
+    """
+    by_signal: dict[str, list[dict]] = {}
+    for item in items:
+        signal = item.get("dedup_signal")
+        if item.get("type") != "jd" or not signal:
+            continue
+        by_signal.setdefault(signal, []).append(item)
+    for signal, group in by_signal.items():
+        if len(group) < 2:
+            continue
+        group_id = hashlib.sha256(signal.encode("utf-8")).hexdigest()[:8]
+        for item in group:
+            item["possible_duplicate"] = True
+            item["duplicate_group"] = group_id
 
 
 def _application_items(
@@ -314,9 +361,11 @@ def _application_items(
                 note_count = len(meta.get("notes") or [])
                 match = links.get(folder.name)
                 # application-identity phase 1's source tier (source.json);
-                # tolerant read — a missing/legacy folder just yields no URL,
-                # same posture as application_source.read_source itself.
-                posting_url = application_source.read_source(folder).get("web_uri")
+                # tolerant read — a missing/legacy folder degrades to {}, same
+                # posture as application_source.read_source itself. Read once
+                # and reuse for both the posting URL and the dedup signal.
+                source = application_source.read_source(folder)
+                posting_url = source.get("web_uri")
                 # application-identity phase 6b: count of archived (superseded)
                 # executions — surfaced in the Applications table so a user
                 # knows there's history to promote/note/lock/purge.
@@ -333,6 +382,8 @@ def _application_items(
                         entity_id=entity_id_from_metadata(meta),
                         posting_url=posting_url,
                         execution_count=execution_count,
+                        dedup_company=source.get("company"),
+                        dedup_role=source.get("role"),
                         drive=(
                             {
                                 "found": True,
@@ -521,6 +572,10 @@ def list_completed(
         profile_files.extend(_supported(completed_root / "profiles"))
         for f in sorted(profile_files, key=lambda p: p.name):
             items.append(_profile_completed_item(f, sheet_url))
+
+    # application-identity, phase 6c: flag possible duplicates across the full
+    # application list (grouping needs every item at once, not just one).
+    _flag_duplicates(items)
 
     _completed_cache = {"key": cache_key, "items": items}
     return items
