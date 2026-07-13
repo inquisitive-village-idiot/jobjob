@@ -259,6 +259,91 @@ def upload_file(
     return uploaded["id"]
 
 
+def _find_subfolder(service: Any, parent_id: str, name: str) -> Optional[str]:
+    """Return the id of a non-trashed subfolder ``name`` in ``parent_id``, else None."""
+    query = (
+        f"name = '{name}' and mimeType = '{FOLDER_MIME}' and trashed = false "
+        f"and '{parent_id}' in parents"
+    )
+    results = (
+        service.files().list(q=query, fields="files(id, name)", pageSize=1).execute()
+    )
+    existing = results.get("files", [])
+    return existing[0]["id"] if existing else None
+
+
+def ensure_subfolder(
+    service: Any,
+    parent_id: str,
+    name: str,
+    logger: logging.Logger | None = None,
+) -> str:
+    """Return the id of a ``name`` subfolder under ``parent_id``, creating it if absent.
+
+    Used for the ``archive/<timestamp>`` layout (design D2): ``ensure_subfolder``
+    for ``archive`` under the application folder, then again for the timestamp
+    under the returned ``archive`` folder id.
+    """
+    _logger = logger or logging.getLogger(__name__)
+    existing_id = _find_subfolder(service, parent_id, name)
+    if existing_id:
+        return existing_id  # EARLY EXIT: reuse.
+    folder = (
+        service.files()
+        .create(
+            body={"name": name, "mimeType": FOLDER_MIME, "parents": [parent_id]},
+            fields="id, name",
+        )
+        .execute()
+    )
+    _logger.info("Created subfolder: %s", name)
+    return folder["id"]
+
+
+def move_to_folder(
+    service: Any,
+    file_id: str,
+    dest_folder_id: str,
+    current_parent_id: Optional[str] = None,
+    logger: logging.Logger | None = None,
+) -> dict:
+    """Reparent ``file_id`` into ``dest_folder_id`` via API move-by-id.
+
+    Used for archive/promote (design D2/D7): a ``files().update`` with
+    ``addParents``/``removeParents`` reparents the file without export/re-import,
+    so a Google Doc's id — and its revision history — survives the move.
+
+    Arguments:
+        service: Drive service client.
+        file_id: The file (or Google Doc) to move.
+        dest_folder_id: The destination folder id.
+        current_parent_id: The file's current parent, if already known (saves a
+            lookup call). When None, the current parents are fetched first so
+            they can be removed.
+        logger: Optional logger for injection.
+    Returns:
+        The updated ``{"id": ..., "parents": [...]}`` dict.
+    """
+    _logger = logger or logging.getLogger(__name__)
+    if current_parent_id:
+        remove_ids = [current_parent_id]
+    else:
+        existing = service.files().get(fileId=file_id, fields="parents").execute()
+        remove_ids = existing.get("parents", [])
+    updated = (
+        service.files()
+        .update(
+            fileId=file_id,
+            addParents=dest_folder_id,
+            removeParents=",".join(remove_ids),
+            fields="id, parents",
+        )
+        .execute()
+    )
+    _logger.info("Moved %s -> folder %s", file_id, dest_folder_id)
+    return updated
+
+
 def upload_docx_as_google_doc(
     service: Any,
     docx_path: Path,
