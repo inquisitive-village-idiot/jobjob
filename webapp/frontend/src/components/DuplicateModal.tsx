@@ -19,7 +19,12 @@ const appLabel = (item: CompletedItem) =>
 // Resolve a flagged possible-duplicate pair (application-identity, phase 6c):
 // merge one into the other, or delete one outright. Never automatic (design
 // D3) — every resolution here is an explicit click.
-export default function DuplicateModal({ item, candidates, onClose, onResolved }: Props) {
+export default function DuplicateModal({
+  item,
+  candidates,
+  onClose,
+  onResolved,
+}: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,8 +81,8 @@ export default function DuplicateModal({ item, candidates, onClose, onResolved }
 
         <div className="p-5 overflow-y-auto flex-1 space-y-3">
           <p className="text-xs text-gray-500">
-            These share the same normalized company + role. Nothing merges
-            automatically — choose an action for each, or leave them as they are.
+            These share the same normalized company + role. Nothing merges automatically
+            — choose an action for each, or leave them as they are.
           </p>
           {error && error !== "cancelled" && (
             <p className="text-sm text-red-600">{error}</p>

@@ -566,7 +566,8 @@ export default function ApplicationsPage() {
         actions.push({
           label: "Possible duplicate",
           onClick: () => setDuplicateApp(item),
-          title: "Shares a normalized company+role with another application — resolve it",
+          title:
+            "Shares a normalized company+role with another application — resolve it",
         });
       }
     }
