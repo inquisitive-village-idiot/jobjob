@@ -81,6 +81,32 @@ class TestApplicationItemsLocalMirror:
         (item,) = self._items(tmp_path)
         assert item["app_status"] == "BUILT"
 
+    def test_legacy_metadata_schema_v1_generated_normalizes_to_built(self, tmp_path):
+        # Integration seam (docs-tests-overview): the schema_version rename
+        # shim (application_metadata._migrate, unit-tested in isolation in
+        # test_application_metadata.py) must also take effect when
+        # tracking_service reads a folder for the dashboard's completed
+        # list — this is the actual call path a pre-full-build-rename
+        # metadata.json hits, not just read_metadata() called directly.
+        _make_app_folder(
+            tmp_path,
+            "2026-01-03 - Gamma - Analyst",
+            metadata={"schema_version": 1, "status": "GENERATED"},
+        )
+        (item,) = self._items(tmp_path)
+        assert item["app_status"] == "BUILT"
+
+    def test_unstamped_legacy_metadata_generated_normalizes_to_built(self, tmp_path):
+        # schema_version absent entirely (pre-versioning, v0) is likewise
+        # migrated when read through the same tracking-list call path.
+        _make_app_folder(
+            tmp_path,
+            "2026-01-03 - Gamma - Analyst",
+            metadata={"status": "GENERATED"},
+        )
+        (item,) = self._items(tmp_path)
+        assert item["app_status"] == "BUILT"
+
     def test_metadata_overrides_prefix(self, tmp_path):
         _make_app_folder(
             tmp_path,

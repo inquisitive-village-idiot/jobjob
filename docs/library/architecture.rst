@@ -78,6 +78,45 @@ edits profile content, and reviews results. It binds to ``127.0.0.1`` only and p
 state-changing endpoints with a CSRF double-submit cookie. Its HTTP surface is documented
 in the :doc:`/restapi/index`.
 
+Every launched job (build, autofill, enrich, batch, schedule) is a **run**: an
+in-memory job table drives live progress, but each run is also persisted as a
+JSON record plus a log file under ``<applications input dir>/runs/`` (see
+``webapp/backend/services/run_history.py``), so history — including failures —
+survives a backend restart instead of living only in memory. Listing merges
+the persisted records with the live job table; a persisted run still marked
+``running`` with no live counterpart is reported ``failed`` ("interrupted").
+Records are bounded (oldest pruned beyond a retention cap) and, once a
+finished run's application is known, carry that application's ``entity_id``.
+
+Application identity: three tiers
+----------------------------------
+
+Each processed application (or contact) folder is modeled as three tiers, held
+together by one on-disk folder:
+
+- **Entity** — ``metadata.json``: a stable ``entity_id`` (uuid4, minted once and
+  reused across every re-build/rename), status, and the notes changelog.
+- **Source** — ``source.json``: the posting itself (company, role, description,
+  and a file/web/external reference), written once at first build; a re-build
+  reads it back rather than overwriting it, so a user correction (via
+  **Edit source**) survives. **Re-parse** is the sanctioned exception —
+  it deliberately overwrites company/role/description.
+- **Execution** — the artifacts of one build: ``summary.json`` plus the
+  generated documents. The current execution lives at the folder root; prior
+  executions kept on a re-build move into ``archive/<timestamp>/`` (a
+  self-contained snapshot), manageable per-execution (note, lock/unlock
+  against purge, promote back to root, purge unlocked).
+
+A folder with neither ``entity_id`` nor ``source.json`` is legacy: it joins by
+folder name exactly as before, and gains an id lazily on its next natural
+write — no backfill.
+
+Duplicate applications (same normalized company + role) are flagged
+advisory-only; resolving one either **merges** the loser's current and
+archived executions into the survivor's ``archive/`` and unions its notes, or
+**deletes** the loser outright. Both actions are always explicit, never
+automatic (``webapp/backend/services/dedup_service.py``).
+
 Running from source
 -------------------
 
