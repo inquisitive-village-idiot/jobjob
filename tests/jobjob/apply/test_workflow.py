@@ -416,6 +416,81 @@ class TestRunApplicationWorkflowOffline(ThisTestCase):
                 (folder / "archive" / archived[0].name / "archive").exists()
             )
 
+    def test_archive_promote_round_trip_preserves_identity_and_lands_at_root(
+        self,
+    ) -> None:
+        # Integration seam (docs-tests-overview): a build -> re-build-with-
+        # archive -> promote cycle, crossing the apply workflow (identity +
+        # archive_on_conflict) and the storage layer's promote_execution,
+        # exactly as the Applications page's Executions panel drives it.
+        # The entity tier (entity_id, notes) must survive the whole cycle
+        # and the promoted (first build's) artifacts must land back at root.
+        from jobjob.storage.local import LocalStorageAdapter
+        from services.application_metadata import add_note, read_metadata
+
+        mirror = self.get_tmpdir()
+        folder = mirror / "Acme - Principal Engineer"
+        jd_pdf = fixture_path("job_description_acme")
+        common = dict(
+            job_description_pdf=jd_pdf,
+            skip_drive=True,
+            applicant=Applicant(name="Tila Mer"),
+            use_cache=False,
+            applications_output_dir=mirror,
+        )
+
+        first = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            **common,
+        )
+        add_note(folder, "kept for the recruiter's version of the JD")
+
+        second = MOD.run_application_workflow(
+            output_dir=self.get_tmpdir(),
+            query_service=self.make_query_service(),
+            allow_overwrite=True,
+            archive_on_conflict=True,
+            **common,
+        )
+        self.assertEqual(first["entity_id"], second["entity_id"])
+
+        adapter = LocalStorageAdapter(folder)
+        (archived_ts,) = adapter.list_executions()
+        second_root_cover_letter = (folder / "TilaMer_CoverLetter.pdf").read_bytes()
+        first_archived_cover_letter = (
+            folder / "archive" / archived_ts / "TilaMer_CoverLetter.pdf"
+        ).read_bytes()
+
+        adapter.promote_execution(archived_ts)
+
+        with self.subTest("entity_id untouched by promote"):
+            meta = read_metadata(folder)
+            self.assertEqual(first["entity_id"], meta["entity_id"])
+        with self.subTest("note survives promote"):
+            meta = read_metadata(folder)
+            self.assertTrue(
+                any(
+                    "kept for the recruiter's version of the JD" in n.get("text", "")
+                    for n in meta.get("notes", [])
+                )
+            )
+        with self.subTest("promoted (first build's) artifacts now at root"):
+            self.assertEqual(
+                first_archived_cover_letter,
+                (folder / "TilaMer_CoverLetter.pdf").read_bytes(),
+            )
+        with self.subTest("outgoing (second build's) artifacts moved to archive"):
+            (new_ts,) = adapter.list_executions()
+            self.assertEqual(
+                second_root_cover_letter,
+                (folder / "archive" / new_ts / "TilaMer_CoverLetter.pdf").read_bytes(),
+            )
+        with self.subTest("entity-tier files never archived"):
+            self.assertTrue((folder / "metadata.json").is_file())
+            self.assertTrue((folder / "source.json").is_file())
+            self.assertFalse((folder / "archive" / new_ts / "metadata.json").exists())
+
     def test_does_not_authenticate_with_google_when_skipping(self) -> None:
         out = self.get_tmpdir()
         jd_pdf = fixture_path("job_description_acme")
