@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Each entry is labeled b
 the kind of change it represents — `[MAJOR]`, `[MINOR]`, or `[PATCH]` — following
 [semantic versioning](https://semver.org/).
 
+## [3.0.1] - 2026-07-13
+
+- [PATCH] Conform the new storage package and a dedup test to the project's Python conventions (no behavior change): the `jobjob.storage` package `__init__.py` is now empty with consumers importing from its submodules (dropping a re-export block and `__all__`), and the dedup test uses the per-module `ThisTestCase` base its sibling tests share.
+
 ## [3.0.0] - 2026-07-13
 
 - [MAJOR] **Breaking:** renamed the document-generation pipeline's CLI verb, HTTP routes, and stored vocabulary from "apply" to "build", completing the `webapp-restructure` UI-only rename: `jobjob apply` is now `jobjob build`; `jobjob apply` is repurposed to mean assisted auto-fill (formerly `jobjob autofill`, which is dropped as a subcommand); `/jobs/apply*` routes become `/jobs/build*`; the application status `GENERATED` becomes `BUILT` (legacy `GENERATED` values and folder-name prefixes are still read and normalized on the fly — no data is rewritten); run records now use `kind: "build"` for document generation (a one-time startup fixup migrates existing `kind: "apply"` records). Scripts or bookmarks against the old CLI verb or `/jobs/apply*` routes need updating
