@@ -87,6 +87,13 @@ you applied to the job, not to execution #3).
 - **Promote** (make an archived execution primary): archive the current root
   artifacts *first*, then move the promoted execution's files to root —
   strictly in that order, so no collision/overwrite window exists.
+- **Archive/move mechanism is storage-adapter dispatched (see D7).** A
+  Drive-managed artifact (résumé/cover/README as Google Docs) archives via
+  **API move-by-id** — `files.update(addParents=…, removeParents=…)` reparents
+  the Doc into the `archive/<ts>` folder; revision history is preserved because
+  it is tied to the immutable doc id, and no export/re-import happens. A
+  local artifact (summary.json, skills_analysis.json, the JD copy) archives via
+  a filesystem move. Same dispatch for promote.
 - Archive dirs are named by timestamp (seconds resolution, human-facing);
   the machine join is the `run_id` inside each `summary.json`. Never
   archive-within-archive.
@@ -128,6 +135,62 @@ The folder is the database: it syncs, restores, and survives user handling.
 Any SQLite index must be derivable by scanning the mirror (drop + rescan =
 identical). Not needed for phase 1 — the existing scan+cache carries current
 scale.
+
+### D7 — One output dir, storage adapter, entity-folder placement
+
+Phase-2 scoping surfaced a gap the phase-1 layout (D2) assumes but the code
+does not yet honor: **a build's execution artifacts do not reliably land in
+the entity folder.** `run_application_workflow` writes local artifacts into
+its `output_dir` — a tempdir in the webapp flow — while identity
+(`entity_id`/`source.json`) is written to the entity folder. They diverge in
+every mainstream flow. Archive/promote (D2) cannot sit on a layout that isn't
+materialized, so phase 2 must first unify placement.
+
+Model (settled with the user, 2026-07-12): **one user-defined output dir.** A
+build materializes the entity dir `application_folder_name(company, role)` =
+`"<Company> - <Role>"` under it and places **all** of that execution's
+artifacts there. Whether a given operation touches Drive or the local
+filesystem is an **adapter choice, dispatched per file type** — Google Docs
+(résumé/cover/README) go through the Drive API; plain files (summary.json,
+skills_analysis.json, the JD copy) go through pathlib — and the seam is
+extensible to other backends later.
+
+- **Seam shape** mirrors the existing AI-adapter idiom (`ailib/client/base.py`
+  `AIAdapter` Protocol + a duck-typed concrete impl, injected as a default
+  kwarg — the same pattern as `_drive_builder` in the workflow). A
+  `StorageAdapter` Protocol with a `LocalStorageAdapter` (pathlib) and a
+  `DriveStorageAdapter` (wrapping new `gapi/drive` primitives). Operations:
+  `place`/`exists` an artifact, `archive_execution(entity, timestamp)`,
+  `list_executions(entity)`. Archive dispatches per artifact per D2 (Docs →
+  move-by-id, files → filesystem move).
+- **New Drive primitives** (none exist today): `move_to_folder(service,
+  file_id, dest_folder_id, current_parent_id=None)` built from the
+  `files().update` + `addParents`/`removeParents` pattern; `ensure_subfolder(
+  service, parent_id, name)` for `archive/<ts>`.
+- **Unify placement**: artifacts written to the tempdir/`output_dir` today move
+  into the entity folder. Rationalize the current redundant
+  local-`.docx`-plus-Drive-`gdoc` duplication — in Drive mode the artifact *is*
+  the gdoc; don't also strew local copies. Reconcile the two naming schemes
+  (`output_dir/<jd-stem>` vs. the `Company - Role` entity dir).
+- **Rejected**: a single storage backend chosen globally (loses the "gdoc keeps
+  Drive revision history, plain files stay simple local moves" split the user
+  wants); re-platforming generation to make everything local (that is a
+  *separate* proposal — `provider-agnostic-generation` — not this change).
+
+Note: résumé/cover/README **generation** is Google-Docs-coupled today
+(`_run_drive_resume_steps`, `tailor_resume`); local mode produces no résumé.
+Decoupling generation is explicitly **out of scope** here (own proposal). D7
+places and archives whatever artifacts each mode produces today.
+
+### D8 — Submitted-artifact naming
+
+Submitted artifacts are named `FirstLast_Resume` / `FirstLast_CoverLetter`,
+where `FirstLast` derives from `Applicant.name`: strip credentials and
+punctuation, **keep** generational suffixes / roman numerals. E.g.
+`Tila Mer, PhD → TilaMer`; `… Jr → TilaMerJr`; `… III → TilaMerIII`. The
+extension is whatever the file actually is — `.gdoc` when Drive-backed, the
+real `.docx`/`.pdf` locally. README, the JD copy, and the JSON sidecars keep
+their existing names. Applies to résumé + cover only.
 
 ## Risks / Trade-offs
 
