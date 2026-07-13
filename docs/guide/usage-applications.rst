@@ -130,6 +130,29 @@ the new build writes at the root. The entity's ``metadata.json`` / ``source.json
 and its status/notes stay at the root across all executions; ``archive/`` never
 counts toward an application's completeness.
 
+Managing archived executions
+-----------------------------
+
+The Applications table's row actions include **Executions** (labeled with a
+count once at least one archived execution exists), opening a panel over that
+application's ``archive/<timestamp>/`` history:
+
+- **Promote** makes an archived execution primary. The current root is
+  archived first, under a fresh timestamp, and only then does the chosen
+  execution's files move up to the root — there is never a moment where the
+  two are both un-archived, so nothing is lost either way.
+- **Note** — a short free-text reminder of why a given run was kept (e.g. "kept
+  for the recruiter's version of the JD"). Saved per archived execution.
+- **Lock** exempts an execution from purge; unlock it to make it eligible
+  again. Locking is per execution, not per application.
+- **Purge unlocked** deletes every unlocked archived execution for that one
+  application. A page-level **Purge all archived executions** button (next to
+  Refresh) does the same across every application in the local mirror in one
+  action — locked executions are skipped everywhere, not just per-application.
+
+None of this touches an application's primary (root) artifacts, status, or
+notes; it only manages the ``archive/`` history alongside them.
+
 Identity: entity, source, and executions
 -----------------------------------------
 
