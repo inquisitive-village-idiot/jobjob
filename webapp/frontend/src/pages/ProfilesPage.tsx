@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ResumeImportPanel from "./ResumeImportPanel";
 import { api } from "../api/client";
-import type { ReferenceFile, TomlFile } from "../types";
+import type { ProfilesInfo, ReferenceFile, TomlFile } from "../types";
 import {
   FloatingOutline,
   SectionHeader,
@@ -1173,14 +1173,83 @@ function ReferencePanel() {
   );
 }
 
+// ── Registry ──────────────────────────────────────────────────────────────────
+
+// The profile registry header: registered profiles, active marker, switching.
+// Full profile management (add/duplicate/remove) stays in Settings → Profiles.
+function RegistrySection() {
+  const [info, setInfo] = useState<ProfilesInfo | null>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<ProfilesInfo>("/profiles")
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+
+  const switchTo = async (name: string) => {
+    if (name === info?.active) return;
+    setSwitching(name);
+    try {
+      await api.put<ProfilesInfo>("/profiles/active", { name });
+      // A switch changes content, applicant identity, and template across the
+      // app — reload so every page reflects the new profile.
+      window.location.reload();
+    } catch {
+      setSwitching(null);
+    }
+  };
+
+  return (
+    <section className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+          Registry
+        </h2>
+        <a href="#config" className="text-xs text-blue-600 hover:underline">
+          Manage profiles in Settings
+        </a>
+      </div>
+      {info === null ? (
+        <p className="text-gray-400 text-sm">Loading…</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {info.profiles.map((name) => (
+            <button
+              key={name}
+              onClick={() => switchTo(name)}
+              disabled={switching !== null}
+              className={`px-3 py-1.5 rounded-lg border text-sm capitalize transition-colors
+                disabled:opacity-50 ${
+                  name === info.active
+                    ? "border-blue-600 bg-blue-50 text-blue-700 font-medium"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              title={name === info.active ? "Active profile" : `Switch to ${name}`}
+            >
+              {name}
+              {name === info.active && <span className="ml-1.5">✓</span>}
+              {switching === name && <span className="ml-1.5 text-gray-400">…</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function StaticContentPage() {
+// Profiles: the registry plus the active profile's content editors (absorbs
+// the former Static Content page and résumé import).
+export default function ProfilesPage() {
   const [activeTab, setActiveTab] = useState<Tab>("highlights");
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Static Content</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-6">Profiles</h1>
+      <RegistrySection />
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-4">
           {(["highlights", "skills", "templates", "reference", "import"] as Tab[]).map(

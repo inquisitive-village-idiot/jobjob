@@ -58,12 +58,16 @@ and the
 
 ```sh
 # Generate a resume + cover letter from a job description:
-jobjob apply path/to/job_description.pdf            # full run (Drive + local)
-jobjob apply path/to/job_description.pdf --skip-drive -o ./out   # local only
+jobjob build path/to/job_description.pdf            # full run (Drive + local)
+jobjob build path/to/job_description.pdf --skip-drive -o ./out   # local only
 
 # Import a LinkedIn profile screenshot into the contacts sheet:
 jobjob enrich path/to/profile.pdf
 ```
+
+> **Note:** `jobjob apply` means something different than it used to — it now
+> runs assisted browser auto-fill (formerly `jobjob autofill`), not document
+> generation. Document generation is `jobjob build`.
 
 See **[Applications](https://inquisitive-village-idiot.github.io/jobjob/guide/usage-applications.html)**
 and **[Enrichment](https://inquisitive-village-idiot.github.io/jobjob/guide/usage-enrichment.html)**

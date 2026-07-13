@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`jobjob autofill` — assisted Playwright auto-fill of a job application.
+"""`jobjob apply` — assisted Playwright auto-fill of a job application.
 
 Opens the posting in a real browser, fills the fields it can map from the active
 profile (contact basics + work history), and hands the open window back to you to
@@ -27,7 +27,7 @@ NAME = "jobjob.autofill"
 def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        prog="jobjob autofill",
+        prog="jobjob apply",
         description=(
             "Assisted auto-fill of a job application in a real browser. "
             "Fills what it can confidently map, flags the rest, and never submits."
@@ -41,6 +41,16 @@ def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
         "--headless",
         action="store_true",
         help="Run without a visible window (testing/debug only).",
+    )
+    parser.add_argument(
+        "--assisted-detached",
+        action="store_true",
+        help=(
+            "Force the non-TTY 'wait for window close' mode instead of the "
+            "input()-based prompt, regardless of stdin. Used by the webapp when "
+            "it launches this as a detached background process; auto-selected "
+            "anyway when stdin is not a TTY."
+        ),
     )
     return parser.parse_args(list(argv) if argv is not None else None)
 
@@ -64,7 +74,15 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
     )
 
     try:
-        run_autofill(args.url, data, headless=args.headless, logger=_logger)
+        run_autofill(
+            args.url,
+            data,
+            headless=args.headless,
+            logger=_logger,
+            # None ⇒ auto-detect from stdin (see run_autofill); the flag forces
+            # the non-TTY window-close wait even if stdin happens to be a TTY.
+            assisted_detached=True if args.assisted_detached else None,
+        )
     except NoAdapterError as err:
         _logger.error("%s", err)
         return 2

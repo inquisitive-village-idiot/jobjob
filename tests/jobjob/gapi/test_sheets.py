@@ -113,6 +113,24 @@ class TestAppendProfile(ThisTestCase):
         self.assertEqual("Jane", row[3])
         self.assertEqual(MOD.MISSING, row[0])  # location empty -> "--"
 
+    def test_writes_entity_id_under_id_header_column(self) -> None:
+        header = [*HEADER, "id"]
+        service = self.make_service(header)
+        row = MOD.append_profile(
+            service,
+            "SHEET",
+            self.make_profile(name="Jane"),
+            entity_id="e1",
+        )
+        self.assertEqual("e1", row[len(HEADER)])
+
+    def test_sheet_without_id_column_is_tolerated(self) -> None:
+        service = self.make_service(HEADER)  # no "id" column
+        row = MOD.append_profile(
+            service, "SHEET", self.make_profile(name="Jane"), entity_id="e1"
+        )
+        self.assertEqual(len(HEADER), len(row))  # entity_id silently dropped
+
     def test_use_lock_false_skips_lock(self) -> None:
         service = self.make_service(HEADER)
         MOD.append_profile(

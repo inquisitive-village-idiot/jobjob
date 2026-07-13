@@ -1,0 +1,177 @@
+# Curation constraints for scripts/curate_skill_cloud.py.
+#
+# PROVISIONAL first-pass judgment; tune after reviewing real JD matches, then
+# regenerate the cloud and review the diff. All weights must sum to 1.0 per
+# group/seed.
+
+[esco]
+version = "v1.2.1"  # verify against the release you traverse
+api_base = "https://ec.europa.eu/esco/api"
+
+[cloud]
+categories = [
+    "communication",
+    "collaboration",
+    "leadership",
+    "creativity",
+    "technical",
+    "domain",
+]
+
+# Category weights per ESCO group, keyed by the group URI suffix (the part
+# after the final '/'). A leaf skill inherits the weights of its nearest
+# mapped ancestor (most specific wins).
+[group_weights]
+# --- S1: communication, collaboration and creativity ---
+"S1.1" = { communication = 0.6, collaboration = 0.4 }   # negotiating
+"S1.2" = { communication = 0.5, collaboration = 0.5 }   # liaising, networking
+"S1.3" = { communication = 0.7, leadership = 0.3 }      # teaching and training
+"S1.4" = { communication = 1.0 }                        # presenting information
+"S1.5" = { communication = 0.6, collaboration = 0.2, domain = 0.2 }  # advising
+"S1.6" = { communication = 0.8, domain = 0.2 }          # promoting, selling
+"S1.7" = { communication = 1.0 }                        # obtaining info verbally
+"S1.8" = { collaboration = 1.0 }                        # working with others
+"S1.9" = { creativity = 0.5, technical = 0.5 }          # solving problems
+"S1.11" = { creativity = 0.6, technical = 0.4 }         # designing systems
+"S1.12" = { creativity = 0.8, communication = 0.2 }     # artistic materials
+"S1.13" = { communication = 0.6, creativity = 0.4 }     # writing and composing
+"S1.14" = { creativity = 0.8, communication = 0.2 }     # performing
+"S1.15" = { communication = 1.0 }                       # multiple languages
+# --- other S branches ---
+"S2" = { technical = 0.6, domain = 0.4 }                # information skills
+"S4" = { leadership = 0.7, collaboration = 0.3 }        # management skills
+"S5" = { technical = 1.0 }                              # working with computers
+# --- K: knowledge (ISCED-F fields) -> domain ---
+"00" = { domain = 1.0 }
+"01" = { domain = 1.0 }                                 # education
+"02" = { domain = 0.8, creativity = 0.2 }               # arts and humanities
+"03" = { domain = 0.7, communication = 0.3 }            # social sci, journalism
+"04" = { domain = 0.8, leadership = 0.2 }               # business, admin, law
+"05" = { domain = 0.8, technical = 0.2 }                # natural sci, math, stats
+"06" = { domain = 0.5, technical = 0.5 }                # ICT
+"07" = { domain = 0.6, technical = 0.4 }                # engineering
+"08" = { domain = 1.0 }                                 # agriculture
+"09" = { domain = 1.0 }                                 # health and welfare
+"10" = { domain = 1.0 }                                 # services
+
+# Transversal second-level groups, keyed by title (their URIs are uuids).
+# Titles listed in excluded_titles are skipped entirely.
+[transversal]
+excluded_titles = ["language"]  # individual languages: bulk without value
+
+[transversal.title_weights]
+"attitudes and values" = { leadership = 0.4, collaboration = 0.3, communication = 0.3 }
+"social interaction" = { collaboration = 0.6, communication = 0.4 }
+"thinking" = { creativity = 0.6, technical = 0.2, domain = 0.2 }
+"application of knowledge" = { domain = 0.5, technical = 0.5 }
+
+# Roots to traverse, in order, each with its own entry budget. Per-root
+# budgets keep any one branch from starving the rest (S1 alone can fill a
+# global cap); the highest-JD-value branches go first. `weights` may be a
+# group_weights key (string) or inline; omit for branches whose subgroups
+# carry their own mappings.
+[[roots]]
+# programming languages (Python, SQL, ...) hang under this group, which deep
+# broad-K traversal only reaches after its budget is spent.
+uri = "http://data.europa.eu/esco/skill/21d2f96d-35f7-4e3f-9745-c533d2dd6e97"
+weights = { technical = 1.0 }
+budget = 150
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S5"
+weights = "S5"
+budget = 500
+
+[[roots]]
+uri = "http://data.europa.eu/esco/isced-f/06"
+weights = "06"
+budget = 200
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S4"
+weights = "S4"
+budget = 200
+
+[[roots]]
+uri = "http://data.europa.eu/esco/isced-f/04"
+weights = "04"
+budget = 150
+
+[[roots]]
+uri = "http://data.europa.eu/esco/isced-f/05"
+weights = "05"
+budget = 100
+
+[[roots]]
+uri = "http://data.europa.eu/esco/isced-f/03"
+weights = "03"
+budget = 80
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S2"
+weights = "S2"
+budget = 150
+
+# creativity-weighted S1 subgroups get explicit roots: depth-first broad-S1
+# traversal spends its budget in the early (communication-heavy) subgroups
+# and starves these.
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S1.11"
+weights = "S1.11"
+budget = 60
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S1.12"
+weights = "S1.12"
+budget = 60
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S1.13"
+weights = "S1.13"
+budget = 60
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S1.14"
+weights = "S1.14"
+budget = 60
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/S1"
+budget = 400
+
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/K"
+budget = 300
+
+# Transversal skills/competences tree (attitudes, social interaction,
+# thinking, application of knowledge).
+[[roots]]
+uri = "http://data.europa.eu/esco/skill/7ee746cb-fded-47f5-9652-19ebebbce51b"
+budget = 150
+
+# High-value skills OUTSIDE the group hierarchy (no broaderSkill), unreachable
+# by tree traversal. Each is fetched via search (top hit) and seeded directly.
+[seed_weights]
+"project management" = { leadership = 0.5, technical = 0.3, collaboration = 0.2 }
+"agile project management" = { technical = 0.4, leadership = 0.4, collaboration = 0.2 }
+"machine learning" = { technical = 0.7, domain = 0.3 }
+"data mining" = { technical = 0.7, domain = 0.3 }
+"data analytics" = { technical = 0.6, domain = 0.4 }
+"SQL" = { technical = 1.0 }
+"cloud technologies" = { technical = 1.0 }
+"cyber security" = { technical = 0.7, domain = 0.3 }
+"quality assurance methodologies" = { technical = 0.6, domain = 0.4 }
+"business analysis" = { domain = 0.5, technical = 0.3, communication = 0.2 }
+"financial analysis" = { domain = 0.7, technical = 0.3 }
+"product management" = { leadership = 0.4, domain = 0.3, technical = 0.3 }
+"graphic design" = { creativity = 0.7, technical = 0.3 }
+"copywriting" = { communication = 0.7, creativity = 0.3 }
+"journalism" = { domain = 0.6, communication = 0.4 }
+"statistics" = { domain = 0.6, technical = 0.4 }
+"utilise machine learning" = { technical = 1.0 }
+
+# Curated alias additions keyed by generated entry id: closes vocabulary gaps
+# where the JD-common term is missing from ESCO's labels. A documented change
+# under the reuse terms (see jobjob/data/NOTICE-ESCO.md).
+[curated_aliases]
+data_mining = ["machine learning"]

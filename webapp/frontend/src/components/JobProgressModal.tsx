@@ -48,10 +48,9 @@ export default function JobProgressModal({
 
   const usage = (job.result?.token_usage as TokenUsage | undefined) ?? null;
   const model = job.result?.model as string | undefined;
-  const title =
-    job.kind === "batch"
-      ? job.label
-      : `${job.kind === "enrich" ? "Enrich" : "Apply"} — ${job.label}`;
+  const kindLabel =
+    job.kind === "enrich" ? "Enrich" : job.kind === "apply" ? "Apply" : "Build";
+  const title = job.kind === "batch" ? job.label : `${kindLabel} — ${job.label}`;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">

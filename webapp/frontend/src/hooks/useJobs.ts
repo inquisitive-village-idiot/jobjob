@@ -10,7 +10,7 @@ export interface LogLine {
 
 export interface Job {
   id: string;
-  kind: "apply" | "enrich" | "batch";
+  kind: "build" | "enrich" | "batch" | "apply";
   label: string;
   path?: string; // queue-item path (single jobs); undefined for batch
   count?: number; // batch item count
@@ -93,14 +93,14 @@ export function useJobs(onSettled?: () => void) {
       item: QueueItem,
       opts: { skipDrive: boolean; allowOverwrite?: boolean }
     ): Promise<string> => {
-      const res = await api.post<{ job_id: string }>("/jobs/apply", {
+      const res = await api.post<{ job_id: string }>("/jobs/build", {
         jd_path: item.path,
         skip_drive: opts.skipDrive,
         allow_overwrite: opts.allowOverwrite ?? false,
       });
       track({
         id: res.job_id,
-        kind: "apply",
+        kind: "build",
         label: item.name,
         path: item.path,
         status: "running",
@@ -139,7 +139,7 @@ export function useJobs(onSettled?: () => void) {
       opts: { skipDrive: boolean }
     ): Promise<string> => {
       const endpoint =
-        "url" in source ? "/jobs/apply/from-url" : "/jobs/apply/from-text";
+        "url" in source ? "/jobs/build/from-url" : "/jobs/build/from-text";
       const res = await api.post<{ job_id: string; snapshot: string }>(endpoint, {
         ...source,
         skip_drive: opts.skipDrive,
@@ -148,7 +148,7 @@ export function useJobs(onSettled?: () => void) {
         "url" in source ? source.url : (res.snapshot.split("/").pop() ?? "Pasted JD");
       track({
         id: res.job_id,
-        kind: "apply",
+        kind: "build",
         label,
         path: res.snapshot,
         status: "running",
@@ -165,15 +165,41 @@ export function useJobs(onSettled?: () => void) {
       label: string,
       opts: { skipDrive: boolean; model?: string }
     ): Promise<string> => {
-      const res = await api.post<{ job_id: string }>("/jobs/apply/rerun", {
+      const res = await api.post<{ job_id: string }>("/jobs/build/rerun", {
         folder_name: folderName,
         skip_drive: opts.skipDrive,
         model: opts.model,
       });
       track({
         id: res.job_id,
-        kind: "apply",
+        kind: "build",
         label,
+        status: "running",
+        lines: [],
+      });
+      return res.job_id;
+    },
+    [track]
+  );
+
+  // Launch the assisted autofill (Playwright) step for a built application —
+  // gated by the caller on posting_url being set. Runs as a detached backend
+  // subprocess; this job only tracks the (early) fill-report step, not the
+  // human finishing in the browser (see design.md).
+  const launchAutofill = useCallback(
+    async (item: {
+      folder_name: string;
+      entity_id?: string | null;
+    }): Promise<string> => {
+      const res = await api.post<{ job_id: string }>("/jobs/apply", {
+        folder_name: item.folder_name,
+        entity_id: item.entity_id ?? undefined,
+      });
+      track({
+        id: res.job_id,
+        kind: "apply",
+        label: item.folder_name,
+        folderName: item.folder_name,
         status: "running",
         lines: [],
       });
@@ -260,6 +286,7 @@ export function useJobs(onSettled?: () => void) {
     relaunchApply,
     deleteQueued,
     launchApplyRerun,
+    launchAutofill,
     launchEnrich,
     launchBatch,
     launchSchedule,

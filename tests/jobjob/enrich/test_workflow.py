@@ -83,6 +83,26 @@ class TestEnrichProfile(ThisTestCase):
         with self.subTest("append called"):
             service.spreadsheets.return_value.values.return_value.append.assert_called_once()
 
+    def test_mints_an_entity_id_and_passes_it_to_the_sheet_append(self) -> None:
+        service = mock.MagicMock()
+        get_call = service.spreadsheets.return_value.values.return_value.get
+        get_call.return_value.execute.return_value = {
+            "values": [["location", "company", "role", "name", "linkedin_url", "id"]]
+        }
+        results = MOD.enrich_profile(
+            self.jd_pdf(),
+            query_service=self.make_query_service(),
+            spreadsheet_id="SHEET",
+            use_cache=False,
+            _credentials_loader=mock.MagicMock(),
+            _sheets_builder=mock.MagicMock(return_value=service),
+        )
+        with self.subTest("entity_id present in results"):
+            self.assertIn("entity_id", results)
+            self.assertTrue(results["entity_id"])
+        with self.subTest("same id lands in the sheet row's ID column"):
+            self.assertEqual(results["entity_id"], results["row"][5])
+
     def test_requires_sheet_id_when_writing(self) -> None:
         with self.assertRaisesRegex(ValueError, "spreadsheet id is required"):
             MOD.enrich_profile(
@@ -210,6 +230,30 @@ class TestEnrichInputsMove(TestCase):
             self.assertIn("date_created", record)
             self.assertIn("date_processed", record)
 
+    def test_sidecar_carries_the_same_entity_id_as_the_sheet_row(self) -> None:
+        data = self.get_tmpdir()
+        src = data / "profiles" / "profile.pdf"
+        src.parent.mkdir(parents=True)
+        src.write_text("x")
+        with mock.patch.object(
+            MOD,
+            "enrich_profile",
+            return_value={
+                "profile": {"name": "Jane Doe", "company": "Acme"},
+                "entity_id": "e1",
+                "row": ["Boston", "Acme", "", "Jane Doe", "", "e1"],
+            },
+        ):
+            MOD.enrich_inputs(
+                src,
+                query_service=mock.MagicMock(),
+                spreadsheet_id="SHEET",
+                data_dir=data,
+            )
+        moved = list((data / "completed" / "profiles").glob("*.pdf"))[0]
+        sidecar = json.loads(moved.with_suffix(".json").read_text())
+        self.assertEqual("e1", sidecar["entity_id"])
+
     def test_created_date_taken_from_filename(self) -> None:
         data = self.get_tmpdir()
         src = (
@@ -239,6 +283,49 @@ class TestEnrichInputsMove(TestCase):
     def test_no_move_when_data_dir_unset(self) -> None:
         data, src = self._run_with(data_dir=None, dry_run=False)
         self.assertTrue(src.exists())
+
+
+class TestWriteProfileSidecar(TestCase):
+    """write_profile_sidecar's own entity_id contract (mint/reuse)."""
+
+    def get_tmpdir(self) -> Path:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return Path(tmp.name)
+
+    def test_uses_the_given_entity_id(self) -> None:
+        dest = self.get_tmpdir() / "contact.pdf"
+        sidecar = MOD.write_profile_sidecar(
+            dest,
+            {"name": "Jane"},
+            date(2026, 1, 1),
+            date(2026, 1, 2),
+            entity_id="e1",
+        )
+        record = json.loads(sidecar.read_text())
+        self.assertEqual("e1", record["entity_id"])
+
+    def test_mints_when_no_entity_id_given_and_no_existing_sidecar(self) -> None:
+        dest = self.get_tmpdir() / "contact.pdf"
+        sidecar = MOD.write_profile_sidecar(
+            dest, {"name": "Jane"}, date(2026, 1, 1), date(2026, 1, 2)
+        )
+        record = json.loads(sidecar.read_text())
+        self.assertTrue(record["entity_id"])
+
+    def test_reuses_existing_sidecar_id_when_none_given(self) -> None:
+        dest = self.get_tmpdir() / "contact.pdf"
+        first = MOD.write_profile_sidecar(
+            dest, {"name": "Jane"}, date(2026, 1, 1), date(2026, 1, 2), entity_id="e1"
+        )
+        # A second write (e.g. a same-day re-enrich collision) with no explicit
+        # entity_id must reuse the one already on disk, not mint a new one.
+        second = MOD.write_profile_sidecar(
+            dest, {"name": "Jane"}, date(2026, 1, 1), date(2026, 1, 3)
+        )
+        self.assertEqual(first, second)
+        record = json.loads(second.read_text())
+        self.assertEqual("e1", record["entity_id"])
 
 
 class TestMoveCompletedProfile(TestCase):

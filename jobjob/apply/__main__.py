@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""`jobjob apply` — generate a tailored resume + cover letter for a job description."""
+"""`jobjob build` — generate a tailored resume + cover letter for a job description.
+
+Module keeps the historical ``jobjob.apply`` name (``python -m jobjob.apply``
+still works); the CLI verb is ``build``.
+"""
 
 import argparse
 import json
@@ -22,7 +26,7 @@ NAME = "jobjob.apply"
 def parse_args(argv: Optional[Iterable] = None) -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        prog="jobjob apply",
+        prog="jobjob build",
         description=(
             "Generate a tailored resume and cover letter for a job description."
         ),
@@ -140,6 +144,7 @@ def main(argv: Optional[Iterable] = None, logger: logging.Logger | None = None) 
         parent_id=settings.applications_output_drive_id,
         data_dir=settings.applications_input_dir,
         industry=settings.industry,
+        applications_output_dir=settings.applications_output_dir,
         logger=_logger,
         _credentials_loader=build_credentials_loader(settings),
     )

@@ -15,7 +15,7 @@ In the app
 
 #. Add a LinkedIn profile screenshot (PDF/image) — drop it into
    ``<jobjob folder>/data/profiles/``.
-#. Open the **Queue** tab, find it, and click **Enrich**.
+#. Open the **Contacts** page, find it under *Pending*, and click **Enrich**.
 #. The parsed contact is appended to your contacts Sheet; the item moves to completed.
 
 On the command line

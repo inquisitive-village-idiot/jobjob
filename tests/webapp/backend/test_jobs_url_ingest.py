@@ -35,8 +35,8 @@ def client(data_dir, monkeypatch):
     # Neutralize the budget guard and the apply pipeline: these tests cover only the
     # ingestion → snapshot → launch wiring, not model/thread execution.
     monkeypatch.setattr(jobs, "check_budget", lambda **k: None)
-    monkeypatch.setattr(jobs, "_make_apply_run", lambda *a, **k: (lambda: {"ok": True}))
-    monkeypatch.setattr(jobs, "_start_job", lambda fn: "job-test-1")
+    monkeypatch.setattr(jobs, "_make_build_run", lambda *a, **k: (lambda: {"ok": True}))
+    monkeypatch.setattr(jobs, "_start_job", lambda fn, **kwargs: "job-test-1")
 
     app = FastAPI()
     app.include_router(jobs.router, prefix="/api/jobs")
@@ -58,7 +58,7 @@ class TestApplyFromUrl:
         monkeypatch.setattr(jobs, "snapshot_from_url", _fake_snapshot)
 
         resp = client.post(
-            "/api/jobs/apply/from-url",
+            "/api/jobs/build/from-url",
             json={"url": "https://jobs.example.com/acme/science-correspondent"},
         )
         assert resp.status_code == 200, resp.text
@@ -73,7 +73,7 @@ class TestApplyFromUrl:
 
         monkeypatch.setattr(jobs, "snapshot_from_url", _boom)
         resp = client.post(
-            "/api/jobs/apply/from-url",
+            "/api/jobs/build/from-url",
             json={"url": "https://linkedin.com/jobs/view/123"},
         )
         assert resp.status_code == 422
@@ -84,7 +84,7 @@ class TestApplyFromText:
     def test_writes_snapshot_and_launches(self, client, data_dir):
         # Uses the real snapshot_from_text (no network).
         resp = client.post(
-            "/api/jobs/apply/from-text",
+            "/api/jobs/build/from-text",
             json={"text": _ACME_POSTING},
         )
         assert resp.status_code == 200, resp.text
@@ -95,7 +95,7 @@ class TestApplyFromText:
         assert "Acme Gazette" in snapshots[0].read_text(encoding="utf-8")
 
     def test_too_short_paste_is_422(self, client, data_dir):
-        resp = client.post("/api/jobs/apply/from-text", json={"text": "too short"})
+        resp = client.post("/api/jobs/build/from-text", json={"text": "too short"})
         assert resp.status_code == 422
         assert list((data_dir / "jobs").glob("*.md")) == []
 

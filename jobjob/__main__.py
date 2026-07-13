@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """`jobjob` — top-level CLI dispatcher.
 
-A thin adapter exposing the ``apply`` and ``enrich`` endpoints through one
-interface. Routes a sub-command to the matching module entrypoint; each
-sub-command parses its own arguments (so ``jobjob apply --help`` and
-``python -m jobjob.apply`` behave the same). Sub-commands register in ``COMMANDS``.
+A thin adapter exposing the ``build``, ``apply``, and ``enrich`` endpoints
+through one interface. Routes a sub-command to the matching module entrypoint;
+each sub-command parses its own arguments (so ``jobjob build --help`` and
+``python -m jobjob.apply`` behave the same). Sub-commands register in
+``COMMANDS``. ``build`` runs document generation (the ``jobjob.apply``
+module); ``apply`` runs autofill — the module keeps its historical name, but
+the verb is ``build``.
 """
 
 import sys
@@ -12,17 +15,21 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Optional
 
 from jobjob.apply.__main__ import main as apply_main
+from jobjob.apply.recheck import main as ats_main
 from jobjob.auth.__main__ import main as auth_main
 from jobjob.autofill.__main__ import main as autofill_main
 from jobjob.cli import run_main
 from jobjob.enrich.__main__ import main as enrich_main
+from jobjob.skills.suggest import main as skills_main
 
 # Sub-command name -> ``main(argv) -> int``.
 COMMANDS: Mapping[str, Callable[..., int]] = {
-    "apply": apply_main,
+    "build": apply_main,
+    "apply": autofill_main,
     "enrich": enrich_main,
     "auth": auth_main,
-    "autofill": autofill_main,
+    "ats": ats_main,
+    "skills": skills_main,
 }
 
 

@@ -62,4 +62,29 @@ class TestFit(ThisTestCase):
         self.assertEqual("Weak", MOD.BAND_WEAK)
 
 
+class TestFitSummary(ThisTestCase):
+    """Test function."""
+
+    def test_compact_view_of_scored_fit(self) -> None:
+        subject = MOD.Fit(
+            band=MOD.BAND_STRONG,
+            summary="Great match",
+            role_fit=0.72,
+            preference_fit=0.6,
+        )
+
+        found = MOD.fit_summary(subject)
+
+        expected = {"band": "Strong", "role_fit": 0.72, "preference_fit": 0.6}
+        self.assertEqual(expected, found)
+
+    def test_absent_axes_stay_none(self) -> None:
+        subject = MOD.Fit(band=MOD.BAND_WEAK, summary="Weak")
+
+        found = MOD.fit_summary(subject)
+
+        expected = {"band": "Weak", "role_fit": None, "preference_fit": None}
+        self.assertEqual(expected, found)
+
+
 # __END__

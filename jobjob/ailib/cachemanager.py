@@ -19,6 +19,7 @@ import dataclasses as dcs
 import hashlib
 import json
 import os
+import tempfile
 import textwrap
 from collections.abc import Callable
 from pathlib import Path
@@ -70,7 +71,8 @@ def get_cache_hash(value: Any, size: int = 32) -> str:
 class CacheManager:
     """Supports prompt/response loading to and saving from a cache.
 
-    TODO: Add fcntl or filelock for thread and process safety.
+    Writes are atomic (temp file + ``os.replace``), so entries are always
+    complete-or-absent; no locking is needed. See ``save_to_cache``.
 
     Class Attributes:
         _registry: Tracks instances based on cache path. Used to ensure one one
@@ -154,37 +156,42 @@ class CacheManager:
         # Adds self to the instance tracker
         self._registry[self.cache_path] = self
 
-    def delete_cache_entry(self, prompt: str) -> None:
+    def delete_cache_entry(self, prompt: str, model: str | None = None) -> None:
         """Delete given cache entry.
 
         NOTE: Intended to cleanup invalid cache.
 
         Arguments:
             prompt: The prompt string.
+            model: Optional model identifier. Part of the key, so entries for the
+                same prompt under different models (or no model) are addressed
+                independently.
         Returns:
             None.
         Raises:
             None. If the cache doesn't exist, no need to complain as that's the target.
         """
-        key = self._get_cache_hash(prompt)
+        key = self._key(prompt, model)
         path = self._cache_path_for(key)
         try:
             path.unlink()
         except FileNotFoundError:
             pass  # ignore -- this is the target state
 
-    def load_from_cache(self, prompt: str) -> Any:
+    def load_from_cache(self, prompt: str, model: str | None = None) -> Any:
         """Load cache for given prompt.
 
         Arguments:
             prompt: The prompt string.
+            model: Optional model identifier. Part of the key, so a response cached
+                under one model is never served for another (or for no model).
         Returns:
             The cached response. May be any json-encodable type as the save to cache
             process performs json encoding.
         Raises:
-            CacheMissError(KeyError) if no cache exists for the given prompt.
+            CacheMissError(KeyError) if no cache exists for the given prompt/model.
         """
-        key = self._get_cache_hash(prompt)
+        key = self._key(prompt, model)
         path = self._cache_path_for(key)
         if not path.is_file():
             shorter = textwrap.shorten(prompt, width=80)
@@ -204,28 +211,61 @@ class CacheManager:
                 continue
             path.unlink()
 
-    def save_to_cache(self, prompt: str, response: Any) -> None:
+    def save_to_cache(
+        self, prompt: str, response: Any, model: str | None = None
+    ) -> None:
         """Save given prompt and response to the cache.
+
+        Atomic: content is written to a uniquely-named ``.tmp`` file in the
+        cache directory, then moved onto the final path via ``os.replace``.
+        Readers never observe a partial entry. On failure, the temp file is
+        removed (best-effort) and the final path is left untouched -- recovery
+        is a cache miss followed by a fresh save, never a resumed temp file.
+        Orphaned ``.tmp`` files (hard kill) are ignored by readers and removed
+        by ``purge_cache``.
 
         Arguments:
             prompt: The prompt string
             response: The response. Must be JSON encodable.
+            model: Optional model identifier. Part of the key, so the same prompt
+                under a different model is stored as a distinct entry.
         Returns:
             None.
         Raises:
-            None.
+            Errors from encoding or writing are propagated.
         """
-        key = self._get_cache_hash(prompt)
+        key = self._key(prompt, model)
         path = self._cache_path_for(key)
-        data = {"prompt": prompt, "response": response}
+        data = {"model": model, "prompt": prompt, "response": response}
         content = json.dumps(data, separators=(",", ":"))
-        path.write_text(content, encoding="utf-8")
+
+        # Same directory as the final path guarantees same filesystem,
+        # which guarantees os.replace is atomic.
+        fd, tmp_name = tempfile.mkstemp(
+            dir=self.cache_path, prefix=f"{key}.", suffix=".tmp"
+        )
+        tmp_path = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                fh.write(content)
+            os.replace(tmp_path, path)
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)  # best-effort; orphans are inert
+            raise
 
     # "private" methods
     # ----------------------------------
 
     def _cache_path_for(self, key: str) -> Path:
         return Path(self.cache_path, f"{key}.json")
+
+    def _key(self, prompt: str, model: str | None) -> str:
+        """Derive the cache key from the ``(model, prompt)`` pair.
+
+        NOTE: ``repr`` (not ``str``) so ``model=None`` is unambiguous and the
+        pair round-trips deterministically as hash input.
+        """
+        return self._get_cache_hash(repr((model, prompt)))
 
 
 # Module Functions

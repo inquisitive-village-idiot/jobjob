@@ -31,6 +31,11 @@ HEADER_NAMES = {
     "linkedin_url": ("linkedin_url", "linkedin", "url", "profile"),
     "request": ("request", "date", "added", "request date"),
     "found_by": ("found_by",),
+    # application-identity (phase 1): joins a sheet row back to its contact's
+    # entity_id (profile sidecar). Absent from most existing sheets today — a
+    # sheet without an "ID" column simply never gets this value written (see
+    # build_row: it only fills columns present in the header).
+    "entity_id": ("id", "entity_id", "entity id"),
 }
 
 
@@ -74,8 +79,10 @@ def build_row(headers: list, col_map: Mapping, values: Mapping) -> list:
     return row
 
 
-def _profile_values(profile: LinkedInProfile, date: datetime) -> dict:
-    return {
+def _profile_values(
+    profile: LinkedInProfile, date: datetime, entity_id: Optional[str] = None
+) -> dict:
+    values = {
         "name": profile.name or MISSING,
         "role": profile.role or MISSING,
         "company": profile.company or MISSING,
@@ -84,6 +91,9 @@ def _profile_values(profile: LinkedInProfile, date: datetime) -> dict:
         "request": date.strftime("%m/%d/%Y"),
         "found_by": "screenshot",
     }
+    if entity_id:
+        values["entity_id"] = entity_id
+    return values
 
 
 def _sheet_id_for(service: Any, spreadsheet_id: str, sheet_name: str) -> Optional[int]:
@@ -212,6 +222,7 @@ def append_profile(
     date: Optional[datetime] = None,
     logger: logging.Logger | None = None,
     use_lock: bool = True,
+    entity_id: Optional[str] = None,
 ) -> list:
     """Append ``profile`` as a new row aligned to the sheet's header.
 
@@ -223,13 +234,18 @@ def append_profile(
         date: The "request"/added date (defaults to now).
         logger: Optional logger for injection.
         use_lock: Guard the append with an advisory ``sheet_lock`` (default True).
+        entity_id: The contact's entity id (application-identity, phase 1),
+            written under an "ID" header column when the sheet has one; silently
+            omitted otherwise (``build_row`` only fills mapped columns).
     Returns:
         The row that was appended.
     """
     _logger = logger or logging.getLogger(__name__)
     headers = get_header_row(service, spreadsheet_id, sheet_name)
     col_map = detect_columns(headers)
-    row = build_row(headers, col_map, _profile_values(profile, date or datetime.now()))
+    row = build_row(
+        headers, col_map, _profile_values(profile, date or datetime.now(), entity_id)
+    )
 
     guard = (
         sheet_lock(service, spreadsheet_id, sheet_name, logger=_logger)
